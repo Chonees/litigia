@@ -111,16 +111,13 @@ async def search_jurisprudencia(query: JurisprudenciaQuery) -> JurisprudenciaRes
 
     for term in expanded_terms:
         embedding = await get_single_embedding(term)
-        filters = {}
-        if query.jurisdiccion:
-            filters["jurisdiccion"] = query.jurisdiccion
-        if query.fuero:
-            filters["fuero"] = query.fuero
 
         results = await search_similar(
             query_embedding=embedding,
             top_k=query.top_k * 2,  # fetch more, rerank will filter
-            filters=filters if filters else None,
+            jurisdiccion=query.jurisdiccion,
+            fuero=query.fuero,
+            materia=query.materia,
         )
 
         for r in results:

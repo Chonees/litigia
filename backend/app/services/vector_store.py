@@ -24,7 +24,7 @@ def get_collection() -> chromadb.Collection:
     """Get or create the jurisprudencia collection."""
     client = get_client()
     return client.get_or_create_collection(
-        name=settings.qdrant_collection,
+        name=settings.collection_name,
         metadata={"hnsw:space": "cosine"},
     )
 

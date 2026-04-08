@@ -9,17 +9,15 @@ class Settings(BaseSettings):
     app_name: str = "LITIGIA"
     debug: bool = False
 
-    # Claude API
+    # Claude API (only external dependency)
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-4-20250514"
 
-    # OpenAI (embeddings only)
-    openai_api_key: str = ""
-    embedding_model: str = "text-embedding-3-large"
-    embedding_dimensions: int = 3072
+    # Embeddings — 100% local, no API needed
+    embedding_model: str = "BAAI/bge-m3"
 
     # Vector store (ChromaDB — embedded, no server needed)
-    qdrant_collection: str = "jurisprudencia"  # collection name, kept for compat
+    collection_name: str = "jurisprudencia"
 
     # Data storage — SSD D: for heavy datasets
     data_root: Path = Path("D:/litigia-data")
@@ -34,7 +32,6 @@ class Settings(BaseSettings):
     saij_min_text_length: int = 100
     jurisgpt_min_text_length: int = 100
     embedding_batch_size: int = 50
-    qdrant_upsert_batch_size: int = 100
     chunk_max_chars: int = 4000
 
     def ensure_dirs(self) -> None:

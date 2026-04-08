@@ -1,39 +1,39 @@
-import httpx
+"""Local embeddings using sentence-transformers.
 
-from app.core.config import settings
+No API keys, no costs, runs on your machine.
+Model: BAAI/bge-m3 — state-of-the-art multilingual, excellent for Spanish legal text.
+"""
 
-OPENAI_EMBEDDING_URL = "https://api.openai.com/v1/embeddings"
+from sentence_transformers import SentenceTransformer
+
+_model: SentenceTransformer | None = None
+
+MODEL_NAME = "BAAI/bge-m3"
+
+
+def _get_model() -> SentenceTransformer:
+    """Lazy-load the embedding model (downloads on first use, ~2GB)."""
+    global _model
+    if _model is None:
+        print(f"  Loading embedding model: {MODEL_NAME} (first time downloads ~2GB)...")
+        _model = SentenceTransformer(MODEL_NAME)
+        print(f"  Model loaded. Embedding dimension: {_model.get_sentence_embedding_dimension()}")
+    return _model
 
 
 async def get_embeddings(texts: list[str]) -> list[list[float]]:
-    """Generate embeddings using OpenAI text-embedding-3-large.
-
-    Batches up to 2048 texts per request (OpenAI limit).
-    """
-    all_embeddings: list[list[float]] = []
-    batch_size = 2048
-
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        for i in range(0, len(texts), batch_size):
-            batch = texts[i : i + batch_size]
-            response = await client.post(
-                OPENAI_EMBEDDING_URL,
-                headers={"Authorization": f"Bearer {settings.openai_api_key}"},
-                json={
-                    "input": batch,
-                    "model": settings.anthropic_embedding_model,
-                    "dimensions": settings.embedding_dimensions,
-                },
-            )
-            response.raise_for_status()
-            data = response.json()
-            batch_embeddings = [item["embedding"] for item in data["data"]]
-            all_embeddings.extend(batch_embeddings)
-
-    return all_embeddings
+    """Generate embeddings locally."""
+    model = _get_model()
+    embeddings = model.encode(texts, show_progress_bar=False, normalize_embeddings=True)
+    return embeddings.tolist()
 
 
 async def get_single_embedding(text: str) -> list[float]:
     """Generate embedding for a single text."""
     result = await get_embeddings([text])
     return result[0]
+
+
+def embedding_dimension() -> int:
+    """Get the dimension of the embedding model."""
+    return _get_model().get_sentence_embedding_dimension()

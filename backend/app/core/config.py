@@ -18,10 +18,8 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-large"
     embedding_dimensions: int = 3072
 
-    # Qdrant
-    qdrant_host: str = "localhost"
-    qdrant_port: int = 6333
-    qdrant_collection: str = "jurisprudencia"
+    # Vector store (ChromaDB — embedded, no server needed)
+    qdrant_collection: str = "jurisprudencia"  # collection name, kept for compat
 
     # Data storage — SSD D: for heavy datasets
     data_root: Path = Path("D:/litigia-data")

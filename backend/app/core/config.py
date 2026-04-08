@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     jurisgpt_dataset: str = "harpomaxx/jurisgpt"
     saij_min_text_length: int = 100
     jurisgpt_min_text_length: int = 100
-    embedding_batch_size: int = 50
+    embedding_batch_size: int = 256
     chunk_max_chars: int = 4000
 
     def ensure_dirs(self) -> None:

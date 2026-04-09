@@ -1,48 +1,36 @@
 "use client";
 
-const inputClass =
-  "w-full p-3 border border-[var(--color-border)] rounded-lg bg-white focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent focus:outline-none transition-all text-sm";
-
-const selectClass =
-  "p-3 border border-[var(--color-border)] rounded-lg bg-white focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-none transition-all text-sm";
-
-const textareaClass = `${inputClass} resize-none font-serif`;
+import { Label, Input, Select, Textarea } from "@/components/ui";
 
 export function JurisprudenciaForm() {
   return (
     <>
       <div>
-        <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
-          Descripcion del caso
-        </label>
-        <textarea
+        <Label>Descripción del caso</Label>
+        <Textarea
           name="descripcion"
-          placeholder="Ej: Mi cliente sufrio un accidente laboral en una obra en construccion. La ART le rechazo el siniestro alegando que no estaba en relacion de dependencia."
-          className={`${textareaClass} h-32`}
+          placeholder="Ej: Mi cliente sufrió un accidente laboral en una obra en construcción. La ART le rechazó el siniestro alegando que no estaba en relación de dependencia."
+          style={{ height: "8rem" }}
           required
         />
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-6">
         <div>
-          <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
-            Jurisdiccion
-          </label>
-          <select name="jurisdiccion" className={selectClass}>
+          <Label>Jurisdicción</Label>
+          <Select name="jurisdiccion">
             <option value="">Todas</option>
             <option value="CABA">CABA</option>
             <option value="Buenos Aires">Prov. Buenos Aires</option>
             <option value="Nacional">Nacional</option>
             <option value="Federal">Federal</option>
             <option value="Mendoza">Mendoza</option>
-            <option value="Cordoba">Cordoba</option>
+            <option value="Cordoba">Córdoba</option>
             <option value="Santa Fe">Santa Fe</option>
-          </select>
+          </Select>
         </div>
         <div>
-          <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
-            Fuero
-          </label>
-          <select name="fuero" className={selectClass}>
+          <Label>Fuero</Label>
+          <Select name="fuero">
             <option value="">Todos</option>
             <option value="civil">Civil</option>
             <option value="laboral">Laboral</option>
@@ -50,18 +38,16 @@ export function JurisprudenciaForm() {
             <option value="comercial">Comercial</option>
             <option value="contencioso administrativo">Cont. Administrativo</option>
             <option value="familia">Familia</option>
-          </select>
+          </Select>
         </div>
         <div>
-          <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
-            Resultados
-          </label>
-          <select name="top_k" className={selectClass}>
+          <Label>Resultados</Label>
+          <Select name="top_k">
             <option value="5">5 fallos</option>
             <option value="10">10 fallos</option>
             <option value="15">15 fallos</option>
             <option value="20">20 fallos</option>
-          </select>
+          </Select>
         </div>
       </div>
     </>
@@ -71,80 +57,75 @@ export function JurisprudenciaForm() {
 export function EscritoForm() {
   return (
     <>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-6">
         <div>
-          <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
-            Tipo de escrito
-          </label>
-          <select name="tipo" className={selectClass} required>
+          <Label>Tipo de escrito</Label>
+          <Select name="tipo" required>
             <option value="">Seleccionar...</option>
-            <option value="contestacion_demanda">Contestacion de demanda</option>
+            <option value="contestacion_demanda">Contestación de demanda</option>
             <option value="demanda">Demanda</option>
-            <option value="recurso_apelacion">Recurso de apelacion</option>
+            <option value="recurso_apelacion">Recurso de apelación</option>
             <option value="recurso_extraordinario">Recurso extraordinario</option>
             <option value="amparo">Amparo</option>
             <option value="medida_cautelar">Medida cautelar</option>
             <option value="alegato">Alegato</option>
-            <option value="expresion_agravios">Expresion de agravios</option>
-          </select>
+            <option value="expresion_agravios">Expresión de agravios</option>
+          </Select>
         </div>
         <div>
-          <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
-            Fuero
-          </label>
-          <select name="fuero" className={selectClass} required>
+          <Label>Fuero</Label>
+          <Select name="fuero" required>
             <option value="">Seleccionar...</option>
             <option value="civil">Civil</option>
             <option value="laboral">Laboral</option>
             <option value="penal">Penal</option>
             <option value="comercial">Comercial</option>
             <option value="familia">Familia</option>
-          </select>
+          </Select>
         </div>
         <div>
-          <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
-            Posicion procesal
-          </label>
-          <select name="posicion" className={selectClass} required>
+          <Label>Posición procesal</Label>
+          <Select name="posicion" required>
             <option value="">Seleccionar...</option>
             <option value="actor">Actor</option>
             <option value="demandado">Demandado</option>
             <option value="tercero">Tercero citado</option>
-          </select>
+          </Select>
         </div>
         <div>
-          <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
-            Jurisdiccion
-          </label>
-          <select name="jurisdiccion" className={selectClass} required>
+          <Label>Jurisdicción</Label>
+          <Select name="jurisdiccion" required>
             <option value="">Seleccionar...</option>
             <option value="CABA">CABA</option>
             <option value="Buenos Aires">Prov. Buenos Aires</option>
             <option value="Nacional">Nacional</option>
-          </select>
+          </Select>
         </div>
       </div>
       <div>
-        <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
-          Tema
-        </label>
-        <input
+        <Label>Tema</Label>
+        <Input
           name="tema"
-          placeholder="Ej: Danos y perjuicios por accidente de transito"
-          className={inputClass}
+          placeholder="Ej: Daños y perjuicios por accidente de tránsito"
           required
         />
       </div>
       <div>
-        <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
-          Datos del caso
-        </label>
-        <textarea
+        <Label>Datos del caso</Label>
+        <Textarea
           name="datos_caso"
-          placeholder="Describi los hechos, las partes, la pretension, y cualquier dato relevante..."
-          className={`${textareaClass} h-36`}
+          placeholder="Describí los hechos, las partes, la pretensión, y cualquier dato relevante..."
+          style={{ height: "9rem" }}
           required
         />
+      </div>
+      <div className="flex gap-3">
+        <span className="inline-block px-3 py-1 text-[10px] tracking-wide uppercase font-medium border-l-2 border-l-[var(--primary)] bg-[var(--container)] text-[var(--primary)]">
+          Auto-Citation Enabled
+        </span>
+        <span className="inline-block px-3 py-1 text-[10px] tracking-wide uppercase font-medium border-l-2 border-l-[var(--primary)] bg-[var(--container)] text-[var(--primary)]">
+          Tone: Formal / Authoritative
+        </span>
       </div>
     </>
   );
@@ -153,13 +134,11 @@ export function EscritoForm() {
 export function ResumenForm() {
   return (
     <div>
-      <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
-        Texto del fallo
-      </label>
-      <textarea
+      <Label>Texto del fallo</Label>
+      <Textarea
         name="texto_fallo"
-        placeholder="Pega el texto completo del fallo aca..."
-        className={`${textareaClass} h-56 font-mono text-xs`}
+        placeholder="Pegue aquí el texto completo del fallo judicial..."
+        style={{ height: "14rem", fontFamily: "monospace", fontSize: "0.75rem" }}
         required
       />
     </div>
@@ -169,49 +148,38 @@ export function ResumenForm() {
 export function OficioForm() {
   return (
     <>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-6">
         <div>
-          <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
-            Destinatario
-          </label>
-          <input
+          <Label>Destinatario</Label>
+          <Input
             name="destinatario"
-            placeholder="Ej: AFIP, Banco Nacion, Registro de la Propiedad"
-            className={inputClass}
+            placeholder="Ej: AFIP, Banco Nación, Registro de la Propiedad"
             required
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
-            Expediente
-          </label>
-          <input
+          <Label>Expediente</Label>
+          <Input
             name="datos_expediente"
             placeholder="Ej: Expte 12345/2024, Juzgado Civil 43, Sec. 85"
-            className={inputClass}
             required
           />
         </div>
       </div>
       <div>
-        <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
-          Motivo
-        </label>
-        <input
+        <Label>Motivo</Label>
+        <Input
           name="motivo"
-          placeholder="Ej: Solicitar informacion fiscal del demandado"
-          className={inputClass}
+          placeholder="Ej: Solicitar información fiscal del demandado"
           required
         />
       </div>
       <div>
-        <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
-          Datos requeridos
-        </label>
-        <textarea
+        <Label>Datos requeridos</Label>
+        <Textarea
           name="datos_requeridos"
-          placeholder="Ej: Informacion fiscal del CUIT 20-12345678-9, ultimas 5 DDJJ de ganancias y bienes personales"
-          className={`${textareaClass} h-24`}
+          placeholder="Ej: Información fiscal del CUIT 20-12345678-9, últimas 5 DDJJ de ganancias y bienes personales"
+          style={{ height: "6rem" }}
           required
         />
       </div>
@@ -223,27 +191,23 @@ export function AnalisisForm() {
   return (
     <>
       <div>
-        <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
-          Descripcion del caso
-        </label>
-        <textarea
+        <Label>Descripción del caso</Label>
+        <Textarea
           name="descripcion"
-          placeholder="Ej: Despido sin causa, empleado con 8 anos de antiguedad, sueldo $500k, la empresa alega abandono de trabajo..."
-          className={`${textareaClass} h-32`}
+          placeholder="Ej: Despido sin causa, empleado con 8 años de antigüedad, sueldo $500k, la empresa alega abandono de trabajo..."
+          style={{ height: "8rem" }}
           required
         />
       </div>
       <div>
-        <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
-          Fuero
-        </label>
-        <select name="fuero" className={selectClass}>
+        <Label>Fuero</Label>
+        <Select name="fuero">
           <option value="">Todos</option>
           <option value="civil">Civil</option>
           <option value="laboral">Laboral</option>
           <option value="penal">Penal</option>
           <option value="comercial">Comercial</option>
-        </select>
+        </Select>
       </div>
     </>
   );

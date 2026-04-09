@@ -1,63 +1,118 @@
 @import "tailwindcss";
 
+/* ─── Litigia Sovereign — Light Minimal + Gold ─────────────────── */
+
 :root {
-  --color-primary: #1a1a2e;
-  --color-accent: #b08a30;
-  --color-accent-light: #c9a84c;
-  --color-accent-muted: rgba(176, 138, 48, 0.1);
-  --color-surface: rgba(255, 255, 255, 0.72);
-  --color-surface-hover: rgba(255, 255, 255, 0.85);
-  --color-surface-active: rgba(255, 255, 255, 0.9);
-  --color-text: #1a1a2e;
-  --color-text-muted: #6b6878;
-  --color-border: rgba(176, 138, 48, 0.18);
-  --color-border-active: rgba(176, 138, 48, 0.4);
-  --color-danger: #dc2626;
-  --color-danger-bg: rgba(220, 38, 38, 0.06);
-  --color-success: #15803d;
-  --color-info-bg: rgba(176, 138, 48, 0.06);
+  /* Surfaces — clean whites */
+  --bg: #FAFAF8;
+  --surface: #FFFFFF;
+  --surface-bright: #FFFFFF;
+  --container-lowest: #F5F4F0;
+  --container-low: #F0EDE6;
+  --container: #F7F6F3;
+  --container-high: #FFFFFF;
+  --container-highest: #FFFFFF;
+
+  /* Primary — institutional gold */
+  --primary: #9A7B2D;
+  --primary-container: #B08A30;
+  --on-primary: #FFFFFF;
+
+  /* Secondary */
+  --secondary: #7A6322;
+
+  /* Text */
+  --on-surface: #1A1A1A;
+  --on-surface-variant: #4A4640;
+  --muted: #8C8579;
+
+  /* Borders */
+  --outline: #D4CFC6;
+  --outline-variant: #E2DED6;
+
+  /* Semantic */
+  --danger: #C62828;
+  --danger-container: #FDECEA;
+  --success: #2E7D32;
+
+  /* Legacy aliases */
+  --color-accent: #B08A30;
+  --color-accent-light: #C9A84C;
+  --color-accent-muted: rgba(176, 138, 48, 0.08);
+  --color-border: rgba(176, 138, 48, 0.15);
+  --color-border-active: rgba(176, 138, 48, 0.35);
+  --color-danger: #C62828;
+  --color-danger-bg: rgba(198, 40, 40, 0.06);
+  --color-info-bg: rgba(176, 138, 48, 0.04);
 }
+
+/* ─── Base ──────────────────────────────────────────────────────── */
 
 body {
-  font-family: "Georgia", "Times New Roman", serif;
-  background-color: #f0ece6;
-  color: var(--color-text);
-  background-image: url("/padrao-de-textura-de-marmore-cinza-ouro-branco-natural-fundo-de-papel-de-parede-de-marmore-azulejo-mable_1962-2680.avif");
-  background-attachment: fixed;
-  background-size: cover;
-  background-position: center;
+  font-family: var(--font-inter, 'Inter', system-ui, sans-serif);
+  background-color: var(--bg);
+  color: var(--on-surface);
 }
 
-/* Gold gradient text */
+/* ─── Typography ────────────────────────────────────────────────── */
+
+.font-heading {
+  font-family: var(--font-newsreader, 'Newsreader', Georgia, serif);
+}
+
 .gold-text {
-  background: linear-gradient(135deg, #8a6d24, #b08a30, #c9a84c, #b08a30, #8a6d24);
+  background: linear-gradient(135deg, #7A6322, #9A7B2D, #B08A30, #9A7B2D, #7A6322);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Glassmorphism card */
+.gold-gradient {
+  background: linear-gradient(135deg, #9A7B2D, #B08A30, #C9A84C);
+}
+
+/* ─── Cards ─────────────────────────────────────────────────────── */
+
 .glass-card {
-  background: var(--color-surface);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--color-border);
-  border-radius: 16px;
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.06),
-    0 1px 2px rgba(0, 0, 0, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-card:hover {
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.08),
-    0 2px 4px rgba(0, 0, 0, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  border-color: var(--color-border-active);
 }
 
-/* Loading animation */
+/* ─── Inputs ────────────────────────────────────────────────────── */
+
+input, textarea, select {
+  color: var(--on-surface) !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid var(--outline) !important;
+  border-radius: 0 !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  font-family: var(--font-inter, 'Inter', system-ui, sans-serif) !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--muted) !important;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-bottom-color: var(--primary) !important;
+  box-shadow: 0 1px 0 0 var(--primary) !important;
+  background-color: var(--container-lowest) !important;
+  outline: none !important;
+}
+
+option {
+  background-color: var(--surface);
+  color: var(--on-surface);
+}
+
+/* ─── Animations ────────────────────────────────────────────────── */
+
 @keyframes pulse-slow {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
@@ -67,11 +122,11 @@ body {
 }
 
 @keyframes slide-up {
-  from { opacity: 0; transform: translateY(16px); }
+  from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-slide-up {
-  animation: slide-up 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes fade-in {
@@ -79,34 +134,85 @@ body {
   to { opacity: 1; }
 }
 .animate-fade-in {
-  animation: fade-in 0.3s ease;
+  animation: fade-in 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Scrollbar */
-.custom-scrollbar::-webkit-scrollbar { width: 5px; }
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-down {
+  animation: slide-down 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-scale-in {
+  animation: scale-in 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes gold-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.animate-shimmer {
+  background-size: 200% auto;
+  animation: gold-shimmer 3s linear infinite;
+}
+
+/* Stagger children — add to parent, children get delayed entrance */
+.stagger-children > * {
+  opacity: 0;
+  animation: slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.1s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.2s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.3s; }
+.stagger-children > *:nth-child(7) { animation-delay: 0.35s; }
+.stagger-children > *:nth-child(8) { animation-delay: 0.4s; }
+.stagger-children > *:nth-child(9) { animation-delay: 0.45s; }
+.stagger-children > *:nth-child(10) { animation-delay: 0.5s; }
+
+/* Page transition wrapper */
+.page-enter {
+  animation: slide-up 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Gold line grow — for decorative dividers */
+@keyframes line-grow {
+  from { width: 0; }
+  to { width: 100%; }
+}
+.animate-line-grow {
+  animation: line-grow 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Hover lift — subtle card elevation */
+.hover-lift {
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(154, 123, 45, 0.08);
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────── */
+
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(176, 138, 48, 0.2);
-  border-radius: 3px;
+  background-color: var(--outline);
+  border-radius: 2px;
 }
 
-/* Inputs */
-input, textarea, select {
-  color: var(--color-text) !important;
-  background-color: rgba(255, 255, 255, 0.5) !important;
-  border: 1px solid var(--color-border) !important;
-  border-radius: 10px !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-input::placeholder, textarea::placeholder {
-  color: var(--color-text-muted) !important;
-}
-input:focus, textarea:focus, select:focus {
-  border-color: var(--color-accent) !important;
-  box-shadow: 0 0 0 3px var(--color-accent-muted) !important;
-  background-color: rgba(255, 255, 255, 0.8) !important;
-}
-option {
-  background-color: #fff;
-  color: var(--color-text);
+/* ─── Selection ─────────────────────────────────────────────────── */
+
+::selection {
+  background: rgba(176, 138, 48, 0.2);
+  color: var(--on-surface);
 }

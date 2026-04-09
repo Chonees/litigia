@@ -2,85 +2,75 @@
 
 import { useState } from "react";
 import { downloadDocx } from "@/lib/api";
+import { Card, CardHeader, StatBox, Chip } from "@/components/ui";
+
+/* ═══════════════════════════════════════════════════════════════════
+   Jurisprudencia
+   ═══════════════════════════════════════════════════════════════════ */
 
 export function JurisprudenciaResult({ data }: { data: Record<string, unknown> }) {
   const fallos = (data.fallos ?? []) as Array<{
-    tribunal: string;
-    fecha: string;
-    caratula: string;
-    resumen: string;
-    argumento_clave: string;
-    cita_textual: string;
-    score: number;
-    texto_completo: string;
-    materia: string;
-    fuente: string;
+    tribunal: string; fecha: string; caratula: string; resumen: string;
+    argumento_clave: string; cita_textual: string; score: number;
+    texto_completo: string; materia: string; fuente: string;
   }>;
-
   const [expanded, setExpanded] = useState<number | null>(null);
 
   return (
-    <div className="space-y-4 animate-slide-up">
-      <div className="flex items-center justify-between text-sm text-[var(--color-text-muted)] pb-3 border-b border-[var(--color-border)]">
-        <span>
-          {(data.total_encontrados as number) ?? 0} fallos encontrados
-        </span>
+    <div className="space-y-3 animate-slide-up">
+      <div className="flex items-center justify-between text-xs text-[var(--muted)] pb-3 border-b border-[var(--outline-variant)]/30">
+        <span>{(data.total_encontrados as number) ?? 0} fallos encontrados</span>
       </div>
 
       {fallos.map((fallo, i) => (
-        <div
-          key={i}
-          className="border border-[var(--color-border)] rounded-lg p-4 hover:shadow-md transition-shadow bg-[var(--color-surface)]"
-        >
+        <div key={i} className="bg-[var(--container-high)] border-l-2 border-l-[var(--primary)] p-5 hover:bg-[var(--container-highest)] transition-colors">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <h4 className="font-bold text-[var(--color-accent)] text-sm leading-tight">
-                {fallo.caratula || "Sin caratula"}
+              <h4 className="font-heading font-bold text-[var(--primary)] text-sm leading-tight">
+                {fallo.caratula || "Sin carátula"}
               </h4>
-              <div className="flex items-center gap-2 mt-1 text-xs text-[var(--color-text-muted)]">
+              <div className="flex items-center gap-2 mt-1 text-[10px] tracking-wide uppercase text-[var(--muted)]">
                 {fallo.tribunal && <span>{fallo.tribunal}</span>}
                 {fallo.tribunal && fallo.fecha && <span>|</span>}
                 {fallo.fecha && <span>{fallo.fecha}</span>}
-                {fallo.materia && <><span>|</span><span className="uppercase">{fallo.materia}</span></>}
+                {fallo.materia && <><span>|</span><span>{fallo.materia}</span></>}
               </div>
             </div>
-            <div className="px-2 py-1 rounded-full bg-[var(--color-info-bg)] text-[var(--color-accent)] text-xs font-bold whitespace-nowrap">
+            <div className="px-3 py-1 bg-[var(--container)] text-[var(--primary)] text-xs font-bold font-heading">
               {(fallo.score * 100).toFixed(0)}%
             </div>
           </div>
 
           {fallo.resumen && (
-            <p className="mt-3 text-sm text-[var(--color-text)]">{fallo.resumen}</p>
+            <p className="mt-3 text-sm text-[var(--on-surface-variant)] leading-relaxed">{fallo.resumen}</p>
           )}
 
           {fallo.argumento_clave && fallo.argumento_clave !== fallo.caratula && (
-            <div className="mt-2 p-2 rounded bg-[var(--color-surface-alt)]">
-              <span className="text-xs font-bold text-[var(--color-accent)]">
-                Argumento clave:
-              </span>
-              <p className="text-sm mt-0.5">{fallo.argumento_clave}</p>
+            <div className="mt-3 pl-3 border-l-2 border-l-[var(--outline-variant)]">
+              <span className="text-[10px] font-semibold tracking-wide uppercase text-[var(--primary)]">Argumento clave</span>
+              <p className="text-sm mt-0.5 text-[var(--on-surface-variant)]">{fallo.argumento_clave}</p>
             </div>
           )}
 
           {fallo.cita_textual && (
-            <blockquote className="mt-2 text-sm italic border-l-3 border-[var(--color-accent)] pl-3 text-[var(--color-text-muted)]">
+            <blockquote className="mt-3 text-sm italic border-l-2 border-[var(--primary-container)] pl-3 text-[var(--muted)] font-heading">
               &ldquo;{fallo.cita_textual}&rdquo;
             </blockquote>
           )}
 
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-3">
             {fallo.texto_completo && (
               <button
                 onClick={() => setExpanded(expanded === i ? null : i)}
-                className="text-xs font-semibold text-[var(--color-accent)] hover:text-[var(--color-primary-light)] transition-colors"
+                className="text-[11px] font-semibold tracking-wide uppercase text-[var(--primary)] hover:text-[var(--secondary)] transition-colors"
               >
                 {expanded === i ? "Ocultar texto completo" : "Ver texto completo"}
               </button>
             )}
           </div>
           {expanded === i && fallo.texto_completo && (
-            <div className="mt-2 p-4 bg-[var(--color-surface-alt)] border border-[var(--color-border)] rounded-lg max-h-[500px] overflow-y-auto custom-scrollbar">
-              <pre className="whitespace-pre-wrap font-serif text-xs leading-relaxed">
+            <div className="mt-3 p-4 bg-[var(--container-lowest)] max-h-[500px] overflow-y-auto custom-scrollbar">
+              <pre className="whitespace-pre-wrap font-heading text-xs leading-relaxed text-[var(--on-surface-variant)]">
                 {fallo.texto_completo}
               </pre>
             </div>
@@ -89,7 +79,7 @@ export function JurisprudenciaResult({ data }: { data: Record<string, unknown> }
       ))}
 
       {fallos.length === 0 && (
-        <div className="text-center py-8 text-[var(--color-text-muted)]">
+        <div className="text-center py-12 text-[var(--muted)]">
           No se encontraron fallos relevantes para este caso.
         </div>
       )}
@@ -97,28 +87,29 @@ export function JurisprudenciaResult({ data }: { data: Record<string, unknown> }
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   Escrito
+   ═══════════════════════════════════════════════════════════════════ */
+
 export function EscritoResult({ data }: { data: Record<string, unknown> }) {
   return (
     <div className="space-y-4 animate-slide-up">
-      <div className="bg-[var(--color-surface-alt)] border border-[var(--color-border)] rounded-lg p-5 max-h-[600px] overflow-y-auto custom-scrollbar">
-        <pre className="whitespace-pre-wrap font-serif text-sm leading-relaxed">
+      <div className="bg-[var(--container-lowest)] p-6 max-h-[600px] overflow-y-auto custom-scrollbar">
+        <pre className="whitespace-pre-wrap font-heading text-sm leading-relaxed text-[var(--on-surface)]">
           {data.contenido_texto as string}
         </pre>
       </div>
-
-      <div className="flex items-center gap-3">
-        {data.archivo_docx_base64 && (
+      <div className="flex items-center gap-4">
+        {!!data.archivo_docx_base64 && (
           <button
-            onClick={() =>
-              downloadDocx(data.archivo_docx_base64 as string, "escrito_litigia.docx")
-            }
-            className="px-6 py-2.5 bg-transparent border border-[var(--color-accent)] text-[var(--color-accent)] rounded-lg font-semibold hover:bg-[var(--color-accent-muted)] transition-all duration-300"
+            onClick={() => downloadDocx(data.archivo_docx_base64 as string, "escrito_litigia.docx")}
+            className="px-6 py-2.5 border border-[var(--primary-container)] text-[var(--primary)] font-semibold text-xs tracking-wide uppercase hover:bg-[var(--primary)]/10 transition-all"
           >
             Descargar .docx
           </button>
         )}
         {((data.jurisprudencia_citada as unknown[]) ?? []).length > 0 && (
-          <span className="text-xs text-[var(--color-text-muted)]">
+          <span className="text-[11px] text-[var(--muted)]">
             {(data.jurisprudencia_citada as unknown[]).length} fallos citados
           </span>
         )}
@@ -127,56 +118,53 @@ export function EscritoResult({ data }: { data: Record<string, unknown> }) {
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   Resumen
+   ═══════════════════════════════════════════════════════════════════ */
+
 export function ResumenResult({ data }: { data: Record<string, unknown> }) {
   const sections = [
     { key: "hechos", label: "Hechos" },
-    { key: "cuestion_juridica", label: "Cuestion Juridica" },
+    { key: "cuestion_juridica", label: "Cuestión Jurídica" },
     { key: "argumentos_actor", label: "Argumentos del Actor" },
     { key: "argumentos_demandado", label: "Argumentos del Demandado" },
-    { key: "resolucion", label: "Resolucion" },
+    { key: "resolucion", label: "Resolución" },
     { key: "doctrina_aplicada", label: "Doctrina Aplicada" },
   ];
 
   return (
     <div className="space-y-4 animate-slide-up">
       {sections.map(({ key, label }) => (
-        <div
-          key={key}
-          className="border-l-3 border-[var(--color-primary)] pl-4 py-1"
-        >
-          <h4 className="font-bold text-sm text-[var(--color-accent)] uppercase tracking-wide">
-            {label}
-          </h4>
-          <p className="text-sm mt-1 leading-relaxed">{data[key] as string}</p>
-        </div>
+        <Card key={key} accent="gold">
+          <CardHeader>{label}</CardHeader>
+          <p className="text-sm leading-relaxed text-[var(--on-surface-variant)]">{data[key] as string}</p>
+        </Card>
       ))}
-
       {(data.articulos_citados as string[])?.length > 0 && (
-        <div className="bg-[var(--color-surface-alt)] rounded-lg p-4">
-          <h4 className="font-bold text-sm text-[var(--color-accent)] mb-2">
-            Articulos Citados
-          </h4>
+        <Card>
+          <CardHeader>Artículos Citados</CardHeader>
           <div className="flex flex-wrap gap-2">
             {(data.articulos_citados as string[]).map((art, i) => (
-              <span
-                key={i}
-                className="px-2 py-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded text-xs"
-              >
+              <span key={i} className="px-2 py-1 bg-[var(--container)] text-[var(--primary)] text-[11px] tracking-wide">
                 {art}
               </span>
             ))}
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   Oficio
+   ═══════════════════════════════════════════════════════════════════ */
+
 export function OficioResult({ data }: { data: Record<string, unknown> }) {
   return (
     <div className="animate-slide-up">
-      <div className="bg-[var(--color-surface-alt)] border border-[var(--color-border)] rounded-lg p-5">
-        <pre className="whitespace-pre-wrap font-serif text-sm leading-relaxed">
+      <div className="bg-[var(--container-lowest)] p-6">
+        <pre className="whitespace-pre-wrap font-heading text-sm leading-relaxed text-[var(--on-surface)]">
           {(data as { contenido?: string }).contenido}
         </pre>
       </div>
@@ -184,34 +172,23 @@ export function OficioResult({ data }: { data: Record<string, unknown> }) {
   );
 }
 
-// ── Fallo detail types ──────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════
+   Análisis Predictivo
+   ═══════════════════════════════════════════════════════════════════ */
 
 interface FalloDetalle {
-  caratula: string;
-  tribunal: string;
-  fecha: string;
-  resultado: string;
-  normas_citadas: string[];
-  precedentes_citados: string[];
-  via_procesal: string;
-  doctrina_aplicada: string;
-  hechos_determinantes: string;
-  prueba_decisiva: string;
-  quantum: string;
-  votos: string;
-  estrategia: string;
-  argumento_clave: string;
-  razon_resultado: string;
-  relevancia_cliente: string;
-  score: number;
-  source_id: string;
+  caratula: string; tribunal: string; fecha: string; resultado: string;
+  normas_citadas: string[]; precedentes_citados: string[]; via_procesal: string;
+  doctrina_aplicada: string; hechos_determinantes: string; prueba_decisiva: string;
+  quantum: string; votos: string; estrategia: string; argumento_clave: string;
+  razon_resultado: string; relevancia_cliente: string; score: number; source_id: string;
 }
 
-const RESULTADO_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  favorable: { label: "Favorable", color: "var(--color-accent)", bg: "var(--color-accent-muted)" },
-  desfavorable: { label: "Desfavorable", color: "var(--color-danger)", bg: "var(--color-danger-bg)" },
-  parcial: { label: "Parcial", color: "var(--color-text-muted)", bg: "rgba(107,104,120,0.08)" },
-  inadmisible: { label: "Inadmisible", color: "var(--color-text-muted)", bg: "rgba(107,104,120,0.08)" },
+const RESULTADO_CONFIG: Record<string, { label: string; color: string }> = {
+  favorable: { label: "Favorable", color: "var(--primary)" },
+  desfavorable: { label: "Desfavorable", color: "var(--danger)" },
+  parcial: { label: "Parcial", color: "var(--muted)" },
+  inadmisible: { label: "Inadmisible", color: "var(--muted)" },
 };
 
 function FalloCard({ fallo, index }: { fallo: FalloDetalle; index: number }) {
@@ -219,96 +196,64 @@ function FalloCard({ fallo, index }: { fallo: FalloDetalle; index: number }) {
   const cfg = RESULTADO_CONFIG[fallo.resultado] ?? RESULTADO_CONFIG.parcial;
 
   const fields: { label: string; value: string }[] = [
-    { label: "Via procesal", value: fallo.via_procesal },
+    { label: "Vía procesal", value: fallo.via_procesal },
     { label: "Doctrina aplicada", value: fallo.doctrina_aplicada },
     { label: "Hechos determinantes", value: fallo.hechos_determinantes },
     { label: "Prueba decisiva", value: fallo.prueba_decisiva },
     { label: "Estrategia", value: fallo.estrategia },
     { label: "Argumento clave", value: fallo.argumento_clave },
-    { label: "Razon del resultado", value: fallo.razon_resultado },
+    { label: "Razón del resultado", value: fallo.razon_resultado },
     { label: "Relevancia para el cliente", value: fallo.relevancia_cliente },
     { label: "Quantum / Costas", value: fallo.quantum },
     { label: "Votos", value: fallo.votos },
   ].filter((f) => f.value && f.value !== "N/D");
 
   return (
-    <div className="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] transition-all hover:shadow-md">
-      {/* Header — always visible */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full text-left p-4 flex items-start justify-between gap-3"
-      >
+    <div className="bg-[var(--container-high)] transition-all hover:bg-[var(--container-highest)]">
+      <button onClick={() => setExpanded(!expanded)} className="w-full text-left p-4 flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span
-              className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
-              style={{ background: cfg.bg, color: cfg.color }}
-            >
+            <span className="text-[10px] font-bold px-2 py-0.5 uppercase tracking-wide" style={{ color: cfg.color, background: `color-mix(in srgb, ${cfg.color} 12%, transparent)` }}>
               {cfg.label}
             </span>
-            <span className="text-[10px] text-[var(--color-text-muted)]">
-              #{index + 1}
-            </span>
+            <span className="text-[10px] text-[var(--muted)]">#{index + 1}</span>
           </div>
-          <h5 className="font-bold text-sm text-[var(--color-accent)] leading-tight truncate">
-            {fallo.caratula}
-          </h5>
-          <div className="flex items-center gap-2 mt-1 text-xs text-[var(--color-text-muted)]">
+          <h5 className="font-heading font-bold text-sm text-[var(--primary)] leading-tight truncate">{fallo.caratula}</h5>
+          <div className="flex items-center gap-2 mt-1 text-[10px] uppercase tracking-wide text-[var(--muted)]">
             {fallo.tribunal && <span>{fallo.tribunal}</span>}
             {fallo.tribunal && fallo.fecha && <span>|</span>}
             {fallo.fecha && <span>{fallo.fecha}</span>}
           </div>
         </div>
-        <span
-          className="text-xs text-[var(--color-accent)] shrink-0 mt-1"
-          style={{ fontFamily: "Georgia, serif" }}
-        >
-          {expanded ? "−" : "+"}
-        </span>
+        <span className="text-xs text-[var(--primary)] font-heading">{expanded ? "−" : "+"}</span>
       </button>
 
-      {/* Expanded detail */}
       {expanded && (
-        <div className="px-4 pb-4 space-y-3 border-t border-[var(--color-border)] pt-3 animate-fade-in">
-          {/* Normas + Precedentes tags */}
+        <div className="px-4 pb-4 space-y-3 border-t border-[var(--outline-variant)]/20 pt-3 animate-fade-in">
           {fallo.normas_citadas.length > 0 && (
             <div>
-              <span className="text-[10px] font-bold text-[var(--color-accent)] uppercase tracking-wide">
-                Normas citadas
-              </span>
+              <span className="text-[10px] font-semibold tracking-wide uppercase text-[var(--primary)]">Normas citadas</span>
               <div className="flex flex-wrap gap-1 mt-1">
                 {fallo.normas_citadas.map((n, i) => (
-                  <span
-                    key={i}
-                    className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-accent-muted)] text-[var(--color-accent)]"
-                  >
-                    {n}
-                  </span>
+                  <span key={i} className="text-[10px] px-2 py-0.5 bg-[var(--container)] text-[var(--primary)]">{n}</span>
                 ))}
               </div>
             </div>
           )}
-
           {fallo.precedentes_citados.length > 0 && (
             <div>
-              <span className="text-[10px] font-bold text-[var(--color-accent)] uppercase tracking-wide">
-                Precedentes citados
-              </span>
+              <span className="text-[10px] font-semibold tracking-wide uppercase text-[var(--primary)]">Precedentes</span>
               <ul className="mt-1 text-xs space-y-0.5">
                 {fallo.precedentes_citados.map((p, i) => (
-                  <li key={i} className="text-[var(--color-text-muted)]">• {p}</li>
+                  <li key={i} className="text-[var(--muted)]">• {p}</li>
                 ))}
               </ul>
             </div>
           )}
-
-          {/* All extracted fields */}
           {fields.map((f, i) => (
-            <div key={i} className="border-l-2 border-[var(--color-border-active)] pl-3">
-              <span className="text-[10px] font-bold text-[var(--color-accent)] uppercase tracking-wide">
-                {f.label}
-              </span>
-              <p className="text-xs leading-relaxed mt-0.5">{f.value}</p>
+            <div key={i} className="border-l-2 border-[var(--outline-variant)] pl-3">
+              <span className="text-[10px] font-semibold tracking-wide uppercase text-[var(--primary)]">{f.label}</span>
+              <p className="text-xs leading-relaxed mt-0.5 text-[var(--on-surface-variant)]">{f.value}</p>
             </div>
           ))}
         </div>
@@ -316,8 +261,6 @@ function FalloCard({ fallo, index }: { fallo: FalloDetalle; index: number }) {
     </div>
   );
 }
-
-// ── Filter pills ────────────────────────────────────────────────
 
 type ResultadoFilter = "todos" | "favorable" | "desfavorable" | "parcial" | "inadmisible";
 
@@ -350,171 +293,137 @@ export function AnalisisResult({ data }: { data: Record<string, unknown> }) {
     ? fallosDetalle
     : fallosDetalle.filter((f) => f.resultado === falloFilter);
 
-  const pctColor = pctFavorable >= 60
-    ? "text-[var(--color-accent)]"
-    : pctFavorable >= 40
-    ? "text-[var(--color-accent)]"
-    : "text-[var(--color-danger)]";
-
-  const pctBg = pctFavorable >= 60
-    ? "bg-[var(--color-accent-muted)]"
-    : pctFavorable >= 40
-    ? "bg-[var(--color-accent-muted)]"
-    : "bg-[var(--color-danger-bg)]";
-
   return (
     <div className="space-y-5 animate-slide-up">
       {/* Stats grid */}
-      <div className="grid grid-cols-4 gap-3">
-        <div className={`${pctBg} p-4 rounded-xl text-center`}>
-          <div className={`text-3xl font-bold ${pctColor}`}>{pctFavorable.toFixed(0)}%</div>
-          <div className="text-xs text-[var(--color-text-muted)] mt-1">Favorable</div>
-        </div>
-        <div className="bg-[var(--color-info-bg)] p-4 rounded-xl text-center">
-          <div className="text-lg font-bold text-[var(--color-accent)]">{favorables}</div>
-          <div className="text-xs text-[var(--color-text-muted)] mt-1">Favorables</div>
-        </div>
-        <div className="bg-[var(--color-info-bg)] p-4 rounded-xl text-center">
-          <div className="text-lg font-bold text-[var(--color-danger)]">{desfavorables}</div>
-          <div className="text-xs text-[var(--color-text-muted)] mt-1">Desfavorables</div>
-        </div>
-        <div className="bg-[var(--color-info-bg)] p-4 rounded-xl text-center">
-          <div className="text-lg font-bold text-[var(--color-text-muted)]">{parciales + inadmisibles}</div>
-          <div className="text-xs text-[var(--color-text-muted)] mt-1">Parcial / Inadm.</div>
-        </div>
+      <div className="grid grid-cols-4 gap-1">
+        <StatBox value={`${pctFavorable.toFixed(0)}%`} label="Favorable" variant={pctFavorable >= 50 ? "gold" : "danger"} large />
+        <StatBox value={favorables} label="Favorables" />
+        <StatBox value={desfavorables} label="Desfavorables" variant="danger" />
+        <StatBox value={parciales + inadmisibles} label="Parcial / Inadm." variant="muted" />
       </div>
 
-      {/* Recomendacion estrategica */}
+      {/* Recomendación estratégica */}
       {recomendacion && (
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border-active)] rounded-lg p-4">
-          <h4 className="font-bold text-sm gold-text mb-2">Recomendacion estrategica</h4>
-          <p className="text-sm leading-relaxed">{recomendacion}</p>
-        </div>
+        <Card accent="gold">
+          <CardHeader>Recomendación Estratégica</CardHeader>
+          <p className="text-sm leading-relaxed text-[var(--on-surface)]">{recomendacion}</p>
+        </Card>
       )}
 
       {/* Estrategias exitosas */}
       {estrategiasOk.length > 0 && (
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg p-4">
-          <h4 className="font-bold text-sm text-[var(--color-accent)] mb-2">Estrategias exitosas</h4>
+        <Card>
+          <CardHeader>Estrategias Exitosas</CardHeader>
           <div className="space-y-3">
             {estrategiasOk.map((e, i) => (
-              <div key={i} className="border-l-2 border-[var(--color-accent)] pl-3">
-                <div className="text-sm font-semibold">{e.estrategia as string}</div>
-                <div className="text-xs text-[var(--color-text-muted)] mt-1">
-                  {e.frecuencia as number} casos — {(e.tasa_exito as number)?.toFixed(0)}% exito
-                  {e.caso_ejemplo && <> — ej: <em>{e.caso_ejemplo as string}</em></>}
+              <div key={i} className="border-l-2 border-[var(--primary)] pl-3">
+                <div className="text-sm font-semibold text-[var(--on-surface)]">{e.estrategia as string}</div>
+                <div className="text-[11px] text-[var(--muted)] mt-1">
+                  {e.frecuencia as number} casos — {(e.tasa_exito as number)?.toFixed(0)}% éxito
+                  {!!e.caso_ejemplo && <> — ej: <em className="text-[var(--on-surface-variant)]">{e.caso_ejemplo as string}</em></>}
                 </div>
                 {(e.leyes_asociadas as string[])?.length > 0 && (
-                  <div className="text-xs text-[var(--color-accent)] mt-0.5">
+                  <div className="text-[11px] text-[var(--primary)] mt-0.5">
                     {(e.leyes_asociadas as string[]).join(" · ")}
                   </div>
                 )}
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       )}
 
-      {/* Normas clave + Precedentes */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* Normas + Precedentes */}
+      <div className="grid grid-cols-2 gap-1">
         {normas.length > 0 && (
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg p-4">
-            <h4 className="font-bold text-sm text-[var(--color-accent)] mb-2">Normas clave</h4>
+          <Card>
+            <CardHeader>Normas Clave</CardHeader>
             <div className="flex flex-wrap gap-1.5">
               {normas.map((n, i) => (
-                <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-[var(--color-accent-muted)] text-[var(--color-accent)]">
-                  {n}
-                </span>
+                <span key={i} className="text-[11px] px-2 py-0.5 bg-[var(--container)] text-[var(--primary)]">{n}</span>
               ))}
             </div>
-          </div>
+          </Card>
         )}
         {precedentes.length > 0 && (
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg p-4">
-            <h4 className="font-bold text-sm text-[var(--color-accent)] mb-2">Precedentes para citar</h4>
+          <Card>
+            <CardHeader>Precedentes para Citar</CardHeader>
             <ul className="text-xs space-y-1">
               {precedentes.map((p, i) => (
-                <li key={i} className="text-[var(--color-text)]">• {p}</li>
+                <li key={i} className="text-[var(--on-surface-variant)]">• {p}</li>
               ))}
             </ul>
-          </div>
+          </Card>
         )}
       </div>
 
       {/* Prueba necesaria */}
       {prueba.length > 0 && (
-        <div className="bg-[var(--color-info-bg)] border border-[var(--color-border)] rounded-lg p-4">
-          <h4 className="font-bold text-sm text-[var(--color-accent)] mb-2">Prueba a producir</h4>
-          <ul className="list-disc list-inside text-sm space-y-1">
+        <Card accent="gold">
+          <CardHeader>Prueba a Producir</CardHeader>
+          <ul className="list-disc list-inside text-sm space-y-1 text-[var(--on-surface-variant)]">
             {prueba.map((p, i) => <li key={i}>{p}</li>)}
           </ul>
-        </div>
+        </Card>
       )}
 
       {/* Riesgos */}
       {((data.riesgos as string[]) ?? []).length > 0 && (
-        <div className="bg-[var(--color-danger-bg)] border border-[var(--color-border)] rounded-lg p-4">
-          <h4 className="font-bold text-sm text-[var(--color-danger)] mb-2">Riesgos identificados</h4>
-          <ul className="list-disc list-inside text-sm space-y-1">
-            {(data.riesgos as string[]).map((r, i) => (
-              <li key={i}>{r}</li>
-            ))}
+        <Card accent="danger">
+          <CardHeader variant="danger">Riesgos Identificados</CardHeader>
+          <ul className="list-disc list-inside text-sm space-y-1 text-[var(--on-surface-variant)]">
+            {(data.riesgos as string[]).map((r, i) => <li key={i}>{r}</li>)}
           </ul>
-        </div>
+        </Card>
       )}
 
       {/* Estrategias fracasadas */}
       {estrategiasFail.length > 0 && (
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg p-4">
-          <h4 className="font-bold text-sm text-[var(--color-danger)] mb-2">Estrategias que no funcionaron</h4>
+        <Card>
+          <CardHeader variant="danger">Estrategias que No Funcionaron</CardHeader>
           <div className="space-y-2">
             {estrategiasFail.map((e, i) => (
-              <div key={i} className="border-l-2 border-[var(--color-danger)] pl-3">
-                <div className="text-sm">{e.estrategia as string}</div>
-                <div className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                  {e.frecuencia as number} intentos — {(e.tasa_exito as number)?.toFixed(0)}% exito
+              <div key={i} className="border-l-2 border-[var(--danger)] pl-3">
+                <div className="text-sm text-[var(--on-surface)]">{e.estrategia as string}</div>
+                <div className="text-[11px] text-[var(--muted)] mt-0.5">
+                  {e.frecuencia as number} intentos — {(e.tasa_exito as number)?.toFixed(0)}% éxito
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       )}
 
-      {/* ── Fallos analizados — full detail ────────────────────── */}
+      {/* Fallos analizados — detail */}
       {fallosDetalle.length > 0 && (
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border-active)] rounded-lg p-4">
-          <button
-            onClick={() => setShowFallos(!showFallos)}
-            className="w-full flex items-center justify-between"
-          >
-            <h4 className="font-bold text-sm gold-text">
-              Fallos analizados ({fallosDetalle.length})
+        <div className="bg-[var(--container)] p-5">
+          <button onClick={() => setShowFallos(!showFallos)} className="w-full flex items-center justify-between">
+            <h4 className="text-[11px] font-semibold tracking-[0.15em] uppercase text-[var(--primary)]">
+              Fallos Analizados ({fallosDetalle.length})
             </h4>
-            <span className="text-xs text-[var(--color-accent)]" style={{ fontFamily: "Georgia, serif" }}>
+            <span className="text-xs text-[var(--primary)] font-heading">
               {showFallos ? "Ocultar" : "Ver todos"}
             </span>
           </button>
 
           {showFallos && (
-            <div className="mt-4 space-y-3 animate-fade-in">
-              {/* Filter pills */}
-              <div className="flex flex-wrap gap-2">
+            <div className="mt-4 space-y-1 animate-fade-in">
+              <div className="flex flex-wrap gap-2 mb-3">
                 {FILTER_OPTIONS.map((opt) => {
                   const isActive = falloFilter === opt.value;
-                  const count =
-                    opt.value === "todos"
-                      ? fallosDetalle.length
-                      : fallosDetalle.filter((f) => f.resultado === opt.value).length;
+                  const count = opt.value === "todos"
+                    ? fallosDetalle.length
+                    : fallosDetalle.filter((f) => f.resultado === opt.value).length;
                   if (count === 0 && opt.value !== "todos") return null;
                   return (
                     <button
                       key={opt.value}
                       onClick={() => setFalloFilter(opt.value)}
-                      className="text-xs px-3 py-1 rounded-full transition-all"
+                      className="text-[11px] px-3 py-1 tracking-wide uppercase transition-all"
                       style={{
-                        background: isActive ? "var(--color-accent)" : "var(--color-accent-muted)",
-                        color: isActive ? "#fff" : "var(--color-accent)",
-                        fontFamily: "Georgia, serif",
+                        background: isActive ? "var(--primary)" : "var(--container-high)",
+                        color: isActive ? "var(--on-primary)" : "var(--primary)",
                       }}
                     >
                       {opt.label} ({count})
@@ -522,9 +431,7 @@ export function AnalisisResult({ data }: { data: Record<string, unknown> }) {
                   );
                 })}
               </div>
-
-              {/* Fallo cards */}
-              <div className="space-y-2 max-h-[600px] overflow-y-auto custom-scrollbar pr-1">
+              <div className="space-y-1 max-h-[600px] overflow-y-auto custom-scrollbar pr-1">
                 {filteredFallos.map((fallo, i) => (
                   <FalloCard key={i} fallo={fallo} index={i} />
                 ))}

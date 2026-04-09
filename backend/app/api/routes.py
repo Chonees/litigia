@@ -1,4 +1,7 @@
+import json
+
 from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 
 from app.models.schemas import (
     AnalisisPredictivo,
@@ -12,6 +15,7 @@ from app.models.schemas import (
     ResumenFalloRequest,
     ResumenFalloResponse,
 )
+from app.services.analysis import run_predictive_analysis, run_predictive_analysis_stream
 from app.services.document_generator import generate_escrito, generate_oficio, resumir_fallo
 from app.services.rag import search_jurisprudencia
 
@@ -45,26 +49,35 @@ async def generar_oficio(request: OficioRequest):
 
 @router.post("/analisis", response_model=AnalisisResponse)
 async def analisis_predictivo(request: AnalisisPredictivo):
-    """Análisis predictivo de chances en un caso."""
-    # Search for similar cases
-    query = JurisprudenciaQuery(
-        descripcion_caso=request.descripcion_caso,
-        fuero=request.fuero,
-        top_k=15,
-    )
-    result = await search_jurisprudencia(query)
+    """Análisis predictivo completo — 100 fallos, agentes paralelos."""
+    return await run_predictive_analysis(request.descripcion_caso, request.fuero)
 
-    # For MVP, return the jurisprudencia found
-    # TODO: Add statistical analysis of outcomes
-    total = len(result.fallos)
-    return AnalisisResponse(
-        fallos_analizados=total,
-        porcentaje_favorable=0.0,  # needs outcome classification
-        argumento_mas_fuerte=result.fallos[0].argumento_clave if result.fallos else "Sin datos",
-        riesgos=["Análisis predictivo en desarrollo - basado en jurisprudencia encontrada"],
-        estimacion=None,
-        fallos_relevantes=result.fallos,
+
+@router.post("/analisis/stream")
+async def analisis_predictivo_stream(request: AnalisisPredictivo):
+    """Análisis predictivo con progreso vía SSE."""
+
+    async def event_generator():
+        async for event in run_predictive_analysis_stream(
+            request.descripcion_caso, request.fuero
+        ):
+            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.get("/scraper/status")
+async def scraper_status():
+    """Live scraper progress — read from progress JSON."""
+    from app.core.config import settings
+    progress_file = settings.data_logs / "csjn_progress.json"
+    if progress_file.exists():
+        return json.loads(progress_file.read_text())
+    return {"status": "idle", "scraped": 0}
 
 
 @router.get("/health")

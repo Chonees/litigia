@@ -1,155 +1,166 @@
+"""RAG pipeline for jurisprudencia search.
+
+Optimized for low API rate limits — uses local embeddings for search,
+Claude only for final summary (1 API call per search).
+"""
+
+import json
+import re
+
 import anthropic
+
+
+def _clean_saij_markup(text: str) -> str:
+    """Remove SAIJ markup tags like [[p]], [[/p]], [[r uuid:...]], etc."""
+    text = re.sub(r"\[\[/?[a-z]+(?:\s[^\]]*?)?\]\]", "", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
 
 from app.core.config import settings
 from app.models.schemas import FalloResult, JurisprudenciaQuery, JurisprudenciaResponse
 from app.services.embeddings import get_single_embedding
 from app.services.vector_store import search_similar
 
-client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+
+def _get_client() -> anthropic.AsyncAnthropic:
+    return anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
 
 
-QUERY_EXPANSION_PROMPT = """Sos un experto en derecho argentino. Dado el siguiente caso, extraé los conceptos jurídicos clave para buscar jurisprudencia relevante.
-
-Caso: {descripcion}
-{filtros}
-
-Devolvé SOLO una lista JSON de 3-5 términos de búsqueda jurídica en español, sin explicación.
-Ejemplo: ["responsabilidad civil extracontractual", "daño moral accidente de tránsito", "culpa concurrente"]"""
-
-RERANK_PROMPT = """Sos un abogado argentino experto. Evaluá si el siguiente fallo es RELEVANTE para el caso del usuario.
+SUMMARIZE_RESULTS_PROMPT = """Sos un abogado argentino experto. Analicé los siguientes fallos encontrados para el caso del usuario.
 
 CASO DEL USUARIO:
 {caso}
 
-FALLO ENCONTRADO:
-Tribunal: {tribunal}
-Fecha: {fecha}
-Carátula: {caratula}
-Texto: {texto}
+FALLOS ENCONTRADOS:
+{fallos_text}
 
-Respondé con un JSON:
-{{
-  "relevante": true/false,
-  "score": 0.0-1.0,
-  "resumen": "resumen breve del fallo",
-  "argumento_clave": "el argumento jurídico principal aplicable al caso",
-  "cita_textual": "la frase más relevante del fallo (textual)"
-}}
+Para CADA fallo, respondé con un JSON array. Cada elemento debe tener:
+- "index": número del fallo (empezando en 0)
+- "relevante": true/false
+- "resumen": resumen breve del fallo (1-2 oraciones)
+- "argumento_clave": el argumento jurídico principal aplicable al caso
+- "cita_textual": la frase más relevante del texto (textual, entre comillas)
 
-SOLO el JSON, sin explicación."""
-
-
-async def expand_query(query: JurisprudenciaQuery) -> list[str]:
-    """Use Claude to extract legal concepts from the case description."""
-    filtros = ""
-    if query.jurisdiccion:
-        filtros += f"\nJurisdicción: {query.jurisdiccion}"
-    if query.fuero:
-        filtros += f"\nFuero: {query.fuero}"
-    if query.materia:
-        filtros += f"\nMateria: {query.materia}"
-
-    response = await client.messages.create(
-        model=settings.anthropic_model,
-        max_tokens=300,
-        messages=[
-            {
-                "role": "user",
-                "content": QUERY_EXPANSION_PROMPT.format(
-                    descripcion=query.descripcion_caso, filtros=filtros
-                ),
-            }
-        ],
-    )
-
-    import json
-
-    try:
-        return json.loads(response.content[0].text)
-    except (json.JSONDecodeError, IndexError):
-        return [query.descripcion_caso]
-
-
-async def rerank_result(caso: str, fallo: dict) -> dict | None:
-    """Use Claude to evaluate if a result is truly relevant."""
-    response = await client.messages.create(
-        model=settings.anthropic_model,
-        max_tokens=500,
-        messages=[
-            {
-                "role": "user",
-                "content": RERANK_PROMPT.format(
-                    caso=caso,
-                    tribunal=fallo.get("tribunal", "N/D"),
-                    fecha=fallo.get("fecha", "N/D"),
-                    caratula=fallo.get("caratula", "N/D"),
-                    texto=fallo.get("texto", "")[:2000],
-                ),
-            }
-        ],
-    )
-
-    import json
-
-    try:
-        result = json.loads(response.content[0].text)
-        if result.get("relevante"):
-            return result
-    except (json.JSONDecodeError, IndexError):
-        pass
-    return None
+Respondé SOLO con el JSON array, sin explicación:"""
 
 
 async def search_jurisprudencia(query: JurisprudenciaQuery) -> JurisprudenciaResponse:
-    """Full RAG pipeline: expand query -> vector search -> rerank."""
-    # Step 1: Expand query into legal concepts
-    expanded_terms = await expand_query(query)
+    """Search pipeline: embed query -> vector search -> Claude summarizes results.
 
-    # Step 2: Get embeddings for each expanded term and search
-    all_results: list[dict] = []
-    seen_ids: set[str] = set()
+    Only 1 Claude API call per search (respects 5 req/min rate limit).
+    """
+    # Step 1: Embed the query directly (local, no API call)
+    search_text = query.descripcion_caso
+    if query.fuero:
+        search_text += f" fuero {query.fuero}"
+    if query.materia:
+        search_text += f" materia {query.materia}"
 
-    for term in expanded_terms:
-        embedding = await get_single_embedding(term)
+    embedding = await get_single_embedding(search_text)
 
+    # Step 2: Vector search in ChromaDB (local, no API call)
+    results = await search_similar(
+        query_embedding=embedding,
+        top_k=query.top_k * 2,  # fetch extra, Claude will filter
+        jurisdiccion=query.jurisdiccion,
+        fuero=query.fuero,
+        materia=query.materia,
+    )
+
+    # Fallback: if strict filters return 0 results, search without filters
+    if not results and (query.jurisdiccion or query.fuero or query.materia):
         results = await search_similar(
             query_embedding=embedding,
-            top_k=query.top_k * 2,  # fetch more, rerank will filter
-            jurisdiccion=query.jurisdiccion,
-            fuero=query.fuero,
-            materia=query.materia,
+            top_k=query.top_k * 2,
         )
 
-        for r in results:
-            rid = r.get("source_id", r.get("id", ""))
-            if rid not in seen_ids:
-                seen_ids.add(rid)
-                all_results.append(r)
+    if not results:
+        return JurisprudenciaResponse(
+            query_expandida=[query.descripcion_caso],
+            fallos=[],
+            total_encontrados=0,
+        )
 
-    # Step 3: Rerank with Claude
+    # Clean SAIJ markup from all results
+    for r in results:
+        for key in ("texto", "sumario", "caratula"):
+            if r.get(key):
+                r[key] = _clean_saij_markup(r[key])
+
+    # Step 3: ONE Claude call to summarize and rank all results
+    fallos_text = ""
+    for i, r in enumerate(results):
+        texto = r.get("texto", "")[:1500]
+        fallos_text += (
+            f"\n--- Fallo {i} ---\n"
+            f"Tribunal: {r.get('tribunal', 'N/D')}\n"
+            f"Fecha: {r.get('fecha', 'N/D')}\n"
+            f"Carátula: {r.get('caratula', 'N/D')}\n"
+            f"Materia: {r.get('materia', 'N/D')}\n"
+            f"Texto: {texto}\n"
+        )
+
+    try:
+        response = await _get_client().messages.create(
+            model=settings.anthropic_model,
+            max_tokens=2000,
+            messages=[
+                {
+                    "role": "user",
+                    "content": SUMMARIZE_RESULTS_PROMPT.format(
+                        caso=query.descripcion_caso,
+                        fallos_text=fallos_text,
+                    ),
+                }
+            ],
+        )
+
+        analyses = json.loads(response.content[0].text)
+    except Exception:
+        # If Claude fails (rate limit, etc), return raw results without analysis
+        analyses = [
+            {
+                "index": i,
+                "relevante": True,
+                "resumen": r.get("sumario", "")[:200] or r.get("texto", "")[:200],
+                "argumento_clave": r.get("caratula", ""),
+                "cita_textual": "",
+            }
+            for i, r in enumerate(results)
+        ]
+
+    # Step 4: Build response
     fallos: list[FalloResult] = []
-    for result in all_results[: query.top_k * 3]:  # cap reranking calls
-        reranked = await rerank_result(query.descripcion_caso, result)
-        if reranked:
-            fallos.append(
-                FalloResult(
-                    tribunal=result.get("tribunal", "N/D"),
-                    fecha=result.get("fecha", "N/D"),
-                    caratula=result.get("caratula", "N/D"),
-                    resumen=reranked.get("resumen", ""),
-                    argumento_clave=reranked.get("argumento_clave", ""),
-                    cita_textual=reranked.get("cita_textual", ""),
-                    score=reranked.get("score", 0.0),
-                    source_id=result.get("source_id", result.get("id", "")),
-                )
-            )
+    for analysis in analyses:
+        if not analysis.get("relevante", True):
+            continue
 
-    # Sort by score and limit
-    fallos.sort(key=lambda f: f.score, reverse=True)
+        idx = analysis.get("index", 0)
+        if idx >= len(results):
+            continue
+
+        r = results[idx]
+        fallos.append(
+            FalloResult(
+                tribunal=r.get("tribunal", "N/D"),
+                fecha=r.get("fecha", "N/D"),
+                caratula=r.get("caratula", "N/D"),
+                resumen=analysis.get("resumen", ""),
+                argumento_clave=analysis.get("argumento_clave", ""),
+                cita_textual=analysis.get("cita_textual", ""),
+                score=r.get("score", 0.0),
+                source_id=r.get("source_id", r.get("id", "")),
+                texto_completo=r.get("texto", ""),
+                materia=r.get("materia", ""),
+                fuente=r.get("source", ""),
+            )
+        )
+
+    # Limit to requested count
     fallos = fallos[: query.top_k]
 
     return JurisprudenciaResponse(
-        query_expandida=expanded_terms,
+        query_expandida=[query.descripcion_caso],
         fallos=fallos,
         total_encontrados=len(fallos),
     )

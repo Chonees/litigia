@@ -12,7 +12,7 @@ export function JurisprudenciaForm() {
   return (
     <>
       <div>
-        <label className="block text-sm font-semibold text-[var(--color-primary)] mb-1.5">
+        <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
           Descripcion del caso
         </label>
         <textarea
@@ -22,9 +22,9 @@ export function JurisprudenciaForm() {
           required
         />
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-semibold text-[var(--color-primary)] mb-1.5">
+          <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
             Jurisdiccion
           </label>
           <select name="jurisdiccion" className={selectClass}>
@@ -39,7 +39,7 @@ export function JurisprudenciaForm() {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-semibold text-[var(--color-primary)] mb-1.5">
+          <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
             Fuero
           </label>
           <select name="fuero" className={selectClass}>
@@ -52,6 +52,17 @@ export function JurisprudenciaForm() {
             <option value="familia">Familia</option>
           </select>
         </div>
+        <div>
+          <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
+            Resultados
+          </label>
+          <select name="top_k" className={selectClass}>
+            <option value="5">5 fallos</option>
+            <option value="10">10 fallos</option>
+            <option value="15">15 fallos</option>
+            <option value="20">20 fallos</option>
+          </select>
+        </div>
       </div>
     </>
   );
@@ -62,7 +73,7 @@ export function EscritoForm() {
     <>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-semibold text-[var(--color-primary)] mb-1.5">
+          <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
             Tipo de escrito
           </label>
           <select name="tipo" className={selectClass} required>
@@ -78,7 +89,7 @@ export function EscritoForm() {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-semibold text-[var(--color-primary)] mb-1.5">
+          <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
             Fuero
           </label>
           <select name="fuero" className={selectClass} required>
@@ -91,7 +102,7 @@ export function EscritoForm() {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-semibold text-[var(--color-primary)] mb-1.5">
+          <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
             Posicion procesal
           </label>
           <select name="posicion" className={selectClass} required>
@@ -102,7 +113,7 @@ export function EscritoForm() {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-semibold text-[var(--color-primary)] mb-1.5">
+          <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
             Jurisdiccion
           </label>
           <select name="jurisdiccion" className={selectClass} required>
@@ -114,7 +125,7 @@ export function EscritoForm() {
         </div>
       </div>
       <div>
-        <label className="block text-sm font-semibold text-[var(--color-primary)] mb-1.5">
+        <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
           Tema
         </label>
         <input
@@ -125,7 +136,7 @@ export function EscritoForm() {
         />
       </div>
       <div>
-        <label className="block text-sm font-semibold text-[var(--color-primary)] mb-1.5">
+        <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
           Datos del caso
         </label>
         <textarea
@@ -142,7 +153,7 @@ export function EscritoForm() {
 export function ResumenForm() {
   return (
     <div>
-      <label className="block text-sm font-semibold text-[var(--color-primary)] mb-1.5">
+      <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
         Texto del fallo
       </label>
       <textarea
@@ -160,7 +171,7 @@ export function OficioForm() {
     <>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-semibold text-[var(--color-primary)] mb-1.5">
+          <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
             Destinatario
           </label>
           <input
@@ -171,7 +182,7 @@ export function OficioForm() {
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-[var(--color-primary)] mb-1.5">
+          <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
             Expediente
           </label>
           <input
@@ -183,7 +194,7 @@ export function OficioForm() {
         </div>
       </div>
       <div>
-        <label className="block text-sm font-semibold text-[var(--color-primary)] mb-1.5">
+        <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
           Motivo
         </label>
         <input
@@ -194,7 +205,7 @@ export function OficioForm() {
         />
       </div>
       <div>
-        <label className="block text-sm font-semibold text-[var(--color-primary)] mb-1.5">
+        <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
           Datos requeridos
         </label>
         <textarea
@@ -212,7 +223,7 @@ export function AnalisisForm() {
   return (
     <>
       <div>
-        <label className="block text-sm font-semibold text-[var(--color-primary)] mb-1.5">
+        <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
           Descripcion del caso
         </label>
         <textarea
@@ -223,7 +234,7 @@ export function AnalisisForm() {
         />
       </div>
       <div>
-        <label className="block text-sm font-semibold text-[var(--color-primary)] mb-1.5">
+        <label className="block text-sm font-semibold text-[var(--color-accent)] mb-1.5">
           Fuero
         </label>
         <select name="fuero" className={selectClass}>

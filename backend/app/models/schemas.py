@@ -25,6 +25,9 @@ class FalloResult(BaseModel):
     cita_textual: str
     score: float
     source_id: str
+    texto_completo: str = ""
+    materia: str = ""
+    fuente: str = ""
 
 
 class JurisprudenciaResponse(BaseModel):
@@ -89,15 +92,57 @@ class AnalisisPredictivo(BaseModel):
     fuero: str | None = None
 
 
+class FalloAnalizado(BaseModel):
+    """Un fallo analizado por el agente lector."""
+
+    caratula: str
+    tribunal: str
+    fecha: str
+    resultado: str  # "favorable" | "desfavorable" | "parcial" | "inadmisible"
+    normas_citadas: list[str] = []
+    precedentes_citados: list[str] = []
+    via_procesal: str = ""
+    doctrina_aplicada: str = ""
+    hechos_determinantes: str = ""
+    prueba_decisiva: str = ""
+    quantum: str = ""
+    votos: str = ""
+    estrategia: str = ""
+    argumento_clave: str = ""
+    razon_resultado: str = ""
+    relevancia_cliente: str = ""
+    score: float = 0.0
+    source_id: str = ""
+
+
+class EstrategiaRanked(BaseModel):
+    """Una estrategia jurídica rankeada por frecuencia y éxito."""
+
+    estrategia: str
+    frecuencia: int
+    tasa_exito: float
+    leyes_asociadas: list[str] = []
+    caso_ejemplo: str = ""
+
+
 class AnalisisResponse(BaseModel):
-    """Resultado del análisis predictivo."""
+    """Resultado del análisis predictivo con informe estratégico."""
 
     fallos_analizados: int
+    favorables: int = 0
+    desfavorables: int = 0
+    parciales: int = 0
+    inadmisibles: int = 0
     porcentaje_favorable: float
-    argumento_mas_fuerte: str
-    riesgos: list[str]
-    estimacion: str | None = None
-    fallos_relevantes: list[FalloResult]
+    estrategias_exitosas: list[EstrategiaRanked] = []
+    estrategias_fracasadas: list[EstrategiaRanked] = []
+    normas_clave: list[str] = []
+    precedentes_para_citar: list[str] = []
+    riesgos: list[str] = []
+    recomendacion_estrategica: str = ""
+    caso_mas_similar_favorable: FalloAnalizado | None = None
+    caso_mas_similar_desfavorable: FalloAnalizado | None = None
+    fallos_analizados_detalle: list[FalloAnalizado] = []
 
 
 # --- Oficio ---

@@ -18,7 +18,8 @@ from app.models.schemas import (
 from app.services.rag import search_jurisprudencia
 from app.models.schemas import JurisprudenciaQuery
 
-client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+def _get_client() -> anthropic.AsyncAnthropic:
+    return anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
 
 
 ESCRITO_PROMPT = """Sos un abogado argentino con 20 años de experiencia redactando escritos judiciales.
@@ -153,7 +154,7 @@ async def generate_escrito(request: EscritoRequest) -> EscritoResponse:
     if not juris_text:
         juris_text = "(No se encontró jurisprudencia específica. NO cites fallos inventados.)"
 
-    response = await client.messages.create(
+    response = await _get_client().messages.create(
         model=settings.anthropic_model,
         max_tokens=4000,
         messages=[
@@ -187,7 +188,7 @@ async def generate_escrito(request: EscritoRequest) -> EscritoResponse:
 
 async def resumir_fallo(request: ResumenFalloRequest) -> ResumenFalloResponse:
     """Summarize a court ruling."""
-    response = await client.messages.create(
+    response = await _get_client().messages.create(
         model=settings.anthropic_model,
         max_tokens=2000,
         messages=[
@@ -217,7 +218,7 @@ async def resumir_fallo(request: ResumenFalloRequest) -> ResumenFalloResponse:
 
 async def generate_oficio(request: OficioRequest) -> str:
     """Generate an oficio judicial."""
-    response = await client.messages.create(
+    response = await _get_client().messages.create(
         model=settings.anthropic_model,
         max_tokens=1500,
         messages=[

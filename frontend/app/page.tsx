@@ -6,8 +6,8 @@ import {
   generateEscrito,
   resumirFallo,
   generateOficio,
-  analisisPredictivo,
 } from "@/lib/api";
+import { useAnalysisStream } from "@/lib/use-analysis-stream";
 import { ToolSelector, type Tool } from "@/components/tool-selector";
 import {
   JurisprudenciaForm,
@@ -23,6 +23,7 @@ import {
   OficioResult,
   AnalisisResult,
 } from "@/components/results";
+import { AgentSwarmPanel } from "@/components/agent-swarm";
 
 const TOOL_TITLES: Record<Tool, string> = {
   jurisprudencia: "Buscar Jurisprudencia",
@@ -38,6 +39,9 @@ export default function Home() {
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Streaming analysis hook
+  const analysis = useAnalysisStream();
+
   function handleToolChange(tool: Tool) {
     setActiveTool(tool);
     setResult(null);
@@ -46,12 +50,20 @@ export default function Home() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData.entries()) as Record<string, string>;
+
+    // Analysis uses streaming — different path
+    if (activeTool === "analisis") {
+      setResult(null);
+      setError(null);
+      analysis.startAnalysis(data.descripcion, data.fuero || undefined);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setResult(null);
-
-    const formData = new FormData(e.currentTarget);
-    const data = Object.fromEntries(formData.entries()) as Record<string, string>;
 
     try {
       let res;
@@ -61,7 +73,7 @@ export default function Home() {
             descripcion_caso: data.descripcion,
             jurisdiccion: data.jurisdiccion || undefined,
             fuero: data.fuero || undefined,
-            top_k: 5,
+            top_k: parseInt(data.top_k || "5"),
           });
           break;
         case "escrito":
@@ -85,12 +97,6 @@ export default function Home() {
             datos_requeridos: data.datos_requeridos,
           });
           break;
-        case "analisis":
-          res = await analisisPredictivo({
-            descripcion_caso: data.descripcion,
-            fuero: data.fuero || undefined,
-          });
-          break;
       }
       setResult(res);
     } catch (err) {
@@ -100,55 +106,66 @@ export default function Home() {
     }
   }
 
+  const isAnalysisActive = activeTool === "analisis";
+  const isLoading = isAnalysisActive ? analysis.isRunning : loading;
+  const displayError = isAnalysisActive ? analysis.error : error;
+  const displayResult = isAnalysisActive ? analysis.result : result;
+
   return (
     <div className="space-y-6">
       <ToolSelector active={activeTool} onChange={handleToolChange} />
 
       <form
         onSubmit={handleSubmit}
-        className="bg-white rounded-xl shadow-sm border border-[var(--color-border)] p-6 space-y-5"
+        className="glass-card p-6 space-y-5"
       >
-        <h2 className="text-lg font-bold text-[var(--color-primary)] pb-3 border-b border-[var(--color-border)]">
+        <h2 className="text-lg font-bold gold-text pb-3 border-b border-[var(--color-border)]">
           {TOOL_TITLES[activeTool]}
         </h2>
 
-        {activeTool === "jurisprudencia" && <JurisprudenciaForm />}
-        {activeTool === "escrito" && <EscritoForm />}
-        {activeTool === "resumen" && <ResumenForm />}
-        {activeTool === "oficio" && <OficioForm />}
-        {activeTool === "analisis" && <AnalisisForm />}
+        <div className="animate-fade-in" key={activeTool}>
+          {activeTool === "jurisprudencia" && <JurisprudenciaForm />}
+          {activeTool === "escrito" && <EscritoForm />}
+          {activeTool === "resumen" && <ResumenForm />}
+          {activeTool === "oficio" && <OficioForm />}
+          {activeTool === "analisis" && <AnalisisForm />}
+        </div>
 
         <button
           type="submit"
-          disabled={loading}
-          className="w-full py-3 bg-[var(--color-primary)] text-white rounded-lg font-semibold hover:bg-[var(--color-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+          disabled={isLoading}
+          style={{ transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)" }}
+          className="w-full py-3.5 bg-[var(--color-primary)] text-white rounded-xl font-semibold border border-[var(--color-accent)] shadow-lg shadow-amber-900/10 hover:shadow-xl hover:shadow-amber-900/15 hover:border-[var(--color-accent-light)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="animate-pulse-slow">Procesando con IA...</span>
-            </span>
+          {isLoading ? (
+            <span className="animate-pulse-slow">Procesando...</span>
           ) : (
             "Enviar"
           )}
         </button>
       </form>
 
-      {error && (
-        <div className="bg-[var(--color-danger-bg)] border border-red-200 text-[var(--color-danger)] px-5 py-3 rounded-lg text-sm animate-slide-up">
-          {error}
+      {/* Agent Swarm Panel — only for analysis, while running */}
+      {isAnalysisActive && analysis.swarmProgress && (
+        <AgentSwarmPanel swarmProgress={analysis.swarmProgress} />
+      )}
+
+      {displayError && (
+        <div className="glass-card p-4 border-[var(--color-danger)]/20 animate-slide-up">
+          <p className="text-sm text-[var(--color-danger)]">{displayError}</p>
         </div>
       )}
 
-      {result && (
-        <div className="bg-white rounded-xl shadow-sm border border-[var(--color-border)] p-6">
-          <h3 className="text-lg font-bold text-[var(--color-primary)] pb-3 mb-4 border-b border-[var(--color-border)]">
+      {displayResult && (
+        <div className="glass-card p-6 animate-slide-up">
+          <h3 className="text-lg font-bold gold-text pb-3 mb-4 border-b border-[var(--color-border)]">
             Resultado
           </h3>
-          {activeTool === "jurisprudencia" && <JurisprudenciaResult data={result} />}
-          {activeTool === "escrito" && <EscritoResult data={result} />}
-          {activeTool === "resumen" && <ResumenResult data={result} />}
-          {activeTool === "oficio" && <OficioResult data={result} />}
-          {activeTool === "analisis" && <AnalisisResult data={result} />}
+          {activeTool === "jurisprudencia" && <JurisprudenciaResult data={displayResult} />}
+          {activeTool === "escrito" && <EscritoResult data={displayResult} />}
+          {activeTool === "resumen" && <ResumenResult data={displayResult} />}
+          {activeTool === "oficio" && <OficioResult data={displayResult} />}
+          {activeTool === "analisis" && <AnalisisResult data={displayResult} />}
         </div>
       )}
     </div>

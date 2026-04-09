@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     # Claude API (only external dependency)
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-4-20250514"
+    anthropic_model_deep: str = "claude-opus-4-20250514"
 
     # Embeddings — 100% local, no API needed
     embedding_model: str = "BAAI/bge-m3"
@@ -25,6 +26,12 @@ class Settings(BaseSettings):
     data_clean: Path = Path("D:/litigia-data/clean")
     data_embeddings: Path = Path("D:/litigia-data/embeddings")
     data_logs: Path = Path("D:/litigia-data/logs")
+
+    # Rate limiting — Anthropic API
+    # Tier 1: 50 RPM but 30K input tokens/min and 8K output tokens/min
+    # With ~4K input tokens per reader, safe throughput is ~7 req/min
+    anthropic_rpm: int = 7  # effective safe rate given token limits
+    anthropic_max_retries: int = 5  # more retries to survive token bursts
 
     # Pipeline
     saij_dataset: str = "marianbasti/jurisprudencia-Argentina-SAIJ"

@@ -161,9 +161,20 @@ async def ingest_file(
             if limit and total_ingested >= limit:
                 break
 
-            doc = LitigiaDocument.from_dict(json.loads(line))
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                doc = LitigiaDocument.from_dict(json.loads(line))
+            except json.JSONDecodeError:
+                continue
 
             if doc.id in already_ingested:
+                total_skipped += 1
+                continue
+
+            # Skip short SAIJ sumarios — but keep CSJN (all are valuable)
+            if doc.source != "csjn" and len(doc.texto) < 500:
                 total_skipped += 1
                 continue
 
@@ -268,7 +279,7 @@ def show_status():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="LITIGIA Embedding Ingestion")
-    parser.add_argument("--source", choices=["saij", "jurisgpt"])
+    parser.add_argument("--source", choices=["saij", "jurisgpt", "csjn"])
     parser.add_argument("--limit", type=int)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--status", action="store_true")

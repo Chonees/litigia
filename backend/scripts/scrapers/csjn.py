@@ -37,6 +37,8 @@ CHECKPOINT = settings.data_logs / "csjn_checkpoint.json"
 PROGRESS = settings.data_logs / "csjn_progress.json"
 
 REQUEST_DELAY = 0.3
+MAX_RETRIES = 5
+RETRY_BACKOFF = [5, 15, 30, 60, 120]  # seconds between retries
 
 
 def _gen_id(doc_id: str) -> str:
@@ -57,6 +59,29 @@ def _clean_html(html: str) -> str:
     return text.strip()
 
 
+async def _request_with_retry(
+    client: httpx.AsyncClient,
+    method: str,
+    url: str,
+    **kwargs,
+) -> httpx.Response:
+    """HTTP request with exponential backoff. Never gives up before MAX_RETRIES."""
+    for attempt in range(MAX_RETRIES + 1):
+        try:
+            r = await client.request(method, url, **kwargs)
+            r.raise_for_status()
+            return r
+        except (httpx.TimeoutException, httpx.ConnectError, httpx.ReadError,
+                httpx.RemoteProtocolError, httpx.HTTPStatusError) as e:
+            if attempt == MAX_RETRIES:
+                raise
+            wait = RETRY_BACKOFF[min(attempt, len(RETRY_BACKOFF) - 1)]
+            now = time.strftime("%H:%M:%S")
+            print(f"  [{now}] Retry {attempt + 1}/{MAX_RETRIES} in {wait}s — {type(e).__name__}: {e}", flush=True)
+            await asyncio.sleep(wait)
+    raise RuntimeError("unreachable")
+
+
 class CSJNScraper:
     def __init__(self, limit: int = 100_000, year: int | None = None):
         self.limit = limit
@@ -69,19 +94,45 @@ class CSJNScraper:
         self._load_checkpoint()
 
     def _load_checkpoint(self) -> None:
-        if CHECKPOINT.exists():
-            data = json.loads(CHECKPOINT.read_text())
-            self.scraped_ids = set(data.get("scraped_ids", []))
-            self.scraped = data.get("scraped", 0)
-            self.errors = data.get("errors", 0)
-            if self.scraped > 0:
-                print(f"  Resuming: {self.scraped:,} already scraped")
+        # JSONL is the single source of truth for IDs.
+        # Checkpoint stores last_date_index to skip already-processed dates fast.
+        self.resume_date_index = 0
 
-    def _save_checkpoint(self) -> None:
+        if OUTPUT.exists() and OUTPUT.stat().st_size > 0:
+            ids: set[str] = set()
+            with open(OUTPUT, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        doc = json.loads(line)
+                        sid = doc.get("source_id", "")
+                        if sid:
+                            ids.add(sid)
+                    except json.JSONDecodeError:
+                        continue
+            self.scraped_ids = ids
+            self.scraped = len(ids)
+            # Read last_date_index from checkpoint to skip processed dates
+            if CHECKPOINT.exists():
+                try:
+                    cp = json.loads(CHECKPOINT.read_text())
+                    self.resume_date_index = cp.get("last_date_index", 0)
+                except Exception:
+                    pass
+            if self.scraped > 0:
+                print(f"  Resuming: {self.scraped:,} already in JSONL, skipping to date {self.resume_date_index}")
+        elif CHECKPOINT.exists():
+            print("  ⚠ Checkpoint found but JSONL missing — starting fresh")
+            CHECKPOINT.unlink()
+
+    def _save_checkpoint(self, date_index: int = 0) -> None:
         CHECKPOINT.write_text(json.dumps({
             "scraped": self.scraped,
             "errors": self.errors,
             "scraped_ids": list(self.scraped_ids)[-50000:],
+            "last_date_index": date_index,
             "last_update": time.strftime("%Y-%m-%d %H:%M:%S"),
         }))
 
@@ -102,8 +153,7 @@ class CSJNScraper:
 
     async def get_dates(self, client: httpx.AsyncClient) -> list[str]:
         """Get all acuerdo dates."""
-        r = await client.get(f"{BASE}/acuerdos/verFechasAcuerdos.html")
-        r.raise_for_status()
+        r = await _request_with_retry(client, "GET", f"{BASE}/acuerdos/verFechasAcuerdos.html")
         dates = r.json()
         if self.year_filter:
             dates = [d for d in dates if d.endswith(str(self.year_filter))]
@@ -114,11 +164,11 @@ class CSJNScraper:
         self, client: httpx.AsyncClient, start_index: int
     ) -> tuple[list[dict], int]:
         """Get one page of fallos from the paginator. Returns (records, total)."""
-        r = await client.get(
+        r = await _request_with_retry(
+            client, "GET",
             f"{BASE}/fallos/paginarFallos.html",
             params={"jtStartIndex": start_index},
         )
-        r.raise_for_status()
         data = r.json()
 
         if data.get("Result") != "OK":
@@ -131,17 +181,15 @@ class CSJNScraper:
     async def get_document_text(self, client: httpx.AsyncClient, codigo: str) -> str:
         """Get full text by downloading the PDF and extracting text."""
         try:
-            r = await client.get(
+            r = await _request_with_retry(
+                client, "GET",
                 f"{BASE}/documentos/verDocumentoById.html",
                 params={"idDocumento": codigo},
             )
-            r.raise_for_status()
 
             if b"%PDF" not in r.content[:10]:
-                # Not a PDF, try HTML fallback
                 return _clean_html(r.text) if len(r.text) > 500 else ""
 
-            # Extract text from PDF in memory
             import pymupdf
 
             doc = pymupdf.open(stream=r.content, filetype="pdf")
@@ -152,7 +200,10 @@ class CSJNScraper:
 
             text = "\n".join(text_parts).strip()
             return text if len(text) > 200 else ""
-        except Exception:
+        except Exception as e:
+            now = time.strftime("%H:%M:%S")
+            print(f"  [{now}] Doc {codigo} failed after retries: {e}", flush=True)
+            self.errors += 1
             return ""
 
     async def scrape_date(self, client: httpx.AsyncClient, fecha: str, f_out) -> int:
@@ -160,7 +211,7 @@ class CSJNScraper:
         count = 0
 
         # Init session with the date
-        await client.get(f"{BASE}/fallos/consultaAcuerdo.html", params={"fecha": fecha})
+        await _request_with_retry(client, "GET", f"{BASE}/fallos/consultaAcuerdo.html", params={"fecha": fecha})
         await asyncio.sleep(REQUEST_DELAY)
 
         # Paginate through results
@@ -187,6 +238,7 @@ class CSJNScraper:
 
                 if not texto or len(texto) < 300:
                     self.skipped += 1
+                    print(f"    skip: {codigo} ({len(texto) if texto else 0} chars)", flush=True)
                     continue
 
                 # Extract metadata from record
@@ -224,6 +276,13 @@ class CSJNScraper:
                 self.scraped += 1
                 count += 1
 
+                # Live progress per fallo
+                if self.scraped % 10 == 0:
+                    now = time.strftime("%H:%M:%S")
+                    elapsed = time.time() - self.start_time
+                    rate = self.scraped / max(elapsed, 1)
+                    print(f"    [{now}] {self.scraped:,} fallos | {fecha} | {rate:.1f}/s", flush=True)
+
             start += len(records)
             if start >= total:
                 break
@@ -241,7 +300,7 @@ class CSJNScraper:
         print(f"{'='*55}")
 
         async with httpx.AsyncClient(
-            timeout=30.0,
+            timeout=60.0,
             follow_redirects=True,
             headers={
                 "User-Agent": "LITIGIA-Research/0.1 (legal-academic-research)",
@@ -253,26 +312,39 @@ class CSJNScraper:
             total_dates = len(dates)
 
             mode = "a" if self.scraped > 0 else "w"
+            start_idx = self.resume_date_index
+            if start_idx > 0:
+                print(f"  Jumping to date index {start_idx}/{total_dates}")
             with open(OUTPUT, mode, encoding="utf-8") as f:
                 for i, fecha in enumerate(dates):
+                    if i < start_idx:
+                        continue
                     if self.scraped >= self.limit:
                         break
 
-                    count = await self.scrape_date(client, fecha, f)
+                    try:
+                        count = await self.scrape_date(client, fecha, f)
+                    except Exception as e:
+                        # Date failed even after retries — skip it, keep going
+                        now = time.strftime("%H:%M:%S")
+                        print(f"  [{now}] SKIPPING date {fecha} — {type(e).__name__}: {e}", flush=True)
+                        self.errors += 1
+                        count = 0
 
                     if (i + 1) % 3 == 0 or count > 0:
                         elapsed = time.time() - self.start_time
                         rate = self.scraped / max(elapsed, 1)
                         eta = (self.limit - self.scraped) / max(rate, 0.01) / 60
+                        now = time.strftime("%H:%M:%S")
                         print(
-                            f"  [{i+1}/{total_dates}] {fecha} | "
+                            f"  [{now}] [{i+1}/{total_dates}] {fecha} | "
                             f"{self.scraped:,} scraped | {self.skipped:,} skipped | "
-                            f"{rate:.1f}/s | ETA: {eta:.0f}min"
+                            f"{self.errors} errors | {rate:.1f}/s | ETA: {eta:.0f}min"
                         )
-                        self._save_checkpoint()
+                        self._save_checkpoint(date_index=i + 1)
                         self._save_progress(total_dates, i + 1)
 
-        self._save_checkpoint()
+        self._save_checkpoint(date_index=total_dates)
         print(f"\n  Done: {self.scraped:,} fallos | {self.errors} errors")
 
 
@@ -298,7 +370,4 @@ if __name__ == "__main__":
     if args.status:
         show_status()
     else:
-        if CHECKPOINT.exists():
-            CHECKPOINT.unlink()
-        CSJNScraper(limit=args.limit, year=args.year)
         asyncio.run(CSJNScraper(limit=args.limit, year=args.year).run())

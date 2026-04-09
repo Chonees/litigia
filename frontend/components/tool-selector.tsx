@@ -2,37 +2,12 @@
 
 export type Tool = "jurisprudencia" | "escrito" | "resumen" | "oficio" | "analisis";
 
-const TOOLS: { id: Tool; label: string; desc: string; icon: string }[] = [
-  {
-    id: "jurisprudencia",
-    label: "Jurisprudencia",
-    desc: "Buscar fallos relevantes",
-    icon: "Lupa",
-  },
-  {
-    id: "escrito",
-    label: "Escrito",
-    desc: "Generar escritos judiciales",
-    icon: "Doc",
-  },
-  {
-    id: "resumen",
-    label: "Resumen",
-    desc: "Resumir un fallo",
-    icon: "Sum",
-  },
-  {
-    id: "oficio",
-    label: "Oficio",
-    desc: "Oficios a terceros",
-    icon: "Ofi",
-  },
-  {
-    id: "analisis",
-    label: "Analisis",
-    desc: "Evaluar chances",
-    icon: "Est",
-  },
+const TOOLS: { id: Tool; label: string; desc: string }[] = [
+  { id: "jurisprudencia", label: "Jurisprudencia", desc: "Buscar fallos relevantes" },
+  { id: "escrito", label: "Escrito", desc: "Generar escritos judiciales" },
+  { id: "resumen", label: "Resumen", desc: "Resumir un fallo" },
+  { id: "oficio", label: "Oficio", desc: "Oficios a terceros" },
+  { id: "analisis", label: "Analisis", desc: "Evaluar chances" },
 ];
 
 export function ToolSelector({
@@ -43,34 +18,39 @@ export function ToolSelector({
   onChange: (tool: Tool) => void;
 }) {
   return (
-    <div className="grid grid-cols-5 gap-2">
+    <div className="grid grid-cols-5 gap-3">
       {TOOLS.map((tool) => {
         const isActive = active === tool.id;
         return (
           <button
             key={tool.id}
             onClick={() => onChange(tool.id)}
-            className={`group relative px-3 py-4 rounded-xl border-2 transition-all duration-200 text-center ${
+            style={{
+              transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+              transform: isActive ? "translateY(-2px)" : "translateY(0)",
+            }}
+            className={`group relative px-3 py-4 rounded-2xl border text-center backdrop-blur-xl cursor-pointer ${
               isActive
-                ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-md"
-                : "border-[var(--color-border)] bg-white hover:border-[var(--color-primary-light)] hover:shadow-sm"
+                ? "border-[var(--color-border-active)] bg-[var(--color-surface-active)] shadow-xl shadow-amber-800/8"
+                : "border-[var(--color-border)] bg-[var(--color-surface)] shadow-md shadow-black/4 hover:shadow-lg hover:shadow-amber-800/6 hover:border-[var(--color-border-active)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
-            <div
-              className={`text-xs font-bold mb-1 ${
-                isActive ? "text-[var(--color-accent)]" : "text-[var(--color-primary)]"
-              }`}
-            >
-              {tool.icon}
+            <div className={`font-semibold text-sm transition-all duration-300 ${
+              isActive ? "gold-text" : "text-[var(--color-text)]"
+            }`}>
+              {tool.label}
             </div>
-            <div className="font-semibold text-sm">{tool.label}</div>
-            <div
-              className={`text-[11px] mt-0.5 ${
-                isActive ? "text-gray-300" : "text-[var(--color-text-muted)]"
-              }`}
-            >
+            <div className={`text-[11px] mt-1 transition-all duration-300 ${
+              isActive ? "text-[var(--color-accent)]" : "text-[var(--color-text-muted)]"
+            }`}>
               {tool.desc}
             </div>
+            {isActive && (
+              <div
+                className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] bg-[var(--color-accent)] rounded-full animate-fade-in"
+                style={{ width: "40%" }}
+              />
+            )}
           </button>
         );
       })}

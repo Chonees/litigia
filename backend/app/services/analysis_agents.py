@@ -11,14 +11,10 @@ from app.services.analysis_prompts import READER_PROMPT, SYNTHESIZER_PROMPT
 from app.services.analysis_helpers import (
     get_client,
     call_with_retry,
-    stream_with_callback,
     parse_json_response,
     CancelledError,
 )
 from app.services.analysis_display import build_agent_summary
-
-# Emit a stream_token event every N chars accumulated
-_STREAM_EMIT_INTERVAL = 15
 
 
 async def analyze_single(
@@ -87,25 +83,9 @@ Tu razonamiento paso a paso...
         else:
             max_tok = 1000 if texto_len < 2000 else 1500 if texto_len < 5000 else 2000
 
-        # Stream tokens — emit directly to event_queue for live feed
-        stream_acc = ""
-        last_emit = 0
-
-        async def _on_chunk(chunk: str):
-            nonlocal stream_acc, last_emit
-            stream_acc += chunk
-            if event_queue and len(stream_acc) - last_emit >= _STREAM_EMIT_INTERVAL:
-                last_emit = len(stream_acc)
-                event_queue.put_nowait({
-                    "type": "stream_token",
-                    "agent_id": agent_id,
-                    "text": stream_acc,
-                })
-
-        raw_response, usage = await stream_with_callback(
+        response = await call_with_retry(
             get_client(),
             cancel=cancel,
-            on_chunk=_on_chunk,
             model=model,
             max_tokens=max_tok,
             messages=[{
@@ -113,9 +93,9 @@ Tu razonamiento paso a paso...
                 "content": prompt_text,
             }],
         )
-
-        if cost_tracker and usage:
-            cost_tracker.record(model, usage.input_tokens, usage.output_tokens)
+        raw_response = response.content[0].text
+        if cost_tracker:
+            cost_tracker.record(model, response.usage.input_tokens, response.usage.output_tokens)
 
         # Parse reasoning and JSON separately when transparency is on
         reasoning = ""

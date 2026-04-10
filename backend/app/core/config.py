@@ -9,10 +9,18 @@ class Settings(BaseSettings):
     app_name: str = "LITIGIA"
     debug: bool = False
 
-    # Claude API (only external dependency)
+    # Claude API
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-4-20250514"
     anthropic_model_deep: str = "claude-opus-4-20250514"
+    anthropic_model_fast: str = "claude-haiku-4-5-20251001"
+
+    # Pricing per million tokens (USD) — updated 2026-04
+    pricing: dict = {
+        "claude-opus-4-20250514": {"input": 15.0, "output": 75.0},
+        "claude-sonnet-4-20250514": {"input": 3.0, "output": 15.0},
+        "claude-haiku-4-5-20251001": {"input": 1.0, "output": 5.0},
+    }
 
     # Embeddings — 100% local, no API needed
     embedding_model: str = "BAAI/bge-m3"
@@ -20,12 +28,24 @@ class Settings(BaseSettings):
     # Vector store (ChromaDB — embedded, no server needed)
     collection_name: str = "jurisprudencia"
 
-    # Data storage — SSD D: for heavy datasets
+    # Data storage — configurable root, defaults to D:/litigia-data locally
     data_root: Path = Path("D:/litigia-data")
-    data_raw: Path = Path("D:/litigia-data/raw")
-    data_clean: Path = Path("D:/litigia-data/clean")
-    data_embeddings: Path = Path("D:/litigia-data/embeddings")
-    data_logs: Path = Path("D:/litigia-data/logs")
+
+    @property
+    def data_raw(self) -> Path:
+        return self.data_root / "raw"
+
+    @property
+    def data_clean(self) -> Path:
+        return self.data_root / "clean"
+
+    @property
+    def data_embeddings(self) -> Path:
+        return self.data_root / "embeddings"
+
+    @property
+    def data_logs(self) -> Path:
+        return self.data_root / "logs"
 
     # Rate limiting — Anthropic API
     # Tier 1: 50 RPM but 30K input tokens/min and 8K output tokens/min

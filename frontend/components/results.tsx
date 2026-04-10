@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { downloadDocx } from "@/lib/api";
-import { Card, CardHeader, StatBox, Chip } from "@/components/ui";
+import { Card, CardHeader, StatBox } from "@/components/ui";
 
 /* ═══════════════════════════════════════════════════════════════════
    Jurisprudencia
@@ -182,6 +182,7 @@ interface FalloDetalle {
   doctrina_aplicada: string; hechos_determinantes: string; prueba_decisiva: string;
   quantum: string; votos: string; estrategia: string; argumento_clave: string;
   razon_resultado: string; relevancia_cliente: string; score: number; source_id: string;
+  agent_thinking: string; reasoning: string;
 }
 
 const RESULTADO_CONFIG: Record<string, { label: string; color: string }> = {
@@ -190,6 +191,98 @@ const RESULTADO_CONFIG: Record<string, { label: string; color: string }> = {
   parcial: { label: "Parcial", color: "var(--muted)" },
   inadmisible: { label: "Inadmisible", color: "var(--muted)" },
 };
+
+function generateTransparencyPDF(data: Record<string, unknown>, fallos: FalloDetalle[]) {
+  const cost = data.cost as Record<string, unknown> | undefined;
+  const recomendacion = (data.recomendacion_estrategica as string) ?? "";
+  const patronFav = (data.patron_factico_favorable as string) ?? "";
+  const patronDesfav = (data.patron_factico_desfavorable as string) ?? "";
+  const totalAnalyzed = (data.fallos_analizados as number) ?? 0;
+  const favorables = (data.favorables as number) ?? 0;
+  const desfavorables = (data.desfavorables as number) ?? 0;
+  const inadmisibles = (data.inadmisibles as number) ?? 0;
+  const parciales = (data.parciales as number) ?? 0;
+  const pct = (data.porcentaje_favorable as number) ?? 0;
+
+  const agentSections = fallos.map((f, i) => {
+    const reasoning = f.reasoning || buildAgentNarrative(f);
+    return `
+      <div class="agent">
+        <h3>Agente #${i + 1} — ${f.caratula}</h3>
+        <p class="meta">${f.tribunal} | ${f.fecha} | <strong>${f.resultado.toUpperCase()}</strong></p>
+        <div class="reasoning">${reasoning.replace(/\n/g, "<br>")}</div>
+      </div>`;
+  }).join("\n");
+
+  const synthNarrative = `
+    <p>Analicé ${totalAnalyzed} fallos. De los que entraron al fondo: ${favorables} favorables, ${desfavorables} desfavorables${parciales > 0 ? `, ${parciales} parciales` : ""}. ${inadmisibles > 0 ? `${inadmisibles} fueron inadmisibles (rechazados sin entrar al fondo).` : ""} Porcentaje favorable (excluyendo inadmisibles): ${pct.toFixed(0)}%.</p>
+    ${patronFav ? `<p><strong>Patrón de los que ganaron:</strong> ${patronFav}</p>` : ""}
+    ${patronDesfav ? `<p><strong>Patrón de los que perdieron:</strong> ${patronDesfav}</p>` : ""}
+    ${recomendacion ? `<p><strong>Recomendación estratégica:</strong> ${recomendacion}</p>` : ""}`;
+
+  const html = `<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<title>LITIGIA — Informe de Transparencia</title>
+<style>
+  body { font-family: 'Georgia', serif; max-width: 800px; margin: 0 auto; padding: 40px; color: #1a1a1a; line-height: 1.6; }
+  h1 { color: #9A7B2D; border-bottom: 2px solid #9A7B2D; padding-bottom: 8px; font-size: 22px; }
+  h2 { color: #9A7B2D; font-size: 16px; margin-top: 32px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+  h3 { font-size: 14px; color: #333; margin-bottom: 4px; }
+  .meta { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .reasoning { font-size: 13px; background: #f9f9f7; border-left: 3px solid #9A7B2D; padding: 12px 16px; margin-bottom: 24px; }
+  .agent { page-break-inside: avoid; margin-bottom: 20px; }
+  .synth { font-size: 13px; background: #f5f3ee; padding: 16px; border: 1px solid #e0ddd5; }
+  .footer { margin-top: 40px; text-align: center; font-size: 11px; color: #999; border-top: 1px solid #ddd; padding-top: 12px; }
+  @media print { body { padding: 20px; } }
+</style>
+</head><body>
+<h1>LITIGIA — Informe de Transparencia de Análisis</h1>
+<p style="font-size:12px;color:#666;">Fecha: ${new Date().toLocaleDateString("es-AR")} | Tier: ${(cost?.tier as string) ?? "N/D"} | Fallos analizados: ${totalAnalyzed} | Costo: $${((cost?.total_cost_usd as number) ?? 0).toFixed(4)} USD</p>
+
+<h2>Parte 1 — Cómo razonó cada agente</h2>
+${agentSections}
+
+<h2>Parte 2 — Cómo el sintetizador cruzó la información</h2>
+<div class="synth">${synthNarrative}</div>
+
+<div class="footer">Generado por LITIGIA — ${totalAnalyzed} agentes de IA analizaron jurisprudencia real argentina</div>
+</body></html>`;
+
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const w = window.open(url, "_blank");
+  if (w) {
+    w.onload = () => {
+      w.print();
+      URL.revokeObjectURL(url);
+    };
+  }
+}
+
+function buildAgentNarrative(fallo: FalloDetalle): string {
+  const lines: string[] = [];
+  const r = fallo.resultado;
+  const label = r === "favorable" ? "FAVORABLE al actor" : r === "desfavorable" ? "DESFAVORABLE al actor" : r === "parcial" ? "PARCIALMENTE favorable" : "INADMISIBLE (no entró al fondo)";
+
+  lines.push(`Analicé "${fallo.caratula}" (${fallo.tribunal}, ${fallo.fecha}).`);
+  lines.push(`\nResultado: ${label}.`);
+
+  if (fallo.via_procesal) lines.push(`Llegó al tribunal por: ${fallo.via_procesal}.`);
+  if (fallo.hechos_determinantes) lines.push(`\nHechos decisivos: ${fallo.hechos_determinantes}`);
+  if (fallo.doctrina_aplicada) lines.push(`\nDoctrina aplicada: ${fallo.doctrina_aplicada}.`);
+  if (fallo.normas_citadas.length > 0) lines.push(`\nNormas invocadas: ${fallo.normas_citadas.join(", ")}.`);
+  if (fallo.precedentes_citados.length > 0) lines.push(`Precedentes citados: ${fallo.precedentes_citados.join(", ")}.`);
+  if (fallo.estrategia) lines.push(`\nEstrategia de la parte ganadora: ${fallo.estrategia}`);
+  if (fallo.argumento_clave) lines.push(`Argumento que convenció al tribunal: ${fallo.argumento_clave}`);
+  if (fallo.razon_resultado) lines.push(`\nPor qué se resolvió así: ${fallo.razon_resultado}`);
+  if (fallo.prueba_decisiva && fallo.prueba_decisiva !== "N/D") lines.push(`Prueba decisiva: ${fallo.prueba_decisiva}`);
+  if (fallo.quantum && fallo.quantum !== "N/D") lines.push(`Montos/costas: ${fallo.quantum}`);
+  if (fallo.votos && fallo.votos !== "N/D" && fallo.votos !== "unánime") lines.push(`Votación: ${fallo.votos}`);
+  if (fallo.relevancia_cliente) lines.push(`\nRelevancia para el caso del cliente: ${fallo.relevancia_cliente}`);
+
+  return lines.join("\n");
+}
 
 function FalloCard({ fallo, index }: { fallo: FalloDetalle; index: number }) {
   const [expanded, setExpanded] = useState(false);
@@ -245,7 +338,7 @@ function FalloCard({ fallo, index }: { fallo: FalloDetalle; index: number }) {
               <span className="text-[10px] font-semibold tracking-wide uppercase text-[var(--primary)]">Precedentes</span>
               <ul className="mt-1 text-xs space-y-0.5">
                 {fallo.precedentes_citados.map((p, i) => (
-                  <li key={i} className="text-[var(--muted)]">• {p}</li>
+                  <li key={i} className="text-[var(--muted)]">{p}</li>
                 ))}
               </ul>
             </div>
@@ -276,6 +369,7 @@ export function AnalisisResult({ data }: { data: Record<string, unknown> }) {
   const [falloFilter, setFalloFilter] = useState<ResultadoFilter>("todos");
   const [showFallos, setShowFallos] = useState(false);
 
+  const cost = data.cost as { total_cost_usd?: number; input_tokens?: number; output_tokens?: number; calls?: number; tier?: string; reader_model?: string; synth_model?: string } | undefined;
   const pctFavorable = (data.porcentaje_favorable as number) ?? 0;
   const favorables = (data.favorables as number) ?? 0;
   const desfavorables = (data.desfavorables as number) ?? 0;
@@ -287,6 +381,11 @@ export function AnalisisResult({ data }: { data: Record<string, unknown> }) {
   const estrategiasOk = (data.estrategias_exitosas as Record<string, unknown>[]) ?? [];
   const estrategiasFail = (data.estrategias_fracasadas as Record<string, unknown>[]) ?? [];
   const recomendacion = (data.recomendacion_estrategica as string) ?? "";
+  const patronFav = (data.patron_factico_favorable as string) ?? "";
+  const patronDesfav = (data.patron_factico_desfavorable as string) ?? "";
+  const rangoQuantum = (data.rango_quantum as string) ?? "";
+  const patronCostas = (data.patron_costas as string) ?? "";
+  const disidencias = (data.disidencias_relevantes as string[]) ?? [];
   const fallosDetalle = (data.fallos_analizados_detalle as FalloDetalle[]) ?? [];
 
   const filteredFallos = falloFilter === "todos"
@@ -302,6 +401,61 @@ export function AnalisisResult({ data }: { data: Record<string, unknown> }) {
         <StatBox value={desfavorables} label="Desfavorables" variant="danger" />
         <StatBox value={parciales + inadmisibles} label="Parcial / Inadm." variant="muted" />
       </div>
+
+      {/* Cost tracking */}
+      {cost && cost.total_cost_usd !== undefined && (
+        <div className="flex items-center justify-between px-4 py-3 bg-[var(--container-lowest)] text-[11px] tracking-wide">
+          <div className="flex items-center gap-4 text-[var(--muted)]">
+            <span className="uppercase">{cost.tier ?? "premium"}</span>
+            <span>{cost.input_tokens?.toLocaleString()} in / {cost.output_tokens?.toLocaleString()} out</span>
+            <span>{cost.calls} llamadas</span>
+          </div>
+          <span className="font-bold text-[var(--primary)]">
+            USD ${cost.total_cost_usd.toFixed(4)}
+          </span>
+        </div>
+      )}
+
+      {/* PDF transparency download — only when reasoning data exists */}
+      {fallosDetalle.length > 0 && fallosDetalle.some((f) => f.reasoning) && (
+        <button
+          onClick={() => generateTransparencyPDF(data, fallosDetalle)}
+          className="w-full py-3 border border-[var(--primary-container)] text-[var(--primary)] font-semibold text-xs tracking-wide uppercase hover:bg-[var(--primary)]/10 transition-all"
+        >
+          Descargar informe de transparencia (PDF) — Cómo razonó cada agente
+        </button>
+      )}
+
+      {/* Razonamiento del sintetizador — narrativa */}
+      <Card>
+        <CardHeader>Razonamiento del Sintetizador</CardHeader>
+        <div className="text-sm leading-relaxed text-[var(--on-surface-variant)] space-y-3">
+          <p>
+            Analicé {(data.fallos_analizados as number) ?? 0} fallos.
+            De los que entraron al fondo: {favorables} favorables, {desfavorables} desfavorables{parciales > 0 ? `, ${parciales} parciales` : ""}.
+            {inadmisibles > 0 ? ` ${inadmisibles} fueron inadmisibles (rechazados sin entrar al fondo).` : ""}
+            {" "}Porcentaje favorable (excluyendo inadmisibles): {pctFavorable.toFixed(0)}%.
+          </p>
+          {patronFav && (
+            <p><strong className="text-[var(--primary)]">Patrón de los que ganaron:</strong> {patronFav}</p>
+          )}
+          {patronDesfav && (
+            <p><strong className="text-[var(--danger)]">Patrón de los que perdieron:</strong> {patronDesfav}</p>
+          )}
+          {estrategiasOk.length > 0 && (
+            <p>
+              <strong className="text-[var(--primary)]">Estrategias exitosas encontradas:</strong> {estrategiasOk.length}.
+              La más efectiva: &ldquo;{estrategiasOk[0]?.estrategia as string}&rdquo; ({(estrategiasOk[0]?.tasa_exito as number)?.toFixed(0)}% de éxito en {estrategiasOk[0]?.frecuencia as number} casos).
+            </p>
+          )}
+          {normas.length > 0 && (
+            <p><strong className="text-[var(--primary)]">Normas más citadas en favorables:</strong> {normas.slice(0, 5).join(", ")}.</p>
+          )}
+          {((data.riesgos as string[]) ?? []).length > 0 && (
+            <p><strong className="text-[var(--danger)]">Riesgos identificados:</strong> {(data.riesgos as string[]).length} — cada uno basado en un caso concreto que perdió.</p>
+          )}
+        </div>
+      </Card>
 
       {/* Recomendación estratégica */}
       {recomendacion && (
@@ -364,6 +518,43 @@ export function AnalisisResult({ data }: { data: Record<string, unknown> }) {
           <CardHeader>Prueba a Producir</CardHeader>
           <ul className="list-disc list-inside text-sm space-y-1 text-[var(--on-surface-variant)]">
             {prueba.map((p, i) => <li key={i}>{p}</li>)}
+          </ul>
+        </Card>
+      )}
+
+      {/* Contradicciones */}
+      {((data.contradicciones as string[]) ?? []).length > 0 && (
+        <Card accent="gold">
+          <CardHeader>Contradicciones Jurisprudenciales</CardHeader>
+          <ul className="list-disc list-inside text-sm space-y-2 text-[var(--on-surface-variant)]">
+            {(data.contradicciones as string[]).map((c, i) => <li key={i}>{c}</li>)}
+          </ul>
+        </Card>
+      )}
+
+      {/* Quantum + Costas + Disidencias */}
+      {(rangoQuantum || patronCostas || disidencias.length > 0) && (
+        <div className="grid grid-cols-2 gap-1">
+          {(rangoQuantum && rangoQuantum !== "N/D") && (
+            <Card>
+              <CardHeader>Estimación de Montos</CardHeader>
+              <p className="text-sm leading-relaxed text-[var(--on-surface-variant)]">{rangoQuantum}</p>
+            </Card>
+          )}
+          {(patronCostas && patronCostas !== "N/D") && (
+            <Card>
+              <CardHeader>Patrón de Costas</CardHeader>
+              <p className="text-sm leading-relaxed text-[var(--on-surface-variant)]">{patronCostas}</p>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {disidencias.length > 0 && (
+        <Card>
+          <CardHeader>Disidencias Relevantes</CardHeader>
+          <ul className="list-disc list-inside text-sm space-y-1 text-[var(--on-surface-variant)]">
+            {disidencias.map((d, i) => <li key={i}>{d}</li>)}
           </ul>
         </Card>
       )}

@@ -132,6 +132,17 @@ async def _embed_and_upsert(docs: list[LitigiaDocument]) -> None:
         for doc in docs
     ]
 
+    # Deduplicate within batch (scraper can produce duplicate IDs)
+    seen: dict[str, int] = {}
+    for i, did in enumerate(doc_ids):
+        seen.setdefault(did, i)
+    if len(seen) < len(doc_ids):
+        unique_idx = list(seen.values())
+        doc_ids = [doc_ids[i] for i in unique_idx]
+        embeddings = [embeddings[i] for i in unique_idx]
+        documents = [documents[i] for i in unique_idx]
+        metadatas = [metadatas[i] for i in unique_idx]
+
     await upsert_documents(doc_ids, embeddings, documents, metadatas)
 
 

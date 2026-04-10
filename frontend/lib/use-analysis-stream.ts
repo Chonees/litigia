@@ -3,34 +3,28 @@
 import { useState, useCallback, useRef } from "react";
 import type { SwarmProgress, AgentState } from "@/components/agent-swarm";
 
-const API_BASE = "http://localhost:8000/api/v1";
-const CONCURRENCY = 10;
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002/api/v1";
 
 interface UseAnalysisStreamReturn {
   swarmProgress: SwarmProgress | null;
   result: Record<string, unknown> | null;
   error: string | null;
   isRunning: boolean;
-  startAnalysis: (descripcion_caso: string, fuero?: string) => void;
+  startAnalysis: (descripcion_caso: string, fuero?: string, tier?: string, top_k?: number, transparency?: boolean) => void;
+  abort: () => void;
 }
 
-function buildAgents(total: number): AgentState[] {
-  return Array.from({ length: total }, (_, i) => ({ id: i, status: "idle" as const }));
-}
-
-/**
- * Hook that connects to the SSE streaming endpoint and
- * produces SwarmProgress updates for the AgentSwarmPanel.
- */
 export function useAnalysisStream(): UseAnalysisStreamReturn {
   const [swarmProgress, setSwarmProgress] = useState<SwarmProgress | null>(null);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const agentsRef = useRef<AgentState[]>([]);
+  const totalRef = useRef(0);
+  const synthThinkingRef = useRef("");
 
-  const startAnalysis = useCallback((descripcion_caso: string, fuero?: string) => {
-    // Abort any previous run
+  const startAnalysis = useCallback((descripcion_caso: string, fuero?: string, tier?: string, top_k?: number, transparency?: boolean) => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -38,23 +32,25 @@ export function useAnalysisStream(): UseAnalysisStreamReturn {
     setResult(null);
     setError(null);
     setIsRunning(true);
+    agentsRef.current = [];
+    totalRef.current = 0;
 
-    const agents = buildAgents(CONCURRENCY);
     setSwarmProgress({
       step: "search",
       progress: 0,
-      detail: "Iniciando analisis...",
-      agents,
+      detail: "Iniciando análisis...",
+      agents: [],
       synthesizerActive: false,
+      costUsd: 0,
+      totalAgents: top_k || 100,
     });
 
-    // SSE via fetch (EventSource doesn't support POST)
     (async () => {
       try {
         const res = await fetch(`${API_BASE}/analisis/stream`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ descripcion_caso, fuero }),
+          body: JSON.stringify({ descripcion_caso, fuero, tier: tier || "premium", top_k: top_k || 100, transparency: transparency || false }),
           signal: controller.signal,
         });
 
@@ -64,7 +60,6 @@ export function useAnalysisStream(): UseAnalysisStreamReturn {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
-        let doneCount = 0;
 
         while (true) {
           const { value, done } = await reader.read();
@@ -81,69 +76,126 @@ export function useAnalysisStream(): UseAnalysisStreamReturn {
 
             try {
               const event = JSON.parse(jsonStr);
+              const liveCost = event.cost_usd ?? 0;
 
               if (event.step === "search") {
                 setSwarmProgress({
                   step: "search",
                   progress: 0,
                   detail: event.detail,
-                  agents: buildAgents(CONCURRENCY),
+                  agents: [],
                   synthesizerActive: false,
+                  costUsd: 0,
+                  totalAgents: totalRef.current || (top_k || 100),
                 });
-              } else if (event.step === "analyze") {
-                // Map progress to agent states
-                const pct = event.progress ?? 0;
-                const newDone = Math.floor((pct / 100) * CONCURRENCY);
-                const newAgents: AgentState[] = buildAgents(CONCURRENCY).map((a) => {
-                  if (a.id < doneCount) return { ...a, status: "done" as const };
-                  // Active agents: the ones currently being processed
-                  if (a.id < doneCount + Math.min(CONCURRENCY - doneCount, CONCURRENCY)) {
-                    if (a.id < newDone) return { ...a, status: "done" as const };
-                    return { ...a, status: "active" as const };
-                  }
-                  return a;
-                });
-                doneCount = newDone;
-
+              } else if (event.step === "analyze" && event.total_agents) {
+                // Initial analyze event — build agent array
+                const total = event.total_agents;
+                totalRef.current = total;
+                agentsRef.current = Array.from({ length: total }, (_, i) => ({
+                  id: i, status: "idle" as const,
+                }));
                 setSwarmProgress({
                   step: "analyze",
-                  progress: pct,
+                  progress: 0,
                   detail: event.detail,
-                  agents: newAgents,
+                  agents: [...agentsRef.current],
                   synthesizerActive: false,
+                  costUsd: 0,
+                  totalAgents: total,
                 });
+              } else if (event.step === "agent_event") {
+                const id = event.agent_id as number;
+                if (id === -1) {
+                  // Synthesizer/Orchestrator event
+                  synthThinkingRef.current = event.thinking || "";
+                  setSwarmProgress(prev => prev ? {
+                    ...prev,
+                    synthesizerActive: event.status === "active",
+                    synthThinking: event.thinking || "",
+                    costUsd: liveCost,
+                  } : null);
+                } else {
+                  // Per-agent status update
+                  const agents = agentsRef.current;
+                  if (agents[id]) {
+                    agents[id] = {
+                      ...agents[id],
+                      status: event.status,
+                      thinking: event.thinking,
+                      resultado: event.resultado,
+                    };
+                    agentsRef.current = agents;
+                    setSwarmProgress(prev => prev ? {
+                      ...prev,
+                      agents: [...agents],
+                      costUsd: liveCost,
+                    } : null);
+                  }
+                }
+              } else if (event.step === "analyze") {
+                // Progress update
+                setSwarmProgress(prev => prev ? {
+                  ...prev,
+                  step: "analyze",
+                  progress: event.progress ?? prev.progress,
+                  detail: event.detail,
+                  agents: [...agentsRef.current],
+                  costUsd: liveCost,
+                } : null);
               } else if (event.step === "synthesize") {
-                setSwarmProgress({
+                setSwarmProgress(prev => prev ? {
+                  ...prev,
                   step: "synthesize",
                   progress: 100,
                   detail: event.detail,
-                  agents: buildAgents(CONCURRENCY).map((a) => ({ ...a, status: "done" as const })),
+                  agents: [...agentsRef.current],
                   synthesizerActive: true,
-                });
+                  costUsd: liveCost,
+                } : null);
+              } else if (event.step === "cancelled") {
+                setSwarmProgress(prev => prev ? {
+                  ...prev,
+                  step: "done",
+                  detail: event.detail || "Análisis cancelado",
+                  agents: [...agentsRef.current],
+                  synthesizerActive: false,
+                  costUsd: liveCost,
+                } : null);
+                setIsRunning(false);
               } else if (event.step === "done") {
-                setSwarmProgress({
+                setSwarmProgress(prev => prev ? {
+                  ...prev,
                   step: "done",
                   progress: 100,
-                  detail: "Analisis completo",
-                  agents: buildAgents(CONCURRENCY).map((a) => ({ ...a, status: "done" as const })),
+                  detail: "Análisis completo",
+                  agents: [...agentsRef.current],
                   synthesizerActive: false,
-                });
+                  costUsd: liveCost,
+                } : null);
                 setResult(event.result ?? null);
                 setIsRunning(false);
               }
             } catch {
-              // Skip malformed JSON lines
+              // Skip malformed JSON
             }
           }
         }
       } catch (err) {
-        if ((err as Error).name !== "AbortError") {
+        if ((err as Error).name === "AbortError") {
+          setSwarmProgress(prev => prev ? { ...prev, detail: "Análisis cancelado por el usuario" } : null);
+        } else {
           setError((err as Error).message);
-          setIsRunning(false);
         }
+        setIsRunning(false);
       }
     })();
   }, []);
 
-  return { swarmProgress, result, error, isRunning, startAnalysis };
+  const abort = useCallback(() => {
+    abortRef.current?.abort();
+    setIsRunning(false);
+  }, []);
+
+  return { swarmProgress, result, error, isRunning, startAnalysis, abort };
 }

@@ -2,23 +2,28 @@
 
 import { useState } from "react";
 import { SectionHeader, GoldButton } from "@/components/ui";
+import { autoSave, type SavedItemType } from "@/lib/saved-items";
 
 interface ToolPageProps {
   label: string;
   title: string;
   buttonText: string;
+  saveType: SavedItemType;
   children: React.ReactNode;
   onSubmit: (data: Record<string, string>) => Promise<Record<string, unknown>>;
   renderResult: (result: Record<string, unknown>) => React.ReactNode;
+  getSaveTitle?: (data: Record<string, string>) => string;
 }
 
 export function ToolPage({
   label,
   title,
   buttonText,
+  saveType,
   children,
   onSubmit,
   renderResult,
+  getSaveTitle,
 }: ToolPageProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
@@ -36,6 +41,12 @@ export function ToolPage({
     try {
       const res = await onSubmit(data);
       setResult(res);
+
+      // Auto-save — entire input + output, fire and forget
+      const saveTitle = getSaveTitle
+        ? getSaveTitle(data)
+        : `${title} — ${new Date().toLocaleDateString("es-AR")}`;
+      autoSave(saveType, saveTitle, res, data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error de conexión con el servidor");
     } finally {

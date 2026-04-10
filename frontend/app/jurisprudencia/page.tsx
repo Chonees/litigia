@@ -11,6 +11,8 @@ export default function JurisprudenciaPage() {
       label="Archive Search"
       title="Jurisprudencia"
       buttonText="Buscar Precedentes"
+      saveType="jurisprudencia"
+      getSaveTitle={(data) => data.descripcion?.slice(0, 80) || "Búsqueda"}
       onSubmit={async (data) =>
         searchJurisprudencia({
           descripcion_caso: data.descripcion,

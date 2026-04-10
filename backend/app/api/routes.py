@@ -1,6 +1,6 @@
 import json
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
 from app.models.schemas import (
@@ -54,13 +54,22 @@ async def analisis_predictivo(request: AnalisisPredictivo):
 
 
 @router.post("/analisis/stream")
-async def analisis_predictivo_stream(request: AnalisisPredictivo):
-    """Análisis predictivo con progreso vía SSE."""
+async def analisis_predictivo_stream(request: AnalisisPredictivo, req: Request):
+    """Análisis predictivo con progreso vía SSE.
+    Sets cancel event when client disconnects — stops all API calls."""
+    import asyncio
+    cancel = asyncio.Event()
 
     async def event_generator():
         async for event in run_predictive_analysis_stream(
-            request.descripcion_caso, request.fuero
+            request.descripcion_caso, request.fuero, tier=request.tier, top_k=request.top_k,
+            transparency=request.transparency, cancel=cancel,
         ):
+            # Check disconnect EVERY event — set cancel to stop ALL tasks
+            if await req.is_disconnected():
+                print("[Analysis] Client disconnected — CANCELLING all tasks", flush=True)
+                cancel.set()
+                return
             yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(
@@ -68,6 +77,21 @@ async def analisis_predictivo_stream(request: AnalisisPredictivo):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.get("/analisis/tiers")
+async def analisis_tiers():
+    """Available analysis tiers with pricing info."""
+    from app.services.tiers import TIERS
+    return {
+        name: {
+            "name": t.name,
+            "description": t.description,
+            "reader_model": t.reader_model,
+            "synth_model": t.synth_model,
+        }
+        for name, t in TIERS.items()
+    }
 
 
 @router.get("/scraper/status")

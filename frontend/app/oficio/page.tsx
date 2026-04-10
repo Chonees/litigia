@@ -11,6 +11,8 @@ export default function OficioPage() {
       label="Official Communication"
       title="Oficio Judicial"
       buttonText="Generar Oficio"
+      saveType="oficio"
+      getSaveTitle={(data) => `Oficio a ${data.destinatario || "destinatario"}`}
       onSubmit={async (data) =>
         generateOficio({
           destinatario: data.destinatario,

@@ -18,7 +18,8 @@ def _clean_saij_markup(text: str) -> str:
 
 from app.core.config import settings
 from app.models.schemas import FalloResult, JurisprudenciaQuery, JurisprudenciaResponse
-from app.services.embeddings import get_single_embedding
+from app.services.embeddings import get_query_embedding
+from app.services.reranker import rerank
 from app.services.vector_store import search_similar
 
 
@@ -56,12 +57,13 @@ async def search_jurisprudencia(query: JurisprudenciaQuery) -> JurisprudenciaRes
     if query.materia:
         search_text += f" materia {query.materia}"
 
-    embedding = await get_single_embedding(search_text)
+    embedding = await get_query_embedding(search_text)
 
     # Step 2: Vector search in ChromaDB (local, no API call)
+    fetch_k = query.top_k * 3  # fetch extra for reranking
     results = await search_similar(
         query_embedding=embedding,
-        top_k=query.top_k * 2,  # fetch extra, Claude will filter
+        top_k=fetch_k,
         jurisdiccion=query.jurisdiccion,
         fuero=query.fuero,
         materia=query.materia,
@@ -71,8 +73,12 @@ async def search_jurisprudencia(query: JurisprudenciaQuery) -> JurisprudenciaRes
     if not results and (query.jurisdiccion or query.fuero or query.materia):
         results = await search_similar(
             query_embedding=embedding,
-            top_k=query.top_k * 2,
+            top_k=fetch_k,
         )
+
+    # Step 2.5: Rerank with cross-encoder
+    if results:
+        results = rerank(query.descripcion_caso, results, top_k=query.top_k)
 
     if not results:
         return JurisprudenciaResponse(

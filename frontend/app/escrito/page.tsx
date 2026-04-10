@@ -11,6 +11,8 @@ export default function EscritoPage() {
       label="Drafting Engine"
       title="Escrito Judicial"
       buttonText="Generar Escrito"
+      saveType="escrito"
+      getSaveTitle={(data) => `${data.tipo} — ${data.tema?.slice(0, 60) || "Sin tema"}`}
       onSubmit={async (data) =>
         generateEscrito({
           tipo: data.tipo,

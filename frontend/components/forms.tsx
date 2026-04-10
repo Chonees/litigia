@@ -199,16 +199,48 @@ export function AnalisisForm() {
           required
         />
       </div>
-      <div>
-        <Label>Fuero</Label>
-        <Select name="fuero">
-          <option value="">Todos</option>
-          <option value="civil">Civil</option>
-          <option value="laboral">Laboral</option>
-          <option value="penal">Penal</option>
-          <option value="comercial">Comercial</option>
-        </Select>
+      <div className="grid grid-cols-3 gap-6">
+        <div>
+          <Label>Fuero</Label>
+          <Select name="fuero">
+            <option value="">Todos</option>
+            <option value="civil">Civil</option>
+            <option value="laboral">Laboral</option>
+            <option value="penal">Penal</option>
+            <option value="comercial">Comercial</option>
+          </Select>
+        </div>
+        <div>
+          <Label>Expedientes a analizar (10-100)</Label>
+          <Input
+            name="top_k"
+            type="number"
+            min={10}
+            max={100}
+            defaultValue={50}
+            required
+          />
+        </div>
+        <div>
+          <Label>Calidad de análisis</Label>
+          <Select name="tier">
+            <option value="premium">Premium — Sonnet + Opus</option>
+            <option value="standard">Standard — Haiku + Opus</option>
+            <option value="economy">Economy — Haiku + Sonnet</option>
+          </Select>
+        </div>
       </div>
+      <label className="flex items-center gap-3 cursor-pointer group">
+        <input type="checkbox" name="transparency" className="w-4 h-4 accent-[var(--primary)]" />
+        <div>
+          <span className="text-sm font-semibold text-[var(--on-surface)] group-hover:text-[var(--primary)] transition-colors">
+            Transparencia — ver cómo razonó cada agente
+          </span>
+          <span className="block text-[10px] text-[var(--muted)]">
+            Cada agente explica paso a paso cómo llegó a su conclusión. Aumenta el costo ~40%.
+          </span>
+        </div>
+      </label>
     </>
   );
 }

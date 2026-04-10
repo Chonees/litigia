@@ -1,8 +1,9 @@
 """Vector store abstraction using ChromaDB.
 
 ChromaDB runs embedded — no server, no Docker, no setup.
-Data persists to D:/litigia-data/chromadb/.
 """
+
+from __future__ import annotations
 
 import chromadb
 

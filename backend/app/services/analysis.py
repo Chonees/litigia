@@ -22,8 +22,10 @@ from app.models.schemas import (
     FalloAnalizado,
     JurisprudenciaQuery,
 )
-from app.services.embeddings import get_single_embedding
-from app.services.vector_store import search_similar
+from app.services.embeddings import get_query_embedding
+from app.services.keyword_search import keyword_search
+from app.services.reranker import rerank
+from app.services.vector_store import search_similar, get_collection
 
 TOP_K = 100
 
@@ -158,6 +160,11 @@ RECOMENDACIÓN ESTRATÉGICA:
   (6) Qué argumentos EVITAR (basado en lo que fracasó)
   (7) Si hay disidencias relevantes que podrían anticipar un cambio de jurisprudencia
 
+CONTRADICCIONES JURISPRUDENCIALES:
+- Identificá casos donde la MISMA norma o doctrina fue aplicada con resultados OPUESTOS
+- Para cada contradicción: qué norma, qué fallos, por qué difieren (tribunal distinto, hechos diferentes, evolución temporal)
+- Esto es CRÍTICO para el abogado — necesita saber dónde hay jurisprudencia contradictoria para anticipar la postura del tribunal
+
 Respondé con un JSON:
 {{
   "total_analizados": {n},
@@ -188,6 +195,7 @@ Respondé con un JSON:
   "rango_quantum": "estimación de montos si hay datos, o N/D",
   "patron_costas": "cómo se impusieron las costas en la mayoría de los casos",
   "riesgos": ["riesgo concreto citando caso que perdió y por qué", ...],
+  "contradicciones": ["norma/doctrina X: fallo A (favorable) vs fallo B (desfavorable) — razón de la diferencia"],
   "disidencias_relevantes": ["si alguna disidencia anticipa cambio de jurisprudencia"],
   "recomendacion_estrategica": "párrafo de 5-10 oraciones — guía de acción completa"
 }}
@@ -260,96 +268,357 @@ def _parse_json_response(text: str) -> list | dict:
 
 
 # ---------------------------------------------------------------------------
-# Layer 1 — Vector search (local, no API)
+# Layer 1 — Hybrid search: Vector + BM25 + Cross-encoder rerank
 # ---------------------------------------------------------------------------
 
-async def _search_cases(caso: str, fuero: str | None) -> list[dict]:
-    """Search ChromaDB for similar cases. Returns raw result dicts."""
+def _bm25_rerank(query: str, results: list[dict], top_k: int) -> list[dict]:
+    """BM25 keyword search over pre-fetched results. Catches exact legal terms."""
+    from rank_bm25 import BM25Okapi
+
+    if not results:
+        return results
+
+    # Tokenize: simple whitespace + lowercase for Spanish legal text
+    query_tokens = query.lower().split()
+    corpus = []
+    for r in results:
+        text = f"{r.get('caratula', '')} {r.get('sumario', '')} {r.get('texto', '')[:1000]}"
+        corpus.append(text.lower().split())
+
+    bm25 = BM25Okapi(corpus)
+    bm25_scores = bm25.get_scores(query_tokens)
+
+    for r, score in zip(results, bm25_scores):
+        r["bm25_score"] = float(score)
+
+    return results
+
+
+def _rrf_fusion(results: list[dict], k: int = 60) -> list[dict]:
+    """Reciprocal Rank Fusion — merges vector + BM25 rankings."""
+    # Rank by vector score
+    by_vector = sorted(results, key=lambda r: r.get("score", 0), reverse=True)
+    # Rank by BM25 score
+    by_bm25 = sorted(results, key=lambda r: r.get("bm25_score", 0), reverse=True)
+
+    rrf_scores: dict[str, float] = {}
+    id_map: dict[str, dict] = {}
+
+    for ranking in [by_vector, by_bm25]:
+        for rank, doc in enumerate(ranking, 1):
+            doc_id = doc.get("id", str(id(doc)))
+            rrf_scores[doc_id] = rrf_scores.get(doc_id, 0) + 1.0 / (k + rank)
+            id_map[doc_id] = doc
+
+    # Sort by RRF score
+    sorted_ids = sorted(rrf_scores, key=rrf_scores.get, reverse=True)
+    for doc_id in sorted_ids:
+        id_map[doc_id]["rrf_score"] = rrf_scores[doc_id]
+
+    return [id_map[doc_id] for doc_id in sorted_ids]
+
+
+async def _search_cases(caso: str, fuero: str | None, top_k: int = 100) -> list[dict]:
+    """Hybrid search: Vector + Global FTS5 keywords -> merge -> cross-encoder rerank."""
     search_text = caso
     if fuero:
         search_text += f" fuero {fuero}"
 
-    embedding = await get_single_embedding(search_text)
+    embedding = await get_query_embedding(search_text)
 
-    results = await search_similar(
-        query_embedding=embedding,
-        top_k=TOP_K,
-        fuero=fuero,
-    )
+    # --- Source 1: Vector search ---
+    fetch_k = min(top_k * 3, 500)
+    vector_results = await search_similar(query_embedding=embedding, top_k=fetch_k, fuero=fuero)
+    if not vector_results and fuero:
+        vector_results = await search_similar(query_embedding=embedding, top_k=fetch_k)
+    print(f"  [Vector] {len(vector_results)} results", flush=True)
 
-    # Fallback without filters
-    if not results and fuero:
-        results = await search_similar(
-            query_embedding=embedding,
-            top_k=TOP_K,
-        )
+    # --- Source 2: Global FTS5 keyword search ---
+    fts_ids = []
+    try:
+        fts_ids = keyword_search(caso, top_k=fetch_k)
+        print(f"  [FTS5] {len(fts_ids)} keyword matches", flush=True)
+    except Exception as e:
+        print(f"  [FTS5] Skipped: {e}", flush=True)
+
+    # Fetch FTS results from ChromaDB by ID
+    fts_results = []
+    if fts_ids:
+        # Deduplicate FTS IDs before fetching from ChromaDB
+        fts_ids = list(dict.fromkeys(fts_ids))[:100]
+        collection = get_collection()
+        try:
+            fts_data = collection.get(ids=fts_ids, include=["documents", "metadatas"])
+            for i, doc_id in enumerate(fts_data["ids"]):
+                meta = fts_data["metadatas"][i] if fts_data["metadatas"] else {}
+                fts_results.append({
+                    "id": doc_id,
+                    "score": 0.85,  # synthetic score for fusion
+                    "texto": fts_data["documents"][i] if fts_data["documents"] else "",
+                    **meta,
+                })
+        except Exception as e:
+            print(f"  [FTS5>ChromaDB] Error fetching: {str(e).encode('ascii', 'replace').decode()}", flush=True)
+
+    # --- Merge: combine both sources, dedup by ID ---
+    seen_ids: set[str] = set()
+    merged = []
+    for r in vector_results:
+        rid = r.get("id", "")
+        if rid not in seen_ids:
+            seen_ids.add(rid)
+            r["_source"] = "vector"
+            merged.append(r)
+    fts_added = 0
+    for r in fts_results:
+        rid = r.get("id", "")
+        if rid not in seen_ids:
+            seen_ids.add(rid)
+            r["_source"] = "fts"
+            merged.append(r)
+            fts_added += 1
+    if fts_added:
+        print(f"  [Merge] Added {fts_added} FTS-only results (not in vector top-{fetch_k})", flush=True)
 
     # Clean markup
-    for r in results:
+    for r in merged:
         for key in ("texto", "sumario", "caratula"):
             if r.get(key):
                 r[key] = _clean_markup(r[key])
 
-    return results
+    # --- Dedup by caratula ---
+    seen_caratulas: set[str] = set()
+    deduped = []
+    for r in merged:
+        key = r.get("caratula", "")[:60].lower().strip()
+        if key and key in seen_caratulas:
+            continue
+        if key:
+            seen_caratulas.add(key)
+        deduped.append(r)
+    if len(deduped) < len(merged):
+        print(f"  [Dedup] {len(merged)} -> {len(deduped)}", flush=True)
+
+    # --- Cross-encoder rerank for final precision ---
+    if deduped:
+        rerank_k = min(len(deduped), max(top_k * 2, 100), 200)
+        print(f"  [Reranker] Scoring {rerank_k} candidates with bge-reranker-v2-m3...", flush=True)
+        ranked = rerank(caso, deduped[:rerank_k], top_k=None)
+
+        # --- Recency boost: newer fallos get a score bump ---
+        # A 2026 fallo with rerank 0.80 beats a 2005 fallo with rerank 0.82
+        # But a 2005 fallo with rerank 0.95 still beats a 2026 fallo with 0.80
+        import re as _re
+        from datetime import datetime
+        current_year = datetime.now().year
+        for r in ranked:
+            fecha = r.get("fecha", "")
+            year = None
+            # Try to extract year from various date formats
+            m = _re.search(r"(\d{4})", fecha)
+            if m:
+                year = int(m.group(1))
+            if year and 1900 < year <= current_year:
+                years_ago = current_year - year
+                # Boost: 0.15 for this year, decaying to 0 for 30+ years ago
+                recency_boost = max(0, 0.15 * (1 - years_ago / 30))
+                r["_final_score"] = r.get("rerank_score", 0) + recency_boost
+            else:
+                r["_final_score"] = r.get("rerank_score", 0)
+
+        ranked.sort(key=lambda r: r["_final_score"], reverse=True)
+        newest = next((r for r in ranked if r.get("fecha")), None)
+        if newest:
+            print(f"  [Recency] Applied boost. Top result year: {newest.get('fecha','?')}", flush=True)
+
+        # --- Diversity: cap per tribunal, but backfill if not enough ---
+        MAX_PER_TRIBUNAL = max(5, top_k // 3)
+        tribunal_counts: dict[str, int] = {}
+        results = []
+        skipped = []
+        for r in ranked:
+            tribunal = (r.get("tribunal", "") or "").strip()
+            if not tribunal:
+                results.append(r)
+            else:
+                count = tribunal_counts.get(tribunal, 0)
+                if count < MAX_PER_TRIBUNAL:
+                    results.append(r)
+                    tribunal_counts[tribunal] = count + 1
+                else:
+                    skipped.append(r)
+            if len(results) >= top_k:
+                break
+
+        # Backfill: if diversity filter left us short, add back skipped by rerank score
+        if len(results) < top_k and skipped:
+            need = top_k - len(results)
+            results.extend(skipped[:need])
+
+        print(f"  [Final] {len(results)} results (diversity cap {MAX_PER_TRIBUNAL}/tribunal). Best rerank: {results[0].get('rerank_score', 0):.3f}", flush=True)
+        return results
+
+    return deduped[:top_k]
 
 
 # ---------------------------------------------------------------------------
 # Layer 2 — Reader agents (1 per fallo, CONCURRENCY parallel)
 # ---------------------------------------------------------------------------
 
+class CancelledError(Exception):
+    """Raised when analysis is cancelled by client."""
+    pass
+
+
 async def _call_with_retry(
     client: anthropic.AsyncAnthropic,
+    cancel: asyncio.Event | None = None,
     **kwargs,
 ) -> anthropic.types.Message:
-    """Call Claude with rate limiting + exponential backoff on 429."""
+    """Call Claude with rate limiting + exponential backoff on 429.
+    Checks cancel event BEFORE every API call."""
     max_retries = settings.anthropic_max_retries
     for attempt in range(max_retries + 1):
+        # CHECK CANCEL before spending money
+        if cancel and cancel.is_set():
+            raise CancelledError("Analysis cancelled by user")
+
         await _rate_limiter.acquire()
+
+        # CHECK CANCEL again after waiting for rate limit
+        if cancel and cancel.is_set():
+            raise CancelledError("Analysis cancelled by user")
+
         try:
             return await client.messages.create(**kwargs)
         except anthropic.RateLimitError:
             if attempt == max_retries:
                 raise
-            # Backoff: 10s, 20s, 40s, 80s, 160s + jitter 0-3s
             backoff = (10 * (2 ** attempt)) + random.uniform(0, 3)
             print(f"  [Rate limit] retry {attempt + 1}/{max_retries} in {backoff:.0f}s", flush=True)
-            await asyncio.sleep(backoff)
+            # Sleep in small chunks so we can check cancel
+            for _ in range(int(backoff)):
+                if cancel and cancel.is_set():
+                    raise CancelledError("Analysis cancelled during retry backoff")
+                await asyncio.sleep(1)
+            await asyncio.sleep(backoff % 1)
 
 
 async def _analyze_single(
     caso: str,
     fallo: dict,
     fallo_index: int,
+    reader_model: str | None = None,
+    cost_tracker: "CostTracker | None" = None,
+    event_queue: "asyncio.Queue | None" = None,
+    cancel: "asyncio.Event | None" = None,
+    transparency: bool = False,
 ) -> dict | None:
     """One reader agent: analyze a single fallo, return structured JSON."""
-    try:
-        response = await _call_with_retry(
-            _get_client(),
-            model=settings.anthropic_model,
-            max_tokens=2000,
-            messages=[{
-                "role": "user",
-                "content": READER_PROMPT.format(
-                    caso=caso,
-                    tribunal=fallo.get("tribunal", "N/D"),
-                    fecha=fallo.get("fecha", "N/D"),
-                    caratula=fallo.get("caratula", "N/D"),
-                    materia=fallo.get("materia", "N/D"),
-                    texto=fallo.get("texto", ""),
-                ),
-            }],
-        )
-        analysis = _parse_json_response(response.content[0].text)
-    except Exception as e:
-        print(f"  [Reader {fallo_index}] Error: {e}", flush=True)
+    model = reader_model or settings.anthropic_model
+    agent_id = fallo_index
+    caratula = fallo.get("caratula", "N/D")
+
+    # Check cancel before doing anything
+    if cancel and cancel.is_set():
         return None
 
-    # Enrich with metadata from original result
-    analysis["caratula"] = fallo.get("caratula", "N/D")
+    # Notify: agent starting
+    if event_queue:
+        await event_queue.put({
+            "type": "agent_status",
+            "agent_id": agent_id,
+            "status": "active",
+            "thinking": f"Leyendo: {caratula[:80]}...",
+        })
+
+    try:
+        prompt_text = READER_PROMPT.format(
+            caso=caso,
+            tribunal=fallo.get("tribunal", "N/D"),
+            fecha=fallo.get("fecha", "N/D"),
+            caratula=caratula,
+            materia=fallo.get("materia", "N/D"),
+            texto=fallo.get("texto", ""),
+        )
+
+        if transparency:
+            prompt_text += """
+
+IMPORTANTE — MODO TRANSPARENCIA:
+ANTES del JSON, escribi tu razonamiento paso a paso en texto libre entre las etiquetas <razonamiento> y </razonamiento>. Explicá:
+1. Qué partes del fallo leíste y qué te llamó la atención
+2. Cómo determinaste el resultado (favorable/desfavorable/parcial/inadmisible)
+3. Por qué elegiste las normas y precedentes que elegiste
+4. Cómo evaluaste la relevancia para el caso del cliente
+
+Formato:
+<razonamiento>
+Tu razonamiento paso a paso...
+</razonamiento>
+
+{el JSON como siempre}"""
+
+        response = await _call_with_retry(
+            _get_client(),
+            cancel=cancel,
+            model=model,
+            max_tokens=3500 if transparency else 2000,
+            messages=[{
+                "role": "user",
+                "content": prompt_text,
+            }],
+        )
+        raw_response = response.content[0].text
+        if cost_tracker:
+            cost_tracker.record(model, response.usage.input_tokens, response.usage.output_tokens)
+
+        # Parse reasoning and JSON separately when transparency is on
+        reasoning = ""
+        json_text = raw_response
+        if transparency and "<razonamiento>" in raw_response:
+            parts = raw_response.split("</razonamiento>")
+            reasoning = parts[0].split("<razonamiento>")[-1].strip()
+            json_text = parts[-1].strip() if len(parts) > 1 else raw_response
+
+        analysis = _parse_json_response(json_text)
+        analysis["_raw_claude_response"] = raw_response
+        if reasoning:
+            analysis["reasoning"] = reasoning
+    except CancelledError:
+        return None
+    except Exception as e:
+        print(f"  [Reader {fallo_index}] Error: {e}", flush=True)
+        if event_queue:
+            await event_queue.put({
+                "type": "agent_status",
+                "agent_id": agent_id,
+                "status": "error",
+                "thinking": f"Error: {str(e)[:100]}",
+            })
+        return None
+
+    # Enrich with metadata
+    analysis["caratula"] = caratula
     analysis["tribunal"] = fallo.get("tribunal", "N/D")
     analysis["fecha"] = fallo.get("fecha", "N/D")
     analysis["score"] = fallo.get("score", 0.0)
     analysis["source_id"] = fallo.get("source_id", fallo.get("id", ""))
+    analysis["_original_texto"] = fallo.get("texto", "")  # for synthesizer context
+
+    # Agent thinking: use reasoning (transparency) if available, else raw response
+    analysis["agent_thinking"] = analysis.get("reasoning", analysis.get("_raw_claude_response", ""))
+    resultado = analysis.get("resultado", "N/D")
+
+    if event_queue:
+        await event_queue.put({
+            "type": "agent_status",
+            "agent_id": agent_id,
+            "status": "done",
+            "thinking": analysis["agent_thinking"],
+            "resultado": resultado,
+        })
+
     return analysis
 
 
@@ -357,7 +626,13 @@ async def _analyze_single(
 # Layer 3 — Synthesizer agent (1 Claude call)
 # ---------------------------------------------------------------------------
 
-async def _synthesize(caso: str, all_analyses: list[dict]) -> dict:
+async def _synthesize(
+    caso: str,
+    all_analyses: list[dict],
+    synth_model: str | None = None,
+    cost_tracker: "CostTracker | None" = None,
+    cancel: "asyncio.Event | None" = None,
+) -> dict:
     """Synthesizer agent: cross-reference patterns and generate strategic report."""
     # Build compact text for synthesizer (structured data, not full text)
     analyses_text = ""
@@ -381,21 +656,49 @@ async def _synthesize(caso: str, all_analyses: list[dict]) -> dict:
             f"  Relevancia cliente: {a.get('relevancia_cliente', '')}\n"
         )
 
+    # --- Top fallos completos para el sintetizador ---
+    top_favorable = sorted(
+        [a for a in all_analyses if a.get("resultado") == "favorable"],
+        key=lambda x: x.get("score", 0), reverse=True,
+    )[:3]
+    top_desfavorable = sorted(
+        [a for a in all_analyses if a.get("resultado") == "desfavorable"],
+        key=lambda x: x.get("score", 0), reverse=True,
+    )[:2]
+
+    key_texts = ""
+    for label, fallos in [("FAVORABLE", top_favorable), ("DESFAVORABLE", top_desfavorable)]:
+        for f in fallos:
+            texto = f.get("_original_texto", "")[:3000]  # max 3K chars each
+            if texto:
+                key_texts += f"\n\n--- FALLO COMPLETO ({label}): {f.get('caratula', 'N/D')} ---\n{texto}\n"
+
+    synth_content = SYNTHESIZER_PROMPT.format(
+        caso=caso,
+        n=len(all_analyses),
+        analyses_text=analyses_text,
+    )
+    if key_texts:
+        synth_content += f"\n\nTEXTOS COMPLETOS DE LOS FALLOS MÁS RELEVANTES (para verificar citas y lenguaje doctrinal):{key_texts}"
+
+    model = synth_model or settings.anthropic_model_deep
     try:
         response = await _call_with_retry(
             _get_client(),
-            model=settings.anthropic_model_deep,
+            cancel=cancel,
+            model=model,
             max_tokens=8000,
             messages=[{
                 "role": "user",
-                "content": SYNTHESIZER_PROMPT.format(
-                    caso=caso,
-                    n=len(all_analyses),
-                    analyses_text=analyses_text,
-                ),
+                "content": synth_content,
             }],
         )
-        return _parse_json_response(response.content[0].text)
+        raw_synth = response.content[0].text
+        if cost_tracker:
+            cost_tracker.record(model, response.usage.input_tokens, response.usage.output_tokens)
+        result = _parse_json_response(raw_synth)
+        result["_raw_claude_response"] = raw_synth
+        return result
     except Exception as e:
         print(f"  [Synthesizer] Error: {e}", flush=True)
         # Manual fallback: compute basic stats
@@ -418,12 +721,28 @@ async def _synthesize(caso: str, all_analyses: list[dict]) -> dict:
 async def run_predictive_analysis_stream(
     caso: str,
     fuero: str | None = None,
+    tier: str = "premium",
+    top_k: int = 100,
+    transparency: bool = False,
+    cancel: asyncio.Event | None = None,
 ) -> AsyncGenerator[dict, None]:
-    """Run full 3-layer pipeline, yielding progress events."""
+    """Run full 3-layer pipeline, yielding progress events.
+    Pass a cancel Event — set it to stop all API calls immediately."""
+    from app.services.tiers import get_tier, CostTracker
+
+    if cancel is None:
+        cancel = asyncio.Event()
+
+    tier_config = get_tier(tier)
+    cost = CostTracker()
+    top_k = max(10, min(top_k, 100))  # clamp 10-100
+
+    # --- Log config ---
+    print(f"\n[Analysis] tier={tier} reader={tier_config.reader_model} synth={tier_config.synth_model} top_k={top_k}", flush=True)
 
     # --- Layer 1: Search ---
-    yield {"step": "search", "progress": 0, "detail": "Buscando fallos similares..."}
-    results = await _search_cases(caso, fuero)
+    yield {"step": "search", "progress": 0, "detail": f"[{tier_config.name}] Buscando {top_k} fallos similares..."}
+    results = await _search_cases(caso, fuero, top_k=top_k)
     total = len(results)
     yield {"step": "search", "progress": 0, "detail": f"{total} fallos encontrados"}
 
@@ -442,31 +761,73 @@ async def run_predictive_analysis_stream(
 
     # --- Layer 2: Reader agents (1 per fallo, rate-limited) ---
     rpm = settings.anthropic_rpm
-    yield {"step": "analyze", "progress": 0, "detail": f"Analizando {total} fallos ({rpm} req/min)..."}
+    yield {"step": "analyze", "progress": 0, "detail": f"Analizando {total} fallos ({rpm} req/min)...", "total_agents": total}
 
     all_analyses: list[dict] = []
     completed = 0
+    event_queue: asyncio.Queue = asyncio.Queue()
 
     tasks = [
-        _analyze_single(caso, fallo, i)
+        _analyze_single(caso, fallo, i, reader_model=tier_config.reader_model, cost_tracker=cost, event_queue=event_queue, cancel=cancel, transparency=transparency)
         for i, fallo in enumerate(results)
     ]
 
-    for coro in asyncio.as_completed(tasks):
-        analysis = await coro
-        if analysis is not None:
-            all_analyses.append(analysis)
-        completed += 1
-        pct = int(completed / total * 100)
-        yield {
-            "step": "analyze",
-            "progress": pct,
-            "detail": f"{completed}/{total} fallos leídos ({len(all_analyses)} con resultado)",
-        }
+    # Run tasks and drain agent events
+    pending = set(asyncio.ensure_future(t) for t in tasks)
+    cancelled = False
+    while pending:
+        # CHECK CANCEL — kill all pending tasks
+        if cancel.is_set():
+            print(f"[Analysis] CANCELLED — killing {len(pending)} pending tasks", flush=True)
+            for task in pending:
+                task.cancel()
+            cancelled = True
+            yield {"step": "cancelled", "progress": int(completed / total * 100), "detail": f"Cancelado. {completed}/{total} fallos procesados. Gasto: ${cost.total_cost_usd:.4f}", "cost_usd": cost.total_cost_usd}
+            break
+
+        # Drain all queued agent events
+        while not event_queue.empty():
+            agent_event = event_queue.get_nowait()
+            yield {"step": "agent_event", **agent_event, "cost_usd": cost.total_cost_usd}
+
+        # Wait for next task (with timeout to keep checking cancel)
+        done, pending = await asyncio.wait(pending, timeout=0.5, return_when=asyncio.FIRST_COMPLETED)
+        for future in done:
+            try:
+                analysis = future.result()
+            except (CancelledError, asyncio.CancelledError):
+                analysis = None
+            if analysis is not None:
+                all_analyses.append(analysis)
+            completed += 1
+            pct = int(completed / total * 100)
+            yield {
+                "step": "analyze",
+                "progress": pct,
+                "detail": f"{completed}/{total} fallos leídos ({len(all_analyses)} con resultado)",
+                "cost_usd": cost.total_cost_usd,
+            }
+
+    if cancelled:
+        return
+
+    # Drain remaining events
+    while not event_queue.empty():
+        agent_event = event_queue.get_nowait()
+        yield {"step": "agent_event", **agent_event, "cost_usd": cost.total_cost_usd}
 
     # --- Layer 3: Synthesizer ---
-    yield {"step": "synthesize", "progress": 100, "detail": "Generando informe estratégico..."}
-    synthesis = await _synthesize(caso, all_analyses)
+    yield {"step": "synthesize", "progress": 100, "detail": f"Generando informe estratégico...", "cost_usd": cost.total_cost_usd}
+    yield {"step": "agent_event", "type": "agent_status", "agent_id": -1, "status": "active", "thinking": f"Sintetizando {len(all_analyses)} análisis...\nModelo: {tier_config.synth_model}\nCruzando patrones, estrategias, normas y riesgos...", "cost_usd": cost.total_cost_usd}
+
+    synthesis = await _synthesize(caso, all_analyses, synth_model=tier_config.synth_model, cost_tracker=cost, cancel=cancel)
+
+    # Build COMPLETE synthesizer thinking — no truncation, full transparency
+    import json as _json
+    # The COMPLETE raw response from Claude — exactly what the synthesizer thought
+    synth_thinking = synthesis.get("_raw_claude_response", _json.dumps(synthesis, ensure_ascii=False, indent=2))
+
+    yield {"step": "agent_event", "type": "agent_status", "agent_id": -1, "status": "done", "thinking": synth_thinking, "cost_usd": cost.total_cost_usd}
 
     # --- Build response ---
     detalle = []
@@ -484,13 +845,21 @@ async def run_predictive_analysis_stream(
         elif resultado == "inadmisible":
             n_inadmisible += 1
 
+        # Sanitize list fields — Claude sometimes returns "N/D" string instead of []
+        def _ensure_list(val, fallback=None) -> list:
+            if isinstance(val, list):
+                return val
+            if isinstance(val, str) and val and val != "N/D":
+                return [val]
+            return fallback or []
+
         fa = FalloAnalizado(
             caratula=a.get("caratula", "N/D"),
             tribunal=a.get("tribunal", "N/D"),
             fecha=a.get("fecha", "N/D"),
             resultado=resultado,
-            normas_citadas=a.get("normas_citadas", a.get("leyes_citadas", [])),
-            precedentes_citados=a.get("precedentes_citados", []),
+            normas_citadas=_ensure_list(a.get("normas_citadas", a.get("leyes_citadas", []))),
+            precedentes_citados=_ensure_list(a.get("precedentes_citados", [])),
             via_procesal=a.get("via_procesal", ""),
             doctrina_aplicada=a.get("doctrina_aplicada", ""),
             hechos_determinantes=a.get("hechos_determinantes", ""),
@@ -503,6 +872,8 @@ async def run_predictive_analysis_stream(
             relevancia_cliente=a.get("relevancia_cliente", ""),
             score=a.get("score", 0.0),
             source_id=a.get("source_id", ""),
+            agent_thinking=a.get("agent_thinking", ""),
+            reasoning=a.get("reasoning", ""),
         )
         detalle.append(fa)
         if fa.resultado == "favorable" and (best_fav is None or fa.score > best_fav.score):
@@ -526,13 +897,21 @@ async def run_predictive_analysis_stream(
         normas_clave=synthesis.get("normas_clave", synthesis.get("leyes_clave", [])),
         precedentes_para_citar=synthesis.get("precedentes_para_citar", []),
         riesgos=synthesis.get("riesgos", []),
+        contradicciones=synthesis.get("contradicciones", []),
         recomendacion_estrategica=synthesis.get("recomendacion_estrategica", ""),
         caso_mas_similar_favorable=best_fav,
         caso_mas_similar_desfavorable=best_desfav,
         fallos_analizados_detalle=detalle,
     )
 
-    yield {"step": "done", "progress": 100, "result": response.model_dump()}
+    result = response.model_dump()
+    result["cost"] = cost.summary()
+    result["cost"]["tier"] = tier
+    result["cost"]["reader_model"] = tier_config.reader_model
+    result["cost"]["synth_model"] = tier_config.synth_model
+    result["synth_thinking"] = synth_thinking
+
+    yield {"step": "done", "progress": 100, "result": result}
 
 
 # ---------------------------------------------------------------------------

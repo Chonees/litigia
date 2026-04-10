@@ -90,6 +90,9 @@ class AnalisisPredictivo(BaseModel):
 
     descripcion_caso: str
     fuero: str | None = None
+    tier: str = "premium"  # premium | standard | economy
+    top_k: int = 100       # 10 | 20 | 30 | 50 | 100
+    transparency: bool = False  # chain of thought — agents explain reasoning
 
 
 class FalloAnalizado(BaseModel):
@@ -113,6 +116,8 @@ class FalloAnalizado(BaseModel):
     relevancia_cliente: str = ""
     score: float = 0.0
     source_id: str = ""
+    agent_thinking: str = ""
+    reasoning: str = ""  # chain of thought when transparency=true
 
 
 class EstrategiaRanked(BaseModel):
@@ -139,6 +144,7 @@ class AnalisisResponse(BaseModel):
     normas_clave: list[str] = []
     precedentes_para_citar: list[str] = []
     riesgos: list[str] = []
+    contradicciones: list[str] = []
     recomendacion_estrategica: str = ""
     caso_mas_similar_favorable: FalloAnalizado | None = None
     caso_mas_similar_desfavorable: FalloAnalizado | None = None

@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: "/resumen", label: "Resumen" },
   { href: "/oficio", label: "Oficio" },
   { href: "/analisis", label: "Análisis" },
+  { href: "/guardados", label: "Guardados" },
 ];
 
 export function NavLinks() {

@@ -167,12 +167,17 @@ async def upload_file(request: Request):
     dest = settings.data_root / target
     dest.parent.mkdir(parents=True, exist_ok=True)
 
+    append = request.headers.get("X-Append", "").lower() == "true"
+    mode = "ab" if append else "wb"
+
     size = 0
-    with open(dest, "wb") as f:
+    with open(dest, mode) as f:
         async for chunk in request.stream():
             f.write(chunk)
             size += len(chunk)
 
+    import os
+    total_size = os.path.getsize(dest) / (1024 * 1024)
     size_mb = size / (1024 * 1024)
-    print(f"[Upload] Saved {target} ({size_mb:.1f}MB)", flush=True)
-    return {"status": "ok", "path": str(dest), "size_mb": round(size_mb, 1)}
+    print(f"[Upload] {'Appended' if append else 'Saved'} {target} (+{size_mb:.1f}MB, total: {total_size:.1f}MB)", flush=True)
+    return {"status": "ok", "path": str(dest), "chunk_mb": round(size_mb, 1), "total_mb": round(total_size, 1)}

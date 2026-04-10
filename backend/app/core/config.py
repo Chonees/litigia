@@ -1,3 +1,4 @@
+from os import getenv
 from pathlib import Path
 
 from pydantic_settings import BaseSettings
@@ -28,8 +29,8 @@ class Settings(BaseSettings):
     # Vector store (ChromaDB — embedded, no server needed)
     collection_name: str = "jurisprudencia"
 
-    # Data storage — configurable root, defaults to D:/litigia-data locally
-    data_root: Path = Path("D:/litigia-data")
+    # Data storage — reads DATA_ROOT env var, falls back to D:/litigia-data locally
+    data_root: Path = Path(getenv("DATA_ROOT", "D:/litigia-data"))
 
     @property
     def data_raw(self) -> Path:

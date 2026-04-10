@@ -110,7 +110,6 @@ export default function AnalisisPage() {
     setLastTier(tier);
     setLastTopK(topK);
 
-    console.log(`[LITIGIA] Starting analysis: tier=${tier}, top_k=${topK}, transparency=${transparency}, est=$${est.toFixed(2)}`);
     analysis.startAnalysis(descripcion, fuero || undefined, tier, topK, transparency);
   }
 

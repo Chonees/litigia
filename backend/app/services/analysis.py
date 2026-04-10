@@ -666,12 +666,10 @@ Tu razonamiento paso a paso...
 
 {el JSON como siempre}"""
 
-        # Dynamic max_tokens based on fallo length — short fallos need less output
-        texto_len = len(fallo.get("texto", ""))
-        if transparency:
-            max_tok = 2000 if texto_len < 3000 else 3500
-        else:
-            max_tok = 1000 if texto_len < 2000 else 1500 if texto_len < 5000 else 2000
+        # max_tokens is a ceiling, not a cost — Anthropic charges only generated tokens.
+        # Low caps just truncate JSON mid-string → parse errors.
+        # 8192 = Haiku's max output. Model stops naturally when done.
+        max_tok = 8192
 
         response = await _call_with_retry(
             _get_client(),

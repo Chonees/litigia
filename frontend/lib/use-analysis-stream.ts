@@ -78,7 +78,12 @@ export function useAnalysisStream(): UseAnalysisStreamReturn {
               const event = JSON.parse(jsonStr);
               const liveCost = event.cost_usd ?? 0;
 
-              if (event.step === "search") {
+              if (event.step === "error") {
+                setError(event.detail || "Error de validación");
+                setIsRunning(false);
+                setSwarmProgress(null);
+                return;
+              } else if (event.step === "search") {
                 setSwarmProgress({
                   step: "search",
                   progress: 0,
@@ -116,7 +121,7 @@ export function useAnalysisStream(): UseAnalysisStreamReturn {
                     costUsd: liveCost,
                   } : null);
                 } else {
-                  // Per-agent status update
+                  // Per-agent status update (active/done/error)
                   const agents = agentsRef.current;
                   if (agents[id]) {
                     agents[id] = {

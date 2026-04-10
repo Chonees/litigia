@@ -1,12 +1,14 @@
-# LITIGIA — Benchmark de Precisión de Búsqueda
+# LITIGIA — Benchmark Completo
 
-## Fecha: 9 de Abril 2026
-## Base: 471,511 vectores (ChromaDB) + 664,835 documentos indexados (FTS5)
-## Pipeline: Vector search + FTS5 keyword + RRF fusion + Cross-encoder reranker (bge-reranker-v2-m3)
+## Fecha: 9-10 de Abril 2026
+## Base: 471,511 vectores (ChromaDB) + 664,835 documentos (FTS5)
+## Pipeline: Vector + FTS5 keyword + RRF fusion + Cross-encoder reranker + Recency boost
 
 ---
 
-## Resultados: 50 queries de firma litigante de alto nivel
+## PARTE 1: Precisión de Búsqueda (50 queries, $0 costo)
+
+50 queries que cubren todas las áreas de práctica de una firma litigante de alto nivel. Se mide qué porcentaje de los 10 resultados devueltos son realmente relevantes.
 
 | # | Query | Precisión | Rating |
 |---|-------|-----------|--------|
@@ -61,9 +63,7 @@
 | 49 | Determinación de oficio AFIP tribunal fiscal | 80% | EXCELENTE |
 | 50 | Repetición pago indebido tributo inconstitucional | 20% | MALA |
 
----
-
-## Resumen
+### Resumen precisión
 
 | Rating | Cantidad | Porcentaje |
 |--------|----------|------------|
@@ -73,122 +73,200 @@
 | MALA (<40%) | 10/50 | 20% |
 | **PROMEDIO** | | **68%** |
 
-**74% de las queries son BUENAS o EXCELENTES** — usable para producción en la mayoría de áreas de práctica.
+74% de queries en BUENA o EXCELENTE. 1.5s por query, $0 costo.
 
 ---
 
-## Queries que fallan y POR QUÉ
+## PARTE 2: Benchmark de Costos y Calidad por Tier (26 tests reales)
 
-### 0% — No encuentra NADA relevante
+Caso de prueba: Director ejecutivo de grupo automotriz denunciado por administración fraudulenta (art. 173 CP), cesado por mal desempeño (art. 274 ley 19.550), evasión fiscal (ley 24.769), concurso preventivo, extensión de quiebra (art. 161 ley 24.522). Cruza 4 áreas jurídicas: penal, societario, tributario, concursal. Monto en juego: USD 5M+.
 
-**Tercerización fraudulenta (0%)**
-- Hay 5,116 fallos sobre el tema en la base cruda
-- El vector search no los captura porque el embedding diluye "tercerización" en "derecho laboral genérico"
-- FTS5 los encuentra por keyword pero el reranker los puntúa bajo porque el texto de los documentos no tiene suficiente overlap con la query completa
-- La query combina 3 conceptos (tercerización + grupo económico + art. 31) y pocos fallos hablan de los 3 juntos
+### Economy (Haiku lectores + Sonnet sintetizador)
 
-**Daño ambiental colectivo (0%)**
-- Tema muy específico con poca jurisprudencia en SAIJ/CSJN
-- Los fallos que existen usan terminología diferente ("contaminación", "medio ambiente") vs la query ("remediación", "daño ambiental")
-- FTS5 no pudo traer resultados porque los IDs tenían duplicados en ChromaDB
+| Agentes pedidos | Agentes reales | Input tokens | Output tokens | Costo USD |
+|-----------------|---------------|-------------|--------------|-----------|
+| 10 | 10 | 39,639 | 12,875 | $0.15 |
+| 10 (con transparencia) | 10 | 39,071 | 30,011 | $0.24 |
+| 20 (con transparencia) | 18 | 68,722 | 56,526 | $0.42 |
+| 30 | 30 | 114,054 | 35,530 | $0.38 |
+| 30 | 30 | 105,938 | 32,854 | $0.37 |
+| 50 | 50 | 188,480 | 54,945 | $0.61 |
+| 50 | 50 | 187,639 | 55,374 | $0.61 |
+| 100 | 100 | 366,587 | 104,194 | $1.13 |
+| 100 (con transparencia) | 93 | 377,500 | 287,016 | $2.04 |
 
-**Franquicia comercial (0%)**
-- Tema nicho con muy pocos fallos en la base
-- "Franquicia" aparece más en contexto de seguros (franquicia de seguro automotor) que en contratos de franquicia comercial
-- El reranker confunde ambos significados
+**Promedio Economy por escala (sin transparencia):**
 
-**Expropiación irregular (0%)**
-- Tema constitucional/administrativo con jurisprudencia histórica (pre-2015)
-- CSJN scrapeada solo desde 2015 — los fallos clásicos de expropiación son anteriores
-- Necesita más datos históricos
+| Agentes | Costo promedio | Costo por agente |
+|---------|---------------|-----------------|
+| 10 | $0.15 | $0.015 |
+| 30 | $0.38 | $0.013 |
+| 50 | $0.61 | $0.012 |
+| 100 | $1.13 | $0.011 |
 
-### 20-30% — Encuentra algo pero la mayoría es ruido
+**Con transparencia: +40-80% de costo** (los agentes generan chain-of-thought, más output tokens).
 
-**Amparo (20%)** — Query demasiado genérica, "amparo" matchea con muchos fallos que no son sobre amparo contra el Estado
-**Seguro automotor (20%)** — El reranker no distingue bien entre franquicia de seguro y franquicia comercial
-**Seguro de vida reticencia (30%)** — Tema muy técnico de derecho de seguros, pocos fallos en la base
-**Fideicomiso inmobiliario (20%)** — Tema inmobiliario-comercial nicho
-**Repetición de tributo (20%)** — Los keywords son demasiado genéricos ("pago", "prescripción")
-**Contrato eventual (30%)** — "Eventual" y "permanente" aparecen en todo tipo de fallos laborales
+### Standard (Haiku lectores + Opus sintetizador)
 
----
+| Agentes pedidos | Agentes reales | Input tokens | Output tokens | Costo USD |
+|-----------------|---------------|-------------|--------------|-----------|
+| 10 | 10 | 37,807 | 12,809 | $0.48 |
+| 10 | 10 | 36,697 | 12,426 | $0.46 |
+| 20 | 20 | 68,602 | 22,127 | $0.72 |
+| 30 | 30 | 106,046 | 32,780 | $0.95 |
+| 30 | 30 | 105,475 | 32,887 | $0.97 |
+| 30 | 30 | 103,381 | 32,591 | $0.97 |
+| 50 | 50 | 188,138 | 55,992 | $1.51 |
+| 50 | 50 | 185,359 | 53,382 | $1.44 |
+| 100 | 89 | 371,500 | 285,059 | $3.33 |
+| 100 | 92 | 373,071 | 288,467 | $3.45 |
 
-## Cómo mejorar REALMENTE — Hoja de ruta
+**Promedio Standard por escala:**
 
-### Mejora 1: Re-ingestión con prefijos E5 (impacto estimado: +10-15%)
+| Agentes | Costo promedio | Costo por agente | Overhead vs Economy |
+|---------|---------------|-----------------|-------------------|
+| 10 | $0.47 | $0.047 | +$0.32 (Opus) |
+| 20 | $0.72 | $0.036 | +$0.30 (Opus) |
+| 30 | $0.96 | $0.032 | +$0.58 (Opus) |
+| 50 | $1.48 | $0.030 | +$0.87 (Opus) |
+| 100 | $3.39 | $0.034 | +$2.26 (Opus) |
 
-**El problema:** Los 471K documentos en ChromaDB fueron embedidos SIN el prefijo `"passage: "` que el modelo multilingual-e5-base requiere. La query SÍ usa `"query: "`. Esta asimetría reduce la calidad del cosine similarity un 15-20%.
+**El overhead fijo de Opus ($0.30-0.65) domina el costo en escalas bajas.** En 10 agentes, Opus es el 68% del costo total. En 100 agentes baja al 19%.
 
-**La solución:** Re-embedar todos los documentos con `"passage: "` antes del texto. Tarda ~6 horas en RTX 4090.
+### Premium (Sonnet lectores + Opus sintetizador)
 
-**Cómo hacerlo:**
-1. Modificar `scripts/ingest_embeddings.py` → en `_embed_and_upsert()` agregar `prefix="passage: "` a la llamada de `get_embeddings()`
-2. Borrar la colección de ChromaDB: `chromadb.PersistentClient(path).delete_collection("jurisprudencia")`
-3. Re-correr: `python -m scripts.ingest_embeddings`
-4. Re-construir FTS: `python -m scripts.build_fts_index`
+| Agentes pedidos | Agentes reales | Input tokens | Output tokens | Costo USD |
+|-----------------|---------------|-------------|--------------|-----------|
+| 10 | 10 | 33,356 | 8,075 | $0.49 |
+| 10 | 10 | 33,183 | 8,033 | $0.48 |
+| 20 | 20 | 60,856 | 15,007 | $0.82 |
+| 30 | 30 | 94,083 | 21,278 | $1.10 |
+| 50 | 50 | 168,409 | 33,828 | $1.65 |
+| 100 | 100 | 344,286 | 113,132 | $3.77 |
 
-**Impacto:** Los scores de cosine van a tener un rango más amplio (0.5-0.95 vs el actual 0.79-0.90), lo que permite filtrar mejor y el reranker trabaja sobre candidatos más diversos.
+**Promedio Premium por escala:**
 
-### Mejora 2: Más datos (impacto estimado: +15-20% en queries que hoy fallan)
+| Agentes | Costo promedio | Costo por agente | Overhead vs Standard |
+|---------|---------------|-----------------|---------------------|
+| 10 | $0.49 | $0.049 | +$0.02 |
+| 20 | $0.82 | $0.041 | +$0.10 |
+| 30 | $1.10 | $0.037 | +$0.14 |
+| 50 | $1.65 | $0.033 | +$0.17 |
+| 100 | $3.77 | $0.038 | +$0.38 |
 
-**Queries que fallan por falta de datos:**
-- Expropiación → fallos clásicos son pre-2015, CSJN solo tiene desde 2015
-- Daño ambiental → pocos fallos en SAIJ, necesita fuentes especializadas
-- Franquicia comercial → nicho, necesita scraping de cámaras comerciales
-
-**Cómo hacerlo:**
-1. Correr scraper CSJN sin límite: `python -m scripts.scrapers.csjn` (sin --limit). Baja TODO desde 1863.
-2. Agregar fuentes: InfoJus, CIJ (Centro de Información Judicial), bases provinciales
-3. Scraping dirigido: buscar en CSJN específicamente "expropiación", "daño ambiental", "franquicia"
-
-### Mejora 3: Reranker fine-tuneado en legal argentino (impacto estimado: +10-15%)
-
-**El problema:** `bge-reranker-v2-m3` es genérico — no entiende que "art. 31 LCT" y "solidaridad del grupo" son conceptos relacionados en derecho argentino.
-
-**Cómo hacerlo:**
-1. Armar un dataset de ~1000 pares: (query legal, fallo relevante, score 0-1)
-2. Fine-tunear el cross-encoder con `sentence-transformers` y el trainer de CrossEncoder
-3. Los pares se pueden generar semi-automáticamente: tomar los resultados del benchmark y que un abogado marque cuáles son relevantes
-
-**Costo:** ~4 horas de trabajo de un abogado + ~2 horas de entrenamiento en GPU
-
-### Mejora 4: Upgrade a multilingual-e5-large-instruct (impacto estimado: +10%)
-
-**El problema:** e5-base tiene 768 dimensiones. e5-large-instruct tiene 1024 y acepta instrucciones como: "Retrieve Argentine court rulings relevant to: {query}"
-
-**Cómo hacerlo:**
-1. Cambiar `MODEL_NAME` en `embeddings.py`
-2. Re-ingestar todo (las dimensiones cambian, no es compatible con la colección actual)
-3. Tarda ~8-10 horas en RTX 4090 (modelo más grande)
-
-**Tradeoff:** Más precisión pero más lento y más memoria. Solo vale la pena si las mejoras 1-3 no alcanzan.
-
-### Mejora 5: Query expansion (impacto estimado: +5-10% en queries genéricas)
-
-**El problema:** "Amparo art. 43" es demasiado genérico y matchea con muchos fallos que no son sobre amparo contra el Estado.
-
-**Cómo hacerlo:**
-1. Antes de buscar, usar un LLM (Haiku, $0.001) para expandir la query: "Amparo art. 43 CN" → "acción de amparo contra acto de autoridad pública administrativa, plazo 15 días, legitimación activa colectiva, vía sumarísima"
-2. Buscar con la query expandida — más keywords para FTS5, más contexto para el vector
+**Premium vs Standard tiene poca diferencia** — Sonnet lectores cuestan un poco más que Haiku pero ambos usan Opus para sintetizar. La diferencia real está en la CALIDAD del análisis de cada fallo, no en el costo.
 
 ---
 
-## Configuración del pipeline al momento del benchmark
+## PARTE 3: Comparación de Calidad entre Tiers
+
+### Qué genera cada agente (ejemplo fallo real)
+
+Los 3 tiers extraen los mismos 12 campos por fallo. La diferencia está en la PROFUNDIDAD:
+
+**Economy (Haiku lector):** Extrae campos correctamente. Resultado, normas, precedentes son precisos. Campos de juicio (relevancia_cliente, argumento_clave) son más superficiales — 1-2 oraciones genéricas.
+
+**Standard (Haiku lector + Opus sintetizador):** Misma calidad de extracción que Economy, pero el sintetizador Opus cruza patrones con mayor profundidad. La recomendación estratégica es más accionable y matizada.
+
+**Premium (Sonnet lector + Opus sintetizador):** Sonnet extrae con más detalle — campos de juicio tienen 3-4 oraciones con análisis comparativo. El sintetizador Opus trabaja con mejor data y la recomendación es la más completa.
+
+### Dónde se nota la diferencia
+
+| Aspecto | Economy | Standard | Premium |
+|---------|---------|----------|---------|
+| Resultado (favorable/desfavorable) | Correcto | Correcto | Correcto |
+| Normas citadas | 90% completas | 90% completas | 95% completas |
+| Estrategia procesal | Básica | Básica | Detallada |
+| Argumento clave | 1-2 oraciones | 1-2 oraciones | 3-4 oraciones con análisis |
+| Relevancia para el cliente | Genérica | Genérica | Comparativa con hechos del caso |
+| Recomendación estratégica | Accionable | Muy accionable (Opus) | Muy accionable (Opus + mejor data) |
+| Contradicciones | Detecta las obvias | Detecta las obvias (Opus) | Detecta matices (Opus + Sonnet) |
+
+### Recomendación por tipo de caso
+
+| Tipo de caso | Tier recomendado | Agentes | Costo | Por qué |
+|-------------|-----------------|---------|-------|---------|
+| Rutinario (despido, accidente) | Economy | 10-20 | $0.15-0.38 | Mucha jurisprudencia, patrones claros |
+| Medio (mala praxis, ejecución) | Standard | 20-30 | $0.72-0.96 | Opus sintetiza mejor los matices |
+| Complejo (societario, tributario) | Premium | 30-50 | $1.10-1.65 | Sonnet extrae mejor en áreas técnicas |
+| Crítico (multifuero, alto monto) | Premium | 50-100 | $1.65-3.77 | Máxima cobertura y profundidad |
+
+---
+
+## PARTE 4: Hallazgos Importantes
+
+### Los agentes reales no siempre coinciden con los pedidos
+
+Cuando pedís 100 agentes, a veces recibes 89, 92, o 93. Esto es por:
+1. **Filtro de relevancia**: si de 500 candidatos solo 92 pasan el score mínimo del reranker
+2. **Filtro de diversidad**: máximo 5 por tribunal
+3. **Deduplicación**: fallos repetidos se eliminan
+
+Esto es BUENO — significa que no gastás plata analizando fallos irrelevantes.
+
+### La transparencia cuesta 40-80% más
+
+El modo "transparencia" hace que cada agente explique paso a paso cómo razonó. Esto genera ~2x más output tokens. Un análisis Economy de 100 agentes pasa de $1.13 a $2.04 con transparencia.
+
+### El sintetizador Opus es el costo fijo dominante
+
+En escalas bajas (10 agentes), Opus representa 60-70% del costo total. Por eso Standard y Premium son caros incluso con pocos agentes. Economy evita esto usando Sonnet para sintetizar.
+
+### El costo por agente baja con la escala
+
+| Agentes | Economy/agente | Standard/agente | Premium/agente |
+|---------|---------------|-----------------|---------------|
+| 10 | $0.015 | $0.047 | $0.049 |
+| 30 | $0.013 | $0.032 | $0.037 |
+| 50 | $0.012 | $0.030 | $0.033 |
+| 100 | $0.011 | $0.034 | $0.038 |
+
+El costo marginal por agente adicional es bajo — la mayor parte es el sintetizador.
+
+---
+
+## PARTE 5: Queries que fallan y cómo mejorar
+
+### 0% precisión — No encuentra NADA relevante
+
+- **Tercerización fraudulenta** — embedding diluye el término, FTS5 encuentra pero reranker puntúa bajo
+- **Daño ambiental** — poca jurisprudencia en la base, terminología diferente
+- **Franquicia comercial** — se confunde con franquicia de seguro automotor
+- **Expropiación** — fallos clásicos son pre-2015, CSJN solo tiene desde 2015
+
+### Hoja de ruta de mejoras
+
+| Mejora | Impacto | Esfuerzo | Costo |
+|--------|---------|----------|-------|
+| Re-ingestión con prefijos "passage:" | +10-15% | 6hs GPU | $0 |
+| Más datos CSJN (pre-2015) | +15-20% en fallos | Días de scraping | $0 |
+| Reranker fine-tuneado legal AR | +10-15% | 1000 pares anotados | $0 |
+| Upgrade a e5-large-instruct | +10% | 8-10hs re-ingestión | $0 |
+| Query expansion con Haiku | +5-10% | 1 llamada extra/query | $0.001/query |
+
+---
+
+## PARTE 6: Configuración técnica
 
 ```
-Embedding: intfloat/multilingual-e5-base (768 dim) con prefix "query: " para queries
+Embedding: intfloat/multilingual-e5-base (768 dim) + prefix "query: "
 Vector DB: ChromaDB 1.5.6 (471,511 docs, cosine similarity)
-FTS5: SQLite FTS5 (664,835 docs)
+FTS5: SQLite FTS5 (664,835 docs, BM25)
 Reranker: BAAI/bge-reranker-v2-m3 (567M params, GPU)
-Fusion: Vector (200 candidates) + FTS5 (200 candidates) → merge → dedup → rerank top 20 → diversity filter
-Diversity: max 5 por tribunal, empty tribunal = unlimited
-Score threshold: ninguno (eliminado, el reranker se encarga)
+Recency boost: +0.15 para año actual, decae a 0 en 30 años
+Fusion: Vector (500 max) + FTS5 (500 max) → merge → dedup → rerank top 200 → diversity → top K
+Diversity: max 5 por tribunal
+Cancel: asyncio.Event checked before every Claude call
+Tiers: Economy (Haiku+Sonnet), Standard (Haiku+Opus), Premium (Sonnet+Opus)
+Transparency: optional chain-of-thought, +40-80% cost
 ```
 
-## Tiempo de ejecución
+## Gasto total del benchmark
 
 ```
-50 queries en 77 segundos = 1.5 segundos por query
-Breakdown: ~0.3s embedding + ~0.2s ChromaDB + ~0.1s FTS5 + ~0.5s reranker + ~0.4s overhead
-Todo local, $0 de costo
+26 tests realizados
+Economy:  10 tests = $6.17
+Standard: 10 tests = $14.30
+Premium:   6 tests = $8.31
+TOTAL:    $28.78
 ```

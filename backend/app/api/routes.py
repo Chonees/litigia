@@ -107,37 +107,3 @@ async def scraper_status():
 @router.get("/health")
 async def health():
     return {"status": "ok", "service": "LITIGIA"}
-
-
-# --- Temporary data upload endpoint (remove after initial data load) ---
-
-@router.post("/admin/upload-data")
-async def upload_data(request: Request):
-    """Receive a tar.gz file and extract to /data. Protected by secret header."""
-    import tarfile
-    import io
-    from app.core.config import settings
-
-    # Simple auth — must send X-Upload-Secret header
-    secret = request.headers.get("X-Upload-Secret", "")
-    if secret != "litigia-upload-2026":
-        return {"error": "unauthorized"}, 401
-
-    body = await request.body()
-    size_mb = len(body) / (1024 * 1024)
-    print(f"[Upload] Received {size_mb:.1f}MB", flush=True)
-
-    tar = tarfile.open(fileobj=io.BytesIO(body), mode="r:gz")
-    tar.extractall(path=str(settings.data_root))
-    tar.close()
-
-    # List what was extracted
-    import os
-    files = []
-    for root, dirs, filenames in os.walk(str(settings.data_root)):
-        for f in filenames:
-            full = os.path.join(root, f)
-            files.append({"path": full, "size_mb": round(os.path.getsize(full) / (1024*1024), 1)})
-
-    print(f"[Upload] Extracted {len(files)} files to {settings.data_root}", flush=True)
-    return {"status": "ok", "files": files[:50], "total_files": len(files)}

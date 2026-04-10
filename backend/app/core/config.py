@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     def data_logs(self) -> Path:
         return self.data_root / "logs"
 
+    # Relevance filtering — minimum rerank score from cross-encoder
+    # bge-reranker-v2-m3 outputs logits: positive = relevant, negative = irrelevant
+    # Set to None to disable threshold (pre-refactor behavior)
+    rerank_min_score: float | None = 0.1
+    rerank_min_results: int = 3
+
     # Rate limiting — Anthropic API
     # Tier 1: 50 RPM but 30K input tokens/min and 8K output tokens/min
     # With ~4K input tokens per reader, safe throughput is ~7 req/min

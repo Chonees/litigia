@@ -36,7 +36,7 @@ export default function SettingsPage() {
       {/* Tier Reference */}
       <div>
         <CardHeader>Tiers de Análisis</CardHeader>
-        <div className="grid grid-cols-3 gap-1">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-1">
           <Card accent="gold">
             <h4 className="font-heading font-bold text-sm text-[var(--primary)]">Premium</h4>
             <p className="text-[11px] text-[var(--muted)] mt-1">Sonnet readers + Opus synthesis</p>
@@ -65,7 +65,7 @@ export default function SettingsPage() {
         <>
           <div>
             <CardHeader>Consumo Total</CardHeader>
-            <div className="grid grid-cols-3 gap-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1">
               <StatBox
                 value={`$${summary.total_cost.toFixed(2)}`}
                 label="Gasto Total USD"
@@ -87,7 +87,7 @@ export default function SettingsPage() {
           {Object.keys(summary.by_tier).length > 0 && (
             <div>
               <CardHeader>Consumo por Tier</CardHeader>
-              <div className="grid grid-cols-3 gap-1">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-1">
                 {Object.entries(summary.by_tier).map(([tier, data]) => (
                   <Card key={tier}>
                     <div className="flex items-center justify-between">

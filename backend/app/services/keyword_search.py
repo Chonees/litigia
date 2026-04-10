@@ -21,14 +21,13 @@ def _get_db_path() -> Path:
     return settings.data_root / "fts_index.db"
 
 
-def _get_conn() -> sqlite3.Connection:
+def _get_conn() -> sqlite3.Connection | None:
     global _conn
     if _conn is None:
         db_path = _get_db_path()
         if not db_path.exists():
-            raise FileNotFoundError(
-                f"FTS index not found at {db_path}. Run: python -m scripts.build_fts_index"
-            )
+            print(f"WARNING: FTS index not found at {db_path}. Keyword search disabled.", flush=True)
+            return None
         _conn = sqlite3.connect(str(db_path))
         _conn.row_factory = sqlite3.Row
     return _conn
@@ -38,8 +37,11 @@ def keyword_search(query: str, top_k: int = 50) -> list[str]:
     """Search FTS5 index, return matching document IDs ranked by BM25.
 
     Returns list of doc_ids that can be used to fetch from ChromaDB.
+    Returns [] if FTS index is not available.
     """
     conn = _get_conn()
+    if conn is None:
+        return []
     # FTS5 match query — wrap each word in quotes to handle special chars
     tokens = query.strip().split()
     fts_query = " OR ".join(f'"{t}"' for t in tokens if len(t) > 2)

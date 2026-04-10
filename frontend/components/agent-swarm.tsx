@@ -11,6 +11,12 @@ export interface AgentState {
   resultado?: string;
 }
 
+export interface LiveFeedEntry {
+  agentId: number;
+  text: string;
+  timestamp: number;
+}
+
 export interface SwarmProgress {
   step: "search" | "analyze" | "synthesize" | "done";
   progress: number;
@@ -20,6 +26,7 @@ export interface SwarmProgress {
   costUsd: number;
   totalAgents: number;
   synthThinking?: string;
+  liveFeed?: LiveFeedEntry[];
 }
 
 // ── Layout ───────────────────────────────────────────────────────
@@ -28,6 +35,9 @@ const SVG_SIZE = 360;
 const CENTER = SVG_SIZE / 2;
 const ORBIT_RADIUS = 130;
 const NODE_R_CENTER = 24;
+const MIN_ZOOM = 0.4;
+const MAX_ZOOM = 3;
+const DOT_GRID_SPACING = 16;
 
 function getNodeRadius(total: number): number {
   if (total <= 15) return 16;
@@ -39,6 +49,20 @@ function getNodeRadius(total: number): number {
 function agentPos(index: number, total: number) {
   const angle = (index * 2 * Math.PI) / total - Math.PI / 2;
   return { x: CENTER + ORBIT_RADIUS * Math.cos(angle), y: CENTER + ORBIT_RADIUS * Math.sin(angle) };
+}
+
+// ── Responsive hook ─────────────────────────────────────────────
+
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, [breakpoint]);
+  return isMobile;
 }
 
 // ── Colors ───────────────────────────────────────────────────────
@@ -74,7 +98,60 @@ function SvgDefs() {
         <feGaussianBlur stdDeviation="3" result="blur" />
         <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
       </filter>
+      <pattern id="dot-grid" x="0" y="0" width={DOT_GRID_SPACING} height={DOT_GRID_SPACING} patternUnits="userSpaceOnUse">
+        <circle cx={DOT_GRID_SPACING / 2} cy={DOT_GRID_SPACING / 2} r="1" fill={GOLD} opacity="0.35" />
+      </pattern>
     </defs>
+  );
+}
+
+// ── Control Icons (inline SVG) ──────────────────────────────────
+
+function IconZoomIn() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="11" y1="8" x2="11" y2="14" /><line x1="8" y1="11" x2="14" y2="11" />
+    </svg>
+  );
+}
+
+function IconZoomOut() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="8" y1="11" x2="14" y2="11" />
+    </svg>
+  );
+}
+
+function IconReset() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+    </svg>
+  );
+}
+
+function IconFullscreen() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
+    </svg>
+  );
+}
+
+function IconExitFullscreen() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" /><line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" />
+    </svg>
+  );
+}
+
+function IconClose() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
   );
 }
 
@@ -120,23 +197,19 @@ function AgentNode({ x, y, r, label, status, resultado, isCenter, selected, onCl
 
   return (
     <g style={{ cursor: "pointer" }} onClick={onClick}>
-      {/* Active ripple */}
       {isActive && (
         <circle cx={x} cy={y} r={r} fill="none" stroke={color} strokeWidth={1} opacity={0}>
           <animate attributeName="r" values={`${r};${r + 15}`} dur="1.5s" repeatCount="indefinite" />
           <animate attributeName="opacity" values="0.4;0" dur="1.5s" repeatCount="indefinite" />
         </circle>
       )}
-      {/* Selected ring */}
       {selected && (
         <circle cx={x} cy={y} r={r + 4} fill="none" stroke={GOLD} strokeWidth={2} opacity={0.6}>
           <animate attributeName="opacity" values="0.6;0.3;0.6" dur="2s" repeatCount="indefinite" />
         </circle>
       )}
-      {/* Node */}
       <circle cx={x} cy={y} r={r} fill={SURFACE} stroke={color}
         strokeWidth={isActive || selected ? 2 : isDone ? 1.5 : 0.8} />
-      {/* Label or check */}
       {isDone && !isCenter ? (
         <text x={x} y={y + 1} textAnchor="middle" dominantBaseline="central"
           fontSize={r * 0.7} fill={color}>✓</text>
@@ -149,10 +222,12 @@ function AgentNode({ x, y, r, label, status, resultado, isCenter, selected, onCl
   );
 }
 
-// ── Thinking Bubble ──────────────────────────────────────────────
+// ── Thinking Panel (click on agent → final result) ──────────────
 
-function ThinkingBubble({ agent, x, y, onClose }: {
-  agent: AgentState; x: number; y: number; onClose: () => void;
+function ThinkingPanel({ agent, onClose, isMobile }: {
+  agent: AgentState;
+  onClose: () => void;
+  isMobile: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -160,54 +235,160 @@ function ThinkingBubble({ agent, x, y, onClose }: {
     if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
   }, [agent.thinking]);
 
-  const bubbleW = 380;
-  const bubbleH = 300;
-  const bx = Math.min(Math.max(x - bubbleW / 2, 5), SVG_SIZE - bubbleW - 5);
-  const by = y < CENTER ? y + 25 : y - bubbleH - 25;
-
   const color = statusColor(agent.status, agent.resultado);
-  const statusLabel = agent.status === "active" ? "Analizando..." : agent.status === "done" ? "Completado" : agent.status === "error" ? "Error" : "En espera";
+  const statusLabel = agent.status === "active" ? "Analizando..."
+    : agent.status === "done" ? "Completado"
+    : agent.status === "error" ? "Error"
+    : "En espera";
+
+  const panelStyle: React.CSSProperties = isMobile
+    ? {
+        position: "absolute",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: "60%",
+        borderTop: `2px solid ${color}`,
+        borderRadius: "12px 12px 0 0",
+        boxShadow: "0 -4px 20px rgba(0,0,0,0.1)",
+      }
+    : {
+        position: "absolute",
+        top: 0,
+        right: 0,
+        bottom: 0,
+        width: "min(360px, 45%)",
+        borderLeft: `2px solid ${color}`,
+        boxShadow: "-4px 0 20px rgba(0,0,0,0.08)",
+      };
 
   return (
-    <foreignObject x={bx} y={by} width={bubbleW} height={bubbleH}>
-      <div
-        style={{
-          background: "white",
-          border: `1px solid ${color}`,
-          boxShadow: `0 4px 20px rgba(0,0,0,0.08), 0 0 0 1px rgba(154,123,45,0.1)`,
-          fontSize: "10px",
-          fontFamily: "'Inter', sans-serif",
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-        }}
-      >
-        {/* Header */}
-        <div style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: "6px 8px", borderBottom: "1px solid #E2DED6",
-        }}>
-          <span style={{ fontWeight: 700, color: "#1A1A1A" }}>Agente {agent.id + 1}</span>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <span style={{ color, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              {statusLabel}
-            </span>
-            <button onClick={onClose} style={{
-              background: "none", border: "none", cursor: "pointer",
-              color: "#8C8579", fontSize: "14px", lineHeight: 1,
-            }}>×</button>
-          </div>
-        </div>
-        {/* Thinking text */}
-        <div ref={ref} style={{
-          flex: 1, overflowY: "auto", padding: "6px 8px",
-          color: "#4A4640", lineHeight: 1.5, whiteSpace: "pre-wrap",
-        }}>
-          {agent.thinking || (agent.status === "idle" ? "Esperando turno..." : "Procesando...")}
+    <div
+      style={{
+        ...panelStyle,
+        background: SURFACE,
+        display: "flex",
+        flexDirection: "column",
+        zIndex: 20,
+        fontFamily: "'Inter', sans-serif",
+      }}
+    >
+      {/* Header */}
+      <div style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        padding: isMobile ? "12px 16px" : "10px 14px",
+        borderBottom: "1px solid #E2DED6", flexShrink: 0,
+      }}>
+        <span style={{ fontWeight: 700, fontSize: isMobile ? 14 : 12, color: "#1A1A1A" }}>
+          {agent.id === -1 ? "Sintetizador" : `Agente ${agent.id + 1}`}
+        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{ color, fontWeight: 600, fontSize: isMobile ? 11 : 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            {statusLabel}
+          </span>
+          <button onClick={onClose} style={{
+            background: "none", border: "none", cursor: "pointer",
+            color: "#8C8579",
+            padding: isMobile ? "6px" : "2px 4px",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <IconClose />
+          </button>
         </div>
       </div>
-    </foreignObject>
+      {/* Thinking text — full scroll */}
+      <div ref={ref} style={{
+        flex: 1, overflowY: "auto", padding: isMobile ? "14px 16px" : "12px 14px",
+        color: "#4A4640", lineHeight: 1.6, whiteSpace: "pre-wrap",
+        fontSize: isMobile ? 13 : 12,
+        WebkitOverflowScrolling: "touch",
+      }}>
+        {agent.thinking || (agent.status === "idle" ? "Esperando turno..." : "Procesando...")}
+      </div>
+    </div>
+  );
+}
+
+// ── Live Feed (real-time token stream from all agents) ──────────
+
+function LiveFeed({ entries }: { entries: LiveFeedEntry[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
+  }, [entries]);
+
+  if (!entries || entries.length === 0) return null;
+
+  // Sort by most recent update
+  const sorted = [...entries].sort((a, b) => b.timestamp - a.timestamp);
+
+  return (
+    <div style={{
+      background: "#1A1A1A",
+      borderRadius: 8,
+      padding: "10px 14px",
+      marginTop: 12,
+      maxHeight: 180,
+      overflowY: "auto",
+      fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+      fontSize: 11,
+      lineHeight: 1.6,
+    }} ref={ref}>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 6,
+        marginBottom: 8, paddingBottom: 6,
+        borderBottom: "1px solid rgba(154, 123, 45, 0.2)",
+      }}>
+        <div style={{
+          width: 6, height: 6, borderRadius: "50%",
+          background: GOLD_LIGHT,
+          animation: "feedPulse 1.2s ease-in-out infinite",
+        }} />
+        <span style={{ color: GOLD_LIGHT, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          Live feed
+        </span>
+      </div>
+      {sorted.map((entry) => {
+        // Truncate to last ~120 chars for readability
+        const text = entry.text.length > 120
+          ? entry.text.slice(-120)
+          : entry.text;
+        // Clean JSON artifacts for display
+        const clean = text
+          .replace(/[{}"]/g, "")
+          .replace(/,\s*/g, " | ")
+          .replace(/\n/g, " ")
+          .trim();
+        if (!clean) return null;
+        return (
+          <div key={entry.agentId} style={{
+            marginBottom: 4,
+            animation: "feedSlideIn 0.2s ease-out",
+          }}>
+            <span style={{ color: GOLD_LIGHT, fontWeight: 600 }}>
+              A{entry.agentId + 1}
+            </span>
+            <span style={{ color: "rgba(154, 123, 45, 0.4)", margin: "0 6px" }}>
+              {"\u25B8"}
+            </span>
+            <span style={{ color: "#A0A0A0" }}>
+              {clean}
+            </span>
+          </div>
+        );
+      })}
+      <style>{`
+        @keyframes feedPulse {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 1; }
+        }
+        @keyframes feedSlideIn {
+          from { opacity: 0; transform: translateX(-4px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+      `}</style>
+    </div>
   );
 }
 
@@ -227,11 +408,51 @@ function ProgressBar({ progress, detail }: { progress: number; detail: string })
   );
 }
 
+// ── Graph Controls ──────────────────────────────────────────────
+
+function GraphControlBtn({ onClick, title, children }: {
+  onClick: () => void; title: string; children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      style={{
+        background: "rgba(255,255,255,0.85)",
+        borderColor: "rgba(154,123,45,0.2)",
+        color: "#8C8579",
+        padding: 6,
+        borderRadius: 8,
+        border: "1px solid rgba(154,123,45,0.2)",
+        backdropFilter: "blur(4px)",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minWidth: 32,
+        minHeight: 32,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 // ── Main Panel ───────────────────────────────────────────────────
 
 export function AgentSwarmPanel({ swarmProgress }: { swarmProgress: SwarmProgress }) {
   const { step, progress, detail, agents, synthesizerActive, costUsd, totalAgents } = swarmProgress;
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const isMobile = useIsMobile();
+  const svgRef = useRef<SVGSVGElement>(null);
+  const panRef = useRef<{ startX: number; startY: number; origPanX: number; origPanY: number } | null>(null);
+  const pinchRef = useRef<{ dist: number; zoom: number } | null>(null);
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
 
   const nodeR = getNodeRadius(totalAgents);
 
@@ -252,8 +473,15 @@ export function AgentSwarmPanel({ swarmProgress }: { swarmProgress: SwarmProgres
     setSelectedId(prev => prev === id ? null : id);
   }, []);
 
-  const selectedAgent = selectedId !== null ? agents.find(a => a.id === selectedId) : null;
-  const selectedPos = selectedId !== null ? positions.find(p => p.id === selectedId) : null;
+  const selectedAgent = selectedId !== null
+    ? selectedId === -1
+      ? {
+          id: -1,
+          status: (supervisorStatus === "active" ? "active" : "done") as AgentState["status"],
+          thinking: swarmProgress.synthThinking || (supervisorStatus === "active" ? "Sintetizando análisis..." : "Click para ver resumen"),
+        }
+      : agents.find(a => a.id === selectedId) ?? null
+    : null;
 
   const counts = useMemo(() => {
     const done = agents.filter(a => a.status === "done").length;
@@ -263,95 +491,320 @@ export function AgentSwarmPanel({ swarmProgress }: { swarmProgress: SwarmProgres
     return { done, active, idle, errors };
   }, [agents]);
 
+  // ── Zoom controls ──
+  const handleZoomIn = useCallback(() => {
+    setZoom(z => Math.min(MAX_ZOOM, z * 1.3));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom(z => Math.max(MIN_ZOOM, z / 1.3));
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setZoom(1);
+    setPanOffset({ x: 0, y: 0 });
+  }, []);
+
+  const handleToggleFullscreen = useCallback(() => {
+    setIsFullscreen(prev => !prev);
+  }, []);
+
+  // ── Mouse wheel zoom (desktop) ──
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    const handler = (e: WheelEvent) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+      const nz = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomRef.current * factor));
+
+      const rect = svg.getBoundingClientRect();
+      const vs = SVG_SIZE / zoomRef.current;
+      const mx = panOffset.x + ((e.clientX - rect.left) / rect.width) * vs;
+      const my = panOffset.y + ((e.clientY - rect.top) / rect.height) * vs;
+
+      const newVs = SVG_SIZE / nz;
+      setPanOffset({
+        x: mx - ((e.clientX - rect.left) / rect.width) * newVs,
+        y: my - ((e.clientY - rect.top) / rect.height) * newVs,
+      });
+      setZoom(nz);
+    };
+
+    svg.addEventListener("wheel", handler, { passive: false });
+    return () => svg.removeEventListener("wheel", handler);
+  }, [panOffset]);
+
+  // ── Pointer handlers (pan + pinch-to-zoom) ──
+  const pointersRef = useRef<Map<number, PointerEvent>>(new Map());
+
+  function getTouchDist(pointers: Map<number, PointerEvent>): number {
+    const pts = Array.from(pointers.values());
+    if (pts.length < 2) return 0;
+    const dx = pts[1].clientX - pts[0].clientX;
+    const dy = pts[1].clientY - pts[0].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    const target = e.target as SVGElement;
+    const isBg = target.tagName === "svg" || target.tagName === "rect";
+
+    pointersRef.current.set(e.pointerId, e.nativeEvent);
+
+    if (pointersRef.current.size === 2) {
+      // Start pinch — capture for both pointers
+      (e.currentTarget as SVGElement).setPointerCapture(e.pointerId);
+      pinchRef.current = { dist: getTouchDist(pointersRef.current), zoom: zoomRef.current };
+      panRef.current = null;
+    } else if (pointersRef.current.size === 1 && isBg) {
+      // Pan — only capture when clicking background, not nodes
+      (e.currentTarget as SVGElement).setPointerCapture(e.pointerId);
+      panRef.current = { startX: e.clientX, startY: e.clientY, origPanX: panOffset.x, origPanY: panOffset.y };
+    }
+  }, [panOffset]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    pointersRef.current.set(e.pointerId, e.nativeEvent);
+
+    // Pinch-to-zoom
+    if (pointersRef.current.size === 2 && pinchRef.current) {
+      const newDist = getTouchDist(pointersRef.current);
+      if (newDist > 0 && pinchRef.current.dist > 0) {
+        const scale = newDist / pinchRef.current.dist;
+        setZoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, pinchRef.current.zoom * scale)));
+      }
+      return;
+    }
+
+    // Pan
+    const pan = panRef.current;
+    if (!pan) return;
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const vs = SVG_SIZE / zoom;
+    const dx = ((e.clientX - pan.startX) / rect.width) * vs;
+    const dy = ((e.clientY - pan.startY) / rect.height) * vs;
+    setPanOffset({ x: pan.origPanX - dx, y: pan.origPanY - dy });
+  }, [zoom]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    pointersRef.current.delete(e.pointerId);
+    if (pointersRef.current.size < 2) pinchRef.current = null;
+    if (pointersRef.current.size === 0) panRef.current = null;
+  }, []);
+
+  // ── Escape to exit fullscreen ──
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsFullscreen(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isFullscreen]);
+
+  // ── Computed viewBox ──
+  const viewSize = SVG_SIZE / zoom;
+  const viewBox = `${panOffset.x} ${panOffset.y} ${viewSize} ${viewSize}`;
+
+  // ── SVG height: responsive ──
+  const svgHeight = isFullscreen ? "100%" : isMobile ? 280 : 400;
+
+  const graphContent = (
+    <div className="relative" style={{ touchAction: "none", height: isFullscreen ? "100%" : isMobile ? 280 : 400 }}>
+      {/* Zoom & fullscreen controls */}
+      <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
+        {!isMobile && (
+          <>
+            <GraphControlBtn onClick={handleZoomIn} title="Zoom in"><IconZoomIn /></GraphControlBtn>
+            <GraphControlBtn onClick={handleZoomOut} title="Zoom out"><IconZoomOut /></GraphControlBtn>
+            <GraphControlBtn onClick={handleReset} title="Resetear vista"><IconReset /></GraphControlBtn>
+            <div style={{ height: 4 }} />
+          </>
+        )}
+        <GraphControlBtn onClick={handleToggleFullscreen} title={isFullscreen ? "Salir" : "Pantalla completa"}>
+          {isFullscreen ? <IconExitFullscreen /> : <IconFullscreen />}
+        </GraphControlBtn>
+      </div>
+
+      {/* Mobile: zoom buttons row at bottom-left */}
+      {isMobile && (
+        <div className="absolute bottom-2 left-2 z-10 flex gap-1">
+          <GraphControlBtn onClick={handleZoomOut} title="Zoom out"><IconZoomOut /></GraphControlBtn>
+          <GraphControlBtn onClick={handleReset} title="Reset"><IconReset /></GraphControlBtn>
+          <GraphControlBtn onClick={handleZoomIn} title="Zoom in"><IconZoomIn /></GraphControlBtn>
+        </div>
+      )}
+
+      <svg
+        ref={svgRef}
+        width="100%"
+        height={svgHeight}
+        viewBox={viewBox}
+        preserveAspectRatio="xMidYMid meet"
+        style={{
+          cursor: panRef.current ? "grabbing" : "grab",
+          background: SURFACE,
+          borderRadius: isFullscreen ? 0 : 4,
+        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      >
+        <SvgDefs />
+
+        {/* Dot grid background */}
+        <rect x={panOffset.x - 500} y={panOffset.y - 500} width={viewSize + 1000} height={viewSize + 1000}
+          fill="url(#dot-grid)" style={{ pointerEvents: "none" }} />
+
+        {/* Orbit */}
+        <circle cx={CENTER} cy={CENTER} r={ORBIT_RADIUS} fill="none" stroke={GOLD_DIM} strokeWidth={0.5} strokeDasharray="3 4" />
+
+        {/* Edges */}
+        {positions.map(({ x, y, id }) => {
+          const agent = agents.find(a => a.id === id);
+          return (
+            <Edge key={`e-${id}`} x1={CENTER} y1={CENTER} x2={x} y2={y}
+              active={agent?.status === "active"} done={agent?.status === "done"}
+              r1={NODE_R_CENTER} r2={nodeR} />
+          );
+        })}
+
+        {/* Agent nodes */}
+        {positions.map(({ x, y, id }) => {
+          const agent = agents.find(a => a.id === id);
+          return (
+            <AgentNode key={`a-${id}`} x={x} y={y} r={nodeR}
+              label={`${id + 1}`} status={agent?.status ?? "idle"}
+              resultado={agent?.resultado}
+              selected={selectedId === id}
+              onClick={() => handleClick(id)} />
+          );
+        })}
+
+        {/* Center node */}
+        <AgentNode x={CENTER} y={CENTER} r={NODE_R_CENTER}
+          label={centerLabel} status={supervisorStatus} isCenter
+          selected={selectedId === -1}
+          onClick={() => setSelectedId(prev => prev === -1 ? null : -1)} />
+      </svg>
+
+      {/* Thinking panel — HTML overlay, outside SVG */}
+      {selectedAgent && (
+        <ThinkingPanel agent={selectedAgent} onClose={() => setSelectedId(null)} isMobile={isMobile} />
+      )}
+    </div>
+  );
+
+  // ── Fullscreen overlay ──
+  if (isFullscreen) {
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 50,
+          background: SURFACE,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* Fullscreen header */}
+        <div
+          className="flex items-center justify-between gap-3"
+          style={{
+            borderBottom: "1px solid #E2DED6",
+            flexShrink: 0,
+            padding: isMobile ? "10px 16px" : "12px 24px",
+            flexWrap: "wrap",
+          }}
+        >
+          <h3 style={{
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.15em",
+            textTransform: "uppercase" as const,
+            color: GOLD,
+          }}>
+            {step === "done" ? "Análisis completo" : "Analizando jurisprudencia..."}
+          </h3>
+          <div className="flex items-center gap-3" style={{ flexWrap: "wrap" }}>
+            <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#8C8579" }}>
+              {agents.length} agentes
+            </span>
+            {costUsd > 0 && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: GOLD }}>
+                ${costUsd.toFixed(4)}
+              </span>
+            )}
+            <div className="flex gap-3" style={{ fontSize: 11, color: "#8C8579" }}>
+              <span><span style={{ color: GOLD_DONE }}>✓</span> {counts.done}</span>
+              <span><span style={{ color: GOLD_LIGHT }}>●</span> {counts.active}</span>
+              <span><span style={{ color: GOLD_DIM }}>●</span> {counts.idle}</span>
+              {counts.errors > 0 && <span><span style={{ color: DANGER }}>●</span> {counts.errors}</span>}
+            </div>
+          </div>
+        </div>
+        {/* Graph fills remaining space */}
+        <div style={{ flex: 1, minHeight: 0 }}>
+          {graphContent}
+        </div>
+        {/* Footer progress */}
+        <div style={{
+          borderTop: "1px solid #E2DED6",
+          flexShrink: 0,
+          padding: isMobile ? "10px 16px" : "12px 24px",
+        }}>
+          <ProgressBar progress={progress} detail={detail} />
+        </div>
+      </div>
+    );
+  }
+
+  // ── Normal layout ──
   return (
-    <div className="bg-[var(--surface)] border border-[var(--outline-variant)] p-5 space-y-4 animate-fade-in">
+    <div className="bg-[var(--surface)] border border-[var(--outline-variant)] p-4 md:p-5 space-y-3 md:space-y-4 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <h3 className="text-[11px] font-semibold tracking-[0.15em] uppercase text-[var(--primary)]">
           {step === "done" ? "Análisis completo" : "Analizando jurisprudencia..."}
         </h3>
-        <div className="flex items-center gap-3">
-          <span className="text-[11px] px-3 py-1 tracking-wide uppercase bg-[var(--container-lowest)] text-[var(--primary)]">
+        <div className="flex items-center gap-2 md:gap-3">
+          <span className="text-[10px] md:text-[11px] px-2 md:px-3 py-1 tracking-wide uppercase bg-[var(--container-lowest)] text-[var(--primary)]">
             {agents.length} agentes
           </span>
           {costUsd > 0 && (
-            <span className="text-[11px] font-bold text-[var(--primary)] font-heading">
+            <span className="text-[10px] md:text-[11px] font-bold text-[var(--primary)] font-heading">
               ${costUsd.toFixed(4)}
             </span>
           )}
         </div>
       </div>
 
-      {/* SVG Graph */}
-      <div className="flex justify-center">
-        <svg width="100%" viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`} style={{ maxWidth: 400, maxHeight: 400 }}>
-          <SvgDefs />
+      {/* SVG Graph + Thinking panel */}
+      {graphContent}
 
-          {/* Orbit */}
-          <circle cx={CENTER} cy={CENTER} r={ORBIT_RADIUS} fill="none" stroke={GOLD_DIM} strokeWidth={0.5} strokeDasharray="3 4" />
-
-          {/* Edges */}
-          {positions.map(({ x, y, id }) => {
-            const agent = agents.find(a => a.id === id);
-            return (
-              <Edge key={`e-${id}`} x1={CENTER} y1={CENTER} x2={x} y2={y}
-                active={agent?.status === "active"} done={agent?.status === "done"}
-                r1={NODE_R_CENTER} r2={nodeR} />
-            );
-          })}
-
-          {/* Agent nodes */}
-          {positions.map(({ x, y, id }) => {
-            const agent = agents.find(a => a.id === id);
-            return (
-              <AgentNode key={`a-${id}`} x={x} y={y} r={nodeR}
-                label={`${id + 1}`} status={agent?.status ?? "idle"}
-                resultado={agent?.resultado}
-                selected={selectedId === id}
-                onClick={() => handleClick(id)} />
-            );
-          })}
-
-          {/* Center node */}
-          <AgentNode x={CENTER} y={CENTER} r={NODE_R_CENTER}
-            label={centerLabel} status={supervisorStatus} isCenter
-            selected={selectedId === -1}
-            onClick={() => setSelectedId(prev => prev === -1 ? null : -1)} />
-
-          {/* Thinking bubble — agent */}
-          {selectedAgent && selectedPos && (
-            <ThinkingBubble
-              agent={selectedAgent}
-              x={selectedPos.x} y={selectedPos.y}
-              onClose={() => setSelectedId(null)} />
-          )}
-
-          {/* Thinking bubble — synthesizer/orchestrator */}
-          {selectedId === -1 && (
-            <ThinkingBubble
-              agent={{
-                id: -1,
-                status: supervisorStatus === "active" ? "active" : "done",
-                thinking: swarmProgress.synthThinking || (supervisorStatus === "active" ? "Sintetizando análisis..." : "Click para ver resumen"),
-              }}
-              x={CENTER} y={CENTER}
-              onClose={() => setSelectedId(null)} />
-          )}
-        </svg>
-      </div>
+      {/* Live feed — token stream from all active agents */}
+      {step === "analyze" && swarmProgress?.liveFeed && swarmProgress.liveFeed.length > 0 && (
+        <LiveFeed entries={swarmProgress.liveFeed} />
+      )}
 
       {/* Progress */}
       <ProgressBar progress={progress} detail={detail} />
 
       {/* Agent stats */}
-      <div className="flex justify-center gap-6 text-[11px] text-[var(--muted)]">
+      <div className="flex justify-center flex-wrap gap-3 md:gap-6 text-[10px] md:text-[11px] text-[var(--muted)]">
         <span><span style={{ color: GOLD_DONE }}>✓</span> {counts.done} completados</span>
         <span><span style={{ color: GOLD_LIGHT }}>●</span> {counts.active} leyendo</span>
         <span><span style={{ color: GOLD_DIM }}>●</span> {counts.idle} en espera</span>
         {counts.errors > 0 && <span><span style={{ color: DANGER }}>●</span> {counts.errors} errores</span>}
       </div>
 
-      <p className="text-center text-[10px] text-[var(--muted)] italic">
+      <p className="text-center text-[9px] md:text-[10px] text-[var(--muted)] italic">
         Tocá un agente para ver qué está analizando
       </p>
     </div>

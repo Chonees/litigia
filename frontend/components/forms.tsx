@@ -14,7 +14,7 @@ export function JurisprudenciaForm() {
           required
         />
       </div>
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
         <div>
           <Label>Jurisdicción</Label>
           <Select name="jurisdiccion">
@@ -57,7 +57,7 @@ export function JurisprudenciaForm() {
 export function EscritoForm() {
   return (
     <>
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
         <div>
           <Label>Tipo de escrito</Label>
           <Select name="tipo" required>
@@ -148,7 +148,7 @@ export function ResumenForm() {
 export function OficioForm() {
   return (
     <>
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
         <div>
           <Label>Destinatario</Label>
           <Input
@@ -199,7 +199,7 @@ export function AnalisisForm() {
           required
         />
       </div>
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
         <div>
           <Label>Fuero</Label>
           <Select name="fuero">

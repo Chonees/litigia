@@ -395,7 +395,7 @@ export function AnalisisResult({ data }: { data: Record<string, unknown> }) {
   return (
     <div className="space-y-5 animate-slide-up">
       {/* Stats grid */}
-      <div className="grid grid-cols-4 gap-1">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
         <StatBox value={`${pctFavorable.toFixed(0)}%`} label="Favorable" variant={pctFavorable >= 50 ? "gold" : "danger"} large />
         <StatBox value={favorables} label="Favorables" />
         <StatBox value={desfavorables} label="Desfavorables" variant="danger" />
@@ -489,7 +489,7 @@ export function AnalisisResult({ data }: { data: Record<string, unknown> }) {
       )}
 
       {/* Normas + Precedentes */}
-      <div className="grid grid-cols-2 gap-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
         {normas.length > 0 && (
           <Card>
             <CardHeader>Normas Clave</CardHeader>
@@ -534,7 +534,7 @@ export function AnalisisResult({ data }: { data: Record<string, unknown> }) {
 
       {/* Quantum + Costas + Disidencias */}
       {(rangoQuantum || patronCostas || disidencias.length > 0) && (
-        <div className="grid grid-cols-2 gap-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
           {(rangoQuantum && rangoQuantum !== "N/D") && (
             <Card>
               <CardHeader>Estimación de Montos</CardHeader>

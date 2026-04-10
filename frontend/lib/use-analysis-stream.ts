@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import type { SwarmProgress, AgentState } from "@/components/agent-swarm";
+import type { SwarmProgress, AgentState, LiveFeedEntry } from "@/components/agent-swarm";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002/api/v1";
 
@@ -23,6 +23,7 @@ export function useAnalysisStream(): UseAnalysisStreamReturn {
   const agentsRef = useRef<AgentState[]>([]);
   const totalRef = useRef(0);
   const synthThinkingRef = useRef("");
+  const liveFeedRef = useRef<LiveFeedEntry[]>([]);
 
   const startAnalysis = useCallback((descripcion_caso: string, fuero?: string, tier?: string, top_k?: number, transparency?: boolean) => {
     abortRef.current?.abort();
@@ -34,6 +35,7 @@ export function useAnalysisStream(): UseAnalysisStreamReturn {
     setIsRunning(true);
     agentsRef.current = [];
     totalRef.current = 0;
+    liveFeedRef.current = [];
 
     setSwarmProgress({
       step: "search",
@@ -78,7 +80,12 @@ export function useAnalysisStream(): UseAnalysisStreamReturn {
               const event = JSON.parse(jsonStr);
               const liveCost = event.cost_usd ?? 0;
 
-              if (event.step === "search") {
+              if (event.step === "error") {
+                setError(event.detail || "Error de validación");
+                setIsRunning(false);
+                setSwarmProgress(null);
+                return;
+              } else if (event.step === "search") {
                 setSwarmProgress({
                   step: "search",
                   progress: 0,
@@ -106,7 +113,24 @@ export function useAnalysisStream(): UseAnalysisStreamReturn {
                 });
               } else if (event.step === "agent_event") {
                 const id = event.agent_id as number;
-                if (id === -1) {
+                const evType = event.type as string;
+
+                if (evType === "stream_token" && id >= 0) {
+                  // Live feed: streaming tokens from agent
+                  const feed = liveFeedRef.current;
+                  const existing = feed.findIndex(e => e.agentId === id);
+                  if (existing >= 0) {
+                    feed[existing] = { agentId: id, text: event.text || "", timestamp: Date.now() };
+                  } else {
+                    feed.push({ agentId: id, text: event.text || "", timestamp: Date.now() });
+                  }
+                  liveFeedRef.current = feed;
+                  setSwarmProgress(prev => prev ? {
+                    ...prev,
+                    liveFeed: [...feed],
+                    costUsd: liveCost,
+                  } : null);
+                } else if (id === -1) {
                   // Synthesizer/Orchestrator event
                   synthThinkingRef.current = event.thinking || "";
                   setSwarmProgress(prev => prev ? {
@@ -116,7 +140,7 @@ export function useAnalysisStream(): UseAnalysisStreamReturn {
                     costUsd: liveCost,
                   } : null);
                 } else {
-                  // Per-agent status update
+                  // Per-agent status update (active/done/error)
                   const agents = agentsRef.current;
                   if (agents[id]) {
                     agents[id] = {

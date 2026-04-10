@@ -302,78 +302,6 @@ function ThinkingPanel({ agent, onClose, isMobile }: {
   );
 }
 
-// ── Activity Log (shows agent results as they complete) ─────────
-
-const RESULTADO_LABELS: Record<string, { text: string; color: string }> = {
-  favorable: { text: "FAVORABLE", color: "#2E7D32" },
-  desfavorable: { text: "DESFAVORABLE", color: "#C62828" },
-  parcial: { text: "PARCIAL", color: "#9A7B2D" },
-  inadmisible: { text: "INADMISIBLE", color: "#8C8579" },
-};
-
-function ActivityLog({ agents }: { agents: AgentState[] }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const doneAgents = agents.filter(a => a.status === "done" && a.resultado);
-
-  useEffect(() => {
-    if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
-  }, [doneAgents.length]);
-
-  if (doneAgents.length === 0) return null;
-
-  return (
-    <div style={{
-      background: "#1A1A1A",
-      borderRadius: 8,
-      padding: "10px 14px",
-      marginTop: 12,
-      maxHeight: 200,
-      overflowY: "auto",
-      fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-      fontSize: 11,
-      lineHeight: 1.7,
-    }} ref={ref}>
-      {doneAgents.map((agent) => {
-        const r = RESULTADO_LABELS[agent.resultado || ""] || { text: agent.resultado || "?", color: "#8C8579" };
-        // Extract first meaningful line from thinking (skip header-like lines)
-        const lines = (agent.thinking || "").split("\n").filter(l => l.trim());
-        const detail = lines.find(l =>
-          l.startsWith("Doctrina:") || l.startsWith("Argumento") || l.startsWith("Resultado:")
-        ) || lines[2] || "";
-        const cleanDetail = detail.replace(/^[^:]+:\s*/, "").slice(0, 80);
-
-        return (
-          <div key={agent.id} style={{
-            marginBottom: 3,
-            animation: "logSlideIn 0.25s ease-out",
-            display: "flex",
-            alignItems: "baseline",
-            gap: 0,
-          }}>
-            <span style={{ color: GOLD_LIGHT, fontWeight: 600, minWidth: 28, flexShrink: 0 }}>
-              A{agent.id + 1}
-            </span>
-            <span style={{ color: r.color, fontWeight: 700, minWidth: 100, flexShrink: 0 }}>
-              {r.text}
-            </span>
-            {cleanDetail && (
-              <span style={{ color: "#707070", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {cleanDetail}
-              </span>
-            )}
-          </div>
-        );
-      })}
-      <style>{`
-        @keyframes logSlideIn {
-          from { opacity: 0; transform: translateY(4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-    </div>
-  );
-}
-
 // ── Progress Bar ─────────────────────────────────────────────────
 
 function ProgressBar({ progress, detail }: { progress: number; detail: string }) {
@@ -769,11 +697,6 @@ export function AgentSwarmPanel({ swarmProgress }: { swarmProgress: SwarmProgres
 
       {/* SVG Graph + Thinking panel */}
       {graphContent}
-
-      {/* Activity log — agent results as they complete */}
-      {(step === "analyze" || step === "synthesize") && (
-        <ActivityLog agents={agents} />
-      )}
 
       {/* Progress */}
       <ProgressBar progress={progress} detail={detail} />

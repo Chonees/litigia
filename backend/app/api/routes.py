@@ -113,26 +113,32 @@ async def health():
 
 @router.post("/admin/upload-data")
 async def upload_data(request: Request):
-    """Receive a tar.gz file and extract to /data. Protected by secret header."""
+    """Receive a tar.gz file and extract to /data using streaming (low memory)."""
     import tarfile
-    import io
+    import tempfile
+    import os
     from app.core.config import settings
 
-    # Simple auth — must send X-Upload-Secret header
     secret = request.headers.get("X-Upload-Secret", "")
     if secret != "litigia-upload-2026":
         return {"error": "unauthorized"}, 401
 
-    body = await request.body()
-    size_mb = len(body) / (1024 * 1024)
-    print(f"[Upload] Received {size_mb:.1f}MB", flush=True)
+    # Stream to temp file instead of loading all in memory
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".tar.gz")
+    size = 0
+    async for chunk in request.stream():
+        tmp.write(chunk)
+        size += len(chunk)
+    tmp.close()
 
-    tar = tarfile.open(fileobj=io.BytesIO(body), mode="r:gz")
+    size_mb = size / (1024 * 1024)
+    print(f"[Upload] Received {size_mb:.1f}MB, extracting...", flush=True)
+
+    tar = tarfile.open(tmp.name, mode="r:gz")
     tar.extractall(path=str(settings.data_root))
     tar.close()
+    os.unlink(tmp.name)
 
-    # List what was extracted
-    import os
     files = []
     for root, dirs, filenames in os.walk(str(settings.data_root)):
         for f in filenames:
@@ -141,3 +147,32 @@ async def upload_data(request: Request):
 
     print(f"[Upload] Extracted {len(files)} files to {settings.data_root}", flush=True)
     return {"status": "ok", "files": files[:50], "total_files": len(files)}
+
+
+@router.post("/admin/upload-file")
+async def upload_file(request: Request):
+    """Stream a single file to a specific path under /data. Low memory."""
+    import os
+    from app.core.config import settings
+
+    secret = request.headers.get("X-Upload-Secret", "")
+    if secret != "litigia-upload-2026":
+        return {"error": "unauthorized"}, 401
+
+    # Target path from header
+    target = request.headers.get("X-Target-Path", "")
+    if not target:
+        return {"error": "X-Target-Path header required"}, 400
+
+    dest = settings.data_root / target
+    dest.parent.mkdir(parents=True, exist_ok=True)
+
+    size = 0
+    with open(dest, "wb") as f:
+        async for chunk in request.stream():
+            f.write(chunk)
+            size += len(chunk)
+
+    size_mb = size / (1024 * 1024)
+    print(f"[Upload] Saved {target} ({size_mb:.1f}MB)", flush=True)
+    return {"status": "ok", "path": str(dest), "size_mb": round(size_mb, 1)}

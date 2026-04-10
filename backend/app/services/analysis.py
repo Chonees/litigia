@@ -462,6 +462,113 @@ async def _search_cases(caso: str, fuero: str | None, top_k: int = 100) -> list[
 
 
 # ---------------------------------------------------------------------------
+# Layer 1.5 — Quality pre-filter (no LLM calls, pure text pattern matching)
+# ---------------------------------------------------------------------------
+
+def _filter_low_quality(results: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Classify search results as substantive or auto-inadmisible BEFORE sending to readers.
+
+    Returns (substantive_results, auto_classified_inadmisibles).
+
+    SKIP conditions (any one triggers skip):
+    - texto length < 500 chars: too short to contain substantive content
+    - "art. 280" or "articulo 280" AND length < 2000 chars: certiorari dismissal
+    - "desestimase" or "desestimase" (accent variant) AND length < 1500 chars
+    - "desistimiento" or "dase por desistido" AND length < 1500 chars
+    - "caducidad de instancia" AND length < 1500 chars
+
+    All skip conditions use lowercase matching on the texto field.
+    """
+    substantive: list[dict] = []
+    noise: list[dict] = []
+
+    for r in results:
+        texto = r.get("texto", "") or ""
+        texto_lower = texto.lower()
+        length = len(texto)
+        reason = None
+
+        if length < 500:
+            reason = f"texto muy corto ({length} chars)"
+
+        elif (
+            ("art. 280" in texto_lower or "articulo 280" in texto_lower or "artículo 280" in texto_lower)
+            and length < 2000
+        ):
+            reason = f"art. 280 CPCCN ({length} chars) - certiorari sin fundamentacion"
+
+        elif (
+            ("desestimase" in texto_lower or "desestímase" in texto_lower)
+            and length < 1500
+        ):
+            reason = f"desestimacion breve ({length} chars)"
+
+        elif (
+            ("desistimiento" in texto_lower or "dase por desistido" in texto_lower)
+            and length < 1500
+        ):
+            reason = f"desistimiento ({length} chars)"
+
+        elif "caducidad de instancia" in texto_lower and length < 1500:
+            reason = f"caducidad de instancia ({length} chars)"
+
+        if reason:
+            caratula = r.get("caratula", "N/D")[:60]
+            print(
+                f"  [QFilter] SKIP: {caratula} -- {reason}",
+                flush=True,
+            )
+            noise.append(r)
+        else:
+            substantive.append(r)
+
+    total = len(results)
+    n_pass = len(substantive)
+    n_skip = len(noise)
+    print(
+        f"  [QFilter] {n_pass}/{total} passed quality check "
+        f"({n_skip} auto-classified as inadmisible, saved ~${n_skip * 0.03:.2f})",
+        flush=True,
+    )
+    return substantive, noise
+
+
+def _make_auto_inadmisible(fallo: dict, index: int) -> dict:
+    """Build a minimal FalloAnalizado-compatible dict for a pre-filtered fallo."""
+    texto = fallo.get("texto", "") or ""
+    length = len(texto)
+    return {
+        "caratula": fallo.get("caratula", "N/D"),
+        "tribunal": fallo.get("tribunal", "N/D"),
+        "fecha": fallo.get("fecha", "N/D"),
+        "resultado": "inadmisible",
+        "normas_citadas": [],
+        "precedentes_citados": [],
+        "via_procesal": "pre-filtrado automatico",
+        "doctrina_aplicada": "",
+        "hechos_determinantes": "",
+        "prueba_decisiva": "",
+        "quantum": "",
+        "votos": "",
+        "estrategia": "",
+        "argumento_clave": "",
+        "razon_resultado": (
+            f"Pre-filtrado automatico: texto de {length} caracteres. "
+            "Sin contenido sustantivo (ruido procesal: art. 280, desestimacion, "
+            "desistimiento o caducidad). No se envio a agente lector."
+        ),
+        "relevancia_cliente": "Ninguna - fallo sin contenido de fondo.",
+        "score": fallo.get("score", 0.0),
+        "source_id": fallo.get("source_id", fallo.get("id", "")),
+        "agent_thinking": "",
+        "reasoning": "",
+        "_raw_claude_response": "",
+        "_original_texto": texto,
+        "_auto_filtered": True,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Layer 2 — Reader agents (1 per fallo, CONCURRENCY parallel)
 # ---------------------------------------------------------------------------
 
@@ -559,11 +666,18 @@ Tu razonamiento paso a paso...
 
 {el JSON como siempre}"""
 
+        # Dynamic max_tokens based on fallo length — short fallos need less output
+        texto_len = len(fallo.get("texto", ""))
+        if transparency:
+            max_tok = 2000 if texto_len < 3000 else 3500
+        else:
+            max_tok = 1000 if texto_len < 2000 else 1500 if texto_len < 5000 else 2000
+
         response = await _call_with_retry(
             _get_client(),
             cancel=cancel,
             model=model,
-            max_tokens=3500 if transparency else 2000,
+            max_tokens=max_tok,
             messages=[{
                 "role": "user",
                 "content": prompt_text,
@@ -759,9 +873,51 @@ async def run_predictive_analysis_stream(
         }
         return
 
+    # --- Layer 1.25: Enrich chunks with full document text ---
+    from app.services.fulltext_store import enrich_with_fulltext
+    results = enrich_with_fulltext(results)
+
+    # --- Layer 1.5: Quality pre-filter (no LLM, pure text matching) ---
+    substantive_results, auto_noise = _filter_low_quality(results)
+    n_noise = len(auto_noise)
+    if n_noise:
+        yield {
+            "step": "search",
+            "progress": 0,
+            "detail": (
+                f"Pre-filtro: {len(substantive_results)}/{total} fallos sustantivos "
+                f"({n_noise} ruido procesal auto-clasificado, ~${n_noise * 0.03:.2f} ahorrado)"
+            ),
+        }
+
+    # Build pre-classified inadmisibles (no reader cost)
+    auto_inadmisibles = [_make_auto_inadmisible(f, i) for i, f in enumerate(auto_noise)]
+
+    # Only reader-analyze the substantive results
+    results_to_read = substantive_results
+    total_to_read = len(results_to_read)
+
+    if not total_to_read and not auto_inadmisibles:
+        yield {
+            "step": "done",
+            "progress": 100,
+            "result": AnalisisResponse(
+                fallos_analizados=0,
+                porcentaje_favorable=0.0,
+                riesgos=["No se encontraron fallos similares"],
+                recomendacion_estrategica="Sin datos suficientes para análisis.",
+            ).model_dump(),
+        }
+        return
+
     # --- Layer 2: Reader agents (1 per fallo, rate-limited) ---
     rpm = settings.anthropic_rpm
-    yield {"step": "analyze", "progress": 0, "detail": f"Analizando {total} fallos ({rpm} req/min)...", "total_agents": total}
+    yield {
+        "step": "analyze",
+        "progress": 0,
+        "detail": f"Analizando {total_to_read} fallos sustantivos ({rpm} req/min)...",
+        "total_agents": total_to_read,
+    }
 
     all_analyses: list[dict] = []
     completed = 0
@@ -769,7 +925,7 @@ async def run_predictive_analysis_stream(
 
     tasks = [
         _analyze_single(caso, fallo, i, reader_model=tier_config.reader_model, cost_tracker=cost, event_queue=event_queue, cancel=cancel, transparency=transparency)
-        for i, fallo in enumerate(results)
+        for i, fallo in enumerate(results_to_read)
     ]
 
     # Run tasks and drain agent events
@@ -782,7 +938,7 @@ async def run_predictive_analysis_stream(
             for task in pending:
                 task.cancel()
             cancelled = True
-            yield {"step": "cancelled", "progress": int(completed / total * 100), "detail": f"Cancelado. {completed}/{total} fallos procesados. Gasto: ${cost.total_cost_usd:.4f}", "cost_usd": cost.total_cost_usd}
+            yield {"step": "cancelled", "progress": int(completed / total_to_read * 100) if total_to_read else 100, "detail": f"Cancelado. {completed}/{total_to_read} fallos procesados. Gasto: ${cost.total_cost_usd:.4f}", "cost_usd": cost.total_cost_usd}
             break
 
         # Drain all queued agent events
@@ -800,11 +956,11 @@ async def run_predictive_analysis_stream(
             if analysis is not None:
                 all_analyses.append(analysis)
             completed += 1
-            pct = int(completed / total * 100)
+            pct = int(completed / total_to_read * 100) if total_to_read else 100
             yield {
                 "step": "analyze",
                 "progress": pct,
-                "detail": f"{completed}/{total} fallos leídos ({len(all_analyses)} con resultado)",
+                "detail": f"{completed}/{total_to_read} fallos leídos ({len(all_analyses)} con resultado)",
                 "cost_usd": cost.total_cost_usd,
             }
 
@@ -816,11 +972,25 @@ async def run_predictive_analysis_stream(
         agent_event = event_queue.get_nowait()
         yield {"step": "agent_event", **agent_event, "cost_usd": cost.total_cost_usd}
 
+    # Merge auto-classified inadmisibles into the full analyses list so the
+    # synthesizer stats (total_analizados, inadmisibles) are accurate.
+    # They are appended AFTER the reader results so the top fallos sent to the
+    # synthesizer are the substantive ones, not noise.
+    all_analyses.extend(auto_inadmisibles)
+    if auto_inadmisibles:
+        print(
+            f"  [QFilter] Merged {len(auto_inadmisibles)} pre-filtered inadmisibles "
+            f"into final analyses (total: {len(all_analyses)})",
+            flush=True,
+        )
+
     # --- Layer 3: Synthesizer ---
     yield {"step": "synthesize", "progress": 100, "detail": f"Generando informe estratégico...", "cost_usd": cost.total_cost_usd}
-    yield {"step": "agent_event", "type": "agent_status", "agent_id": -1, "status": "active", "thinking": f"Sintetizando {len(all_analyses)} análisis...\nModelo: {tier_config.synth_model}\nCruzando patrones, estrategias, normas y riesgos...", "cost_usd": cost.total_cost_usd}
+    yield {"step": "agent_event", "type": "agent_status", "agent_id": -1, "status": "active", "thinking": f"Sintetizando {len(all_analyses)} analisis ({len(auto_inadmisibles)} pre-filtrados)...\nModelo: {tier_config.synth_model}\nCruzando patrones, estrategias, normas y riesgos...", "cost_usd": cost.total_cost_usd}
 
-    synthesis = await _synthesize(caso, all_analyses, synth_model=tier_config.synth_model, cost_tracker=cost, cancel=cancel)
+    # Only pass substantive analyses to the synthesizer — not the noise
+    synthesis_input = [a for a in all_analyses if not a.get("_auto_filtered")]
+    synthesis = await _synthesize(caso, synthesis_input, synth_model=tier_config.synth_model, cost_tracker=cost, cancel=cancel)
 
     # Build COMPLETE synthesizer thinking — no truncation, full transparency
     import json as _json
@@ -882,7 +1052,7 @@ async def run_predictive_analysis_stream(
             best_desfav = fa
 
     response = AnalisisResponse(
-        fallos_analizados=len(all_analyses),
+        fallos_analizados=len(all_analyses),  # includes pre-filtered inadmisibles
         favorables=n_fav,
         desfavorables=n_desfav,
         parciales=n_parcial,

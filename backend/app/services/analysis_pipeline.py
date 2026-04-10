@@ -144,8 +144,8 @@ async def run_predictive_analysis_stream(
             agent_event = event_queue.get_nowait()
             yield {"step": "agent_event", **agent_event, "cost_usd": cost.total_cost_usd}
 
-        # Short timeout: drain stream tokens frequently for live feed
-        done, pending = await asyncio.wait(pending, timeout=0.1, return_when=asyncio.FIRST_COMPLETED)
+        # Wait for next task (with timeout to keep checking cancel)
+        done, pending = await asyncio.wait(pending, timeout=0.5, return_when=asyncio.FIRST_COMPLETED)
         for future in done:
             try:
                 analysis = future.result()

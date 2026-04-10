@@ -11,12 +11,6 @@ export interface AgentState {
   resultado?: string;
 }
 
-export interface LiveFeedEntry {
-  agentId: number;
-  text: string;
-  timestamp: number;
-}
-
 export interface SwarmProgress {
   step: "search" | "analyze" | "synthesize" | "done";
   progress: number;
@@ -26,7 +20,6 @@ export interface SwarmProgress {
   costUsd: number;
   totalAgents: number;
   synthThinking?: string;
-  liveFeed?: LiveFeedEntry[];
 }
 
 // ── Layout ───────────────────────────────────────────────────────
@@ -309,19 +302,24 @@ function ThinkingPanel({ agent, onClose, isMobile }: {
   );
 }
 
-// ── Live Feed (real-time token stream from all agents) ──────────
+// ── Activity Log (shows agent results as they complete) ─────────
 
-function LiveFeed({ entries }: { entries: LiveFeedEntry[] }) {
+const RESULTADO_LABELS: Record<string, { text: string; color: string }> = {
+  favorable: { text: "FAVORABLE", color: "#2E7D32" },
+  desfavorable: { text: "DESFAVORABLE", color: "#C62828" },
+  parcial: { text: "PARCIAL", color: "#9A7B2D" },
+  inadmisible: { text: "INADMISIBLE", color: "#8C8579" },
+};
+
+function ActivityLog({ agents }: { agents: AgentState[] }) {
   const ref = useRef<HTMLDivElement>(null);
+  const doneAgents = agents.filter(a => a.status === "done" && a.resultado);
 
   useEffect(() => {
     if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
-  }, [entries]);
+  }, [doneAgents.length]);
 
-  if (!entries || entries.length === 0) return null;
-
-  // Sort by most recent update
-  const sorted = [...entries].sort((a, b) => b.timestamp - a.timestamp);
+  if (doneAgents.length === 0) return null;
 
   return (
     <div style={{
@@ -329,63 +327,47 @@ function LiveFeed({ entries }: { entries: LiveFeedEntry[] }) {
       borderRadius: 8,
       padding: "10px 14px",
       marginTop: 12,
-      maxHeight: 180,
+      maxHeight: 200,
       overflowY: "auto",
       fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
       fontSize: 11,
-      lineHeight: 1.6,
+      lineHeight: 1.7,
     }} ref={ref}>
-      <div style={{
-        display: "flex", alignItems: "center", gap: 6,
-        marginBottom: 8, paddingBottom: 6,
-        borderBottom: "1px solid rgba(154, 123, 45, 0.2)",
-      }}>
-        <div style={{
-          width: 6, height: 6, borderRadius: "50%",
-          background: GOLD_LIGHT,
-          animation: "feedPulse 1.2s ease-in-out infinite",
-        }} />
-        <span style={{ color: GOLD_LIGHT, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-          Live feed
-        </span>
-      </div>
-      {sorted.map((entry) => {
-        // Truncate to last ~120 chars for readability
-        const text = entry.text.length > 120
-          ? entry.text.slice(-120)
-          : entry.text;
-        // Clean JSON artifacts for display
-        const clean = text
-          .replace(/[{}"]/g, "")
-          .replace(/,\s*/g, " | ")
-          .replace(/\n/g, " ")
-          .trim();
-        if (!clean) return null;
+      {doneAgents.map((agent) => {
+        const r = RESULTADO_LABELS[agent.resultado || ""] || { text: agent.resultado || "?", color: "#8C8579" };
+        // Extract first meaningful line from thinking (skip header-like lines)
+        const lines = (agent.thinking || "").split("\n").filter(l => l.trim());
+        const detail = lines.find(l =>
+          l.startsWith("Doctrina:") || l.startsWith("Argumento") || l.startsWith("Resultado:")
+        ) || lines[2] || "";
+        const cleanDetail = detail.replace(/^[^:]+:\s*/, "").slice(0, 80);
+
         return (
-          <div key={entry.agentId} style={{
-            marginBottom: 4,
-            animation: "feedSlideIn 0.2s ease-out",
+          <div key={agent.id} style={{
+            marginBottom: 3,
+            animation: "logSlideIn 0.25s ease-out",
+            display: "flex",
+            alignItems: "baseline",
+            gap: 0,
           }}>
-            <span style={{ color: GOLD_LIGHT, fontWeight: 600 }}>
-              A{entry.agentId + 1}
+            <span style={{ color: GOLD_LIGHT, fontWeight: 600, minWidth: 28, flexShrink: 0 }}>
+              A{agent.id + 1}
             </span>
-            <span style={{ color: "rgba(154, 123, 45, 0.4)", margin: "0 6px" }}>
-              {"\u25B8"}
+            <span style={{ color: r.color, fontWeight: 700, minWidth: 100, flexShrink: 0 }}>
+              {r.text}
             </span>
-            <span style={{ color: "#A0A0A0" }}>
-              {clean}
-            </span>
+            {cleanDetail && (
+              <span style={{ color: "#707070", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {cleanDetail}
+              </span>
+            )}
           </div>
         );
       })}
       <style>{`
-        @keyframes feedPulse {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 1; }
-        }
-        @keyframes feedSlideIn {
-          from { opacity: 0; transform: translateX(-4px); }
-          to { opacity: 1; transform: translateX(0); }
+        @keyframes logSlideIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>
@@ -788,9 +770,9 @@ export function AgentSwarmPanel({ swarmProgress }: { swarmProgress: SwarmProgres
       {/* SVG Graph + Thinking panel */}
       {graphContent}
 
-      {/* Live feed — token stream from all active agents */}
-      {step === "analyze" && swarmProgress?.liveFeed && swarmProgress.liveFeed.length > 0 && (
-        <LiveFeed entries={swarmProgress.liveFeed} />
+      {/* Activity log — agent results as they complete */}
+      {(step === "analyze" || step === "synthesize") && (
+        <ActivityLog agents={agents} />
       )}
 
       {/* Progress */}

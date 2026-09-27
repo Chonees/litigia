@@ -24,7 +24,7 @@ from datasets import load_dataset
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.core.config import settings
+from scripts.config import settings
 from scripts.normalizers.saij import normalize_saij_row
 from scripts.normalizers.schema import LitigiaDocument
 
@@ -242,10 +242,7 @@ def main():
         show_status()
         return
 
-    result = sync_saij(dry_run=args.dry_run)
-
-    if not args.dry_run and result.get("new_written", 0) > 0:
-        print(f"\n  Next step: python -m scripts.ingest_embeddings --incremental")
+    sync_saij(dry_run=args.dry_run)
 
 
 if __name__ == "__main__":

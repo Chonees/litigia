@@ -14,12 +14,12 @@ class LitigiaDocument:
 
     # Identity
     id: str                          # deterministic hash of source + source_id
-    source: str                      # "saij" | "jurisgpt"
+    source: str                      # "saij" | "csjn" | "pjn_tribunales"
     source_id: str                   # original ID in the source dataset
 
     # Core content
     texto: str                       # full text of the ruling/document
-    sumario: str = ""                # summary (SAIJ) or AI-generated (JurisGPT)
+    sumario: str = ""                # summary (SAIJ)
 
     # Metadata — case identification
     caratula: str = ""               # "García c/ Pérez s/ daños y perjuicios"

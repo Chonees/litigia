@@ -1,12 +1,10 @@
-"""Download, normalize, and store legal datasets from HuggingFace.
+"""Download and normalize the SAIJ dataset from HuggingFace.
 
 Writes cleaned JSONL to D:/litigia-data/clean/ — one file per source.
 Supports resume: if interrupted, re-run and it picks up from the last checkpoint.
 
 Usage:
-    python -m scripts.download_datasets                    # both datasets
-    python -m scripts.download_datasets --source saij      # only SAIJ
-    python -m scripts.download_datasets --source jurisgpt  # only JurisGPT
+    python -m scripts.download_datasets                    # SAIJ
     python -m scripts.download_datasets --limit 5000       # cap documents
     python -m scripts.download_datasets --stats            # show stats only
 """
@@ -22,9 +20,8 @@ from datasets import load_dataset
 # Add parent to path so normalizers are importable
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.core.config import settings
+from scripts.config import settings
 from scripts.normalizers.saij import normalize_saij_row
-from scripts.normalizers.jurisgpt import normalize_jurisgpt_row
 from scripts.normalizers.schema import LitigiaDocument
 
 
@@ -193,44 +190,6 @@ def download_saij(limit: int | None = None) -> dict:
     return stats
 
 
-def download_jurisgpt(limit: int | None = None) -> dict:
-    """Download and normalize JurisGPT dataset."""
-    settings.ensure_dirs()
-    output = settings.data_clean / "jurisgpt.jsonl"
-    tracker = ProgressTracker("jurisgpt", settings.data_logs)
-
-    print(f"\n{'='*60}")
-    print(f"JurisGPT — harpomaxx/jurisgpt")
-    print(f"Output: {output}")
-    print(f"{'='*60}")
-
-    # Small dataset, no need for streaming
-    ds = load_dataset(settings.jurisgpt_dataset, split="train")
-    print(f"  Loaded {len(ds)} rows")
-
-    with open(output, "w", encoding="utf-8") as f:
-        for row in ds:
-            tracker.processed += 1
-
-            if limit and tracker.written >= limit:
-                break
-
-            try:
-                doc = normalize_jurisgpt_row(row)
-                if doc:
-                    _write_doc(f, doc)
-                    tracker.written += 1
-                else:
-                    tracker.skipped += 1
-            except Exception as e:
-                tracker.errors += 1
-                print(f"  ERROR: {e}")
-
-    stats = tracker.save_stats()
-    print(f"\n  JurisGPT done: {stats}")
-    return stats
-
-
 def show_stats() -> None:
     """Display stats from previous runs."""
     print(f"\n{'='*60}")
@@ -258,7 +217,6 @@ def show_stats() -> None:
 
 def main():
     parser = argparse.ArgumentParser(description="LITIGIA Data Pipeline")
-    parser.add_argument("--source", choices=["saij", "jurisgpt"], help="Download only this source")
     parser.add_argument("--limit", type=int, help="Max documents per source")
     parser.add_argument("--stats", action="store_true", help="Show stats from previous runs")
     args = parser.parse_args()
@@ -270,15 +228,10 @@ def main():
     print(f"\nLITIGIA Data Pipeline")
     print(f"Data directory: {settings.data_root}")
 
-    if args.source != "jurisgpt":
-        download_saij(limit=args.limit)
-
-    if args.source != "saij":
-        download_jurisgpt(limit=args.limit)
+    download_saij(limit=args.limit)
 
     print(f"\n{'='*60}")
     print(f"Pipeline complete. Run 'python -m scripts.download_datasets --stats' for details.")
-    print(f"Next step: python -m scripts.ingest_embeddings")
     print(f"{'='*60}")
 
 

@@ -18,7 +18,6 @@ from pathlib import Path
 
 import httpx
 
-VULTR_API_KEY = "77J53Q2Q2UKGDRJO2JQPKPQXWAJUXHMWBANQ"
 VULTR_API = "https://api.vultr.com/v2"
 PLAN = "vc2-1c-1gb"  # $5/mo = $0.007/h
 OS_ID = 2284  # Ubuntu 24.04 LTS x64
@@ -43,11 +42,11 @@ JURISDICTION_SPLITS = [
 STATE_FILE = Path("D:/litigia-data/logs/parallel_deploy_state.json")
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from app.core.config import settings
+from scripts.config import settings
 
 
 def _headers():
-    return {"Authorization": f"Bearer {VULTR_API_KEY}", "Content-Type": "application/json"}
+    return {"Authorization": f"Bearer {settings.vultr_api_key}", "Content-Type": "application/json"}
 
 
 def _cloud_init(anthropic_key: str, jurisdictions: list[str], server_id: int) -> str:
@@ -83,9 +82,6 @@ class Settings(BaseSettings):
     data_root: Path = Path("/data")
     data_clean: Path = Path("/data/clean")
     data_logs: Path = Path("/data/logs")
-    collection_name: str = "jurisprudencia"
-    embedding_model: str = "BAAI/bge-m3"
-    chunk_max_chars: int = 4000
 
 settings = Settings()
 PYEOF
@@ -166,7 +162,7 @@ def get_scraper_code() -> str:
 
     # Replace imports to use minimal versions
     code = code.replace(
-        "from app.core.config import settings",
+        "from scripts.config import settings",
         "from config_minimal import settings",
     )
     code = code.replace(

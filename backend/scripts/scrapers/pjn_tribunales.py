@@ -34,7 +34,7 @@ import httpx
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from app.core.config import settings
+from scripts.config import settings
 from scripts.normalizers.schema import LitigiaDocument
 
 BASE = "https://www.csjn.gov.ar/tribunales-federales-nacionales"

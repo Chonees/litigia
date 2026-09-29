@@ -1,0 +1,3083 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta charset="utf-8">
+    <meta name="robots" content="noindex, nofollow"/>
+    <meta name="description" content="Sitio web de la Corte Suprema de Justicia de la NaciÃ³n" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://www.csjn.gov.ar/css2/bootstrap.min.css" type="text/css"/>
+    <link rel="stylesheet" href="https://www.csjn.gov.ar/css/all.css" type="text/css"/>
+    <link rel="stylesheet" href="https://www.csjn.gov.ar/css2/jquery-ui.min.css" />
+    <link rel="stylesheet" href="https://www.csjn.gov.ar/css/csjnper7.css" type="text/css"/>
+    <link rel="stylesheet" href="https://www.csjn.gov.ar/css/tiny-slider.css" type="text/css">
+    <link rel="stylesheet" href="https://www.csjn.gov.ar/css/icono-arg.css" type="text/css">
+    <link rel="stylesheet" href="https://www.csjn.gov.ar/css/iconos.css" type="text/css">
+    <link rel="stylesheet" href="https://www.csjn.gov.ar/css/animate.css" type="text/css">
+    <link rel="stylesheet" href="https://www.csjn.gov.ar/DataTables/dataTables.bootstrap4.min.css" type="text/css">
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="shortcut icon" type="image/x-icon"  href="https://www.csjn.gov.ar/imagenes/faviconCSJN.ico"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.8.0/css/all.min.css" type="text/css"/>
+    <link rel="stylesheet" href="css/supersized.css" type="text/css" media="screen" />
+    <link rel="stylesheet" href="css/supersized.shutter.css" type="text/css" media="screen" />
+
+    <style>
+        .title-complementary .txt{
+            font-weight:bold;
+        }
+        @media screen and (min-width: 980px) {
+            .galeria {margin-top: 35px;border-top: 1px solid #E2E2E2;padding-top: 35px;margin-bottom: 21px!important;width: 90%;margin: 0 auto;}
+            .menugal {width: 90%;margin: 0 auto;width: 100%;}
+            .fotogaleria {clear: both;height: auto;position: relative;margin: 0 auto;width: 100%;}
+            .fotogaleria .scrollGaleria {overflow: hidden;}
+            .fotogaleria #galeria div {background: url(../../imgs-2015/loading.gif)#000;background-position-x: 0%;background-position-y: 0%;background-repeat: repeat;background-size: auto;background-repeat: no-repeat;background-position: center;background-size: 40%;}
+            .fotogaleria .scrollGaleria .scrollerGaleria img {float: left;margin-left: 0px !important;margin-top: 0px !important;width: 100%;}
+            .btngal {position: absolute;top: 50%;left: 0px;display: inline-block;width: 100%;margin-top: -17px;z-index: 10;height: 8px;}
+            .btnampgal {position: absolute;top: -41px;right: 9.5%;right: 0%;}
+            .btngalrigth {float: right;margin-right: 20px;}
+            .btngalleft {float: left;margin-left: 20px;}
+            #full_screen_player a#close-gallery{width:40px;height:40px;text-decoration:none;}
+            #full_screen_player a#close-gallery:hover{text-decoration:none;}
+            .fotogaleria #container-video embed, .interior-nota .fotogaleria #container-video iframe,.interior-nota .fotogaleria #container-video object{position: absolute;top: 0;left: 0;width: 100%!important;height: 100%!important;margin-left: 0px!important;}
+            .fotogaleria div#container-video {    z-index: 10;    position: relative;    padding-bottom: 56.25%;    padding-top: 30px;    height: 0;    overflow: hidden;}
+
+        }
+        @media screen and (max-width: 979px) and (min-width: 768px){
+            .fotogaleria {clear: both;height: auto;position: relative;margin: 0 auto;background: url("../../imgs-2015/loading.gif")#000;background-repeat: no-repeat;background-position: center;background-size: 40%;width: 100%;}
+            #videotitu{display:none!important}
+            .fotogaleria .scrollGaleria{ overflow:hidden; }
+            .fotogaleria .scrollGaleria .scrollerGaleria img{float: left;margin-left: 0px!important;margin-top: 0px!important;width: 100%; }
+            .fotogaleria .scrollGaleria .scrollerGaleria a img{ border:none; }
+            .flechavid{ width: 30px;  position: absolute; top: -2px;  left: 60px; display: none;}
+            .flechagal{ width: 30px;  position: absolute; top: -2px;  left: 205px;  display: none;}
+            .btngal{  position: absolute;top: 50%;left: 0px;display: inline-block;width: 100%;margin-top: -17px;z-index: 10;height: 8px;}
+            .btngalleft{float:left;margin-left: 20px;}  
+            .btngalrigth{float:right;margin-right: 20px; }
+            .btnampgal{position: absolute;top: -41px;right: 5.5%;right: 0px;}
+            .btn-bampliar{float: left;font-size: 13px;color: #CCCCCC;margin-left: 20px;/* margin-right: 20px; */}
+            .btn-bampliar a{  color: #AAAAAA;}
+            .fotogaleria #container-video embed, .interior-nota .fotogaleria #container-video iframe,.interior-nota .fotogaleria #container-video object{position: absolute;top: 0;left: 0;width: 100%!important;height: 100%!important;margin-left: 0px!important;}
+            .fotogaleria div#container-video {    z-index: 10;    position: relative;    padding-bottom: 56.25%;    padding-top: 30px;    height: 0;    overflow: hidden;}   
+        }
+        /* TABLET y CELULARES */
+        @media screen and (max-width: 767px){
+            .fotogaleria {clear: both;height: auto;position: relative;margin: 0 auto;background: url("../../imgs-2015/loading.gif")#000;background-repeat: no-repeat;background-position: center;background-size: 40%;width: 100%;}
+            .fotogaleria #container-video embed, .interior-nota .fotogaleria #container-video iframe,.interior-nota .fotogaleria #container-video object{    position: absolute;    top: 0;    left: 0;        width: 100%!important;        height: 100%!important;}
+            .fotogaleria div#container-video {    z-index: 10;    position: relative;    padding-bottom: 56.25%;    padding-top: 30px;    height: 0;    overflow: hidden;}     
+            #videotitu{display:none!important}
+            .fotogaleria .scrollGaleria{ overflow:hidden; }
+            .fotogaleria .scrollGaleria .scrollerGaleria img{float: left;margin-left: 0px!important;margin-top: 0px!important;width: 100%; }
+            .fotogaleria .scrollGaleria .scrollerGaleria a img{ border:none; }
+            .flechavid{ width: 30px;  position: absolute; top: -2px;  left: 60px; display: none;}
+            .flechagal{ width: 30px;  position: absolute; top: -2px;  left: 205px;  display: none;}
+            .btngal{  position: absolute;top: 50%;left: 0px;display: inline-block;width: 100%;margin-top: -17px;}
+            .btngalleft{float:left;margin-left: 20px;}  
+            .btngalrigth{float:right;margin-right: 20px; }
+            .btnampgal{ position: absolute; top: -35px; right: 0px;}
+            .btn-bampliar{float: left;font-size: 13px;color: #CCCCCC;margin-left: 20px;}
+            .btn-bampliar a{  color: #AAAAAA;}
+        }
+        .menugal .botones {
+            display: none;
+            float: left;
+            font-family: "Raleway";
+            font-size: 16px;
+            color: #474747;
+            height: 19px;
+            margin-bottom: 22px;
+            margin-right: 26px;
+            border-right: 1px solid #DFDFDF;
+            padding-right: 26px;
+            line-height: 18px;
+            text-transform: uppercase;
+            font-family: inherit;
+        }   
+        .menugal .botones:last-child {
+            border: none;
+        }
+    </style>
+
+    <script src='js/jquery/2.0.0/jquery.min.js' type='text/javascript'></script>
+    <script type="text/javascript" src="https://www.csjn.gov.ar/js2/popper.min.js"></script>
+    <script type="text/javascript" src="https://www.csjn.gov.ar/js2/bootstrap.min.js"></script>
+    <script type="text/javascript" src="https://www.csjn.gov.ar/js/tiny-slider.js"></script>
+    <script type="text/javascript" src="https://www.csjn.gov.ar/js2/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="https://www.csjn.gov.ar/js/datepickerconfes.js"></script>
+    <script type="text/javascript" src="https://www.csjn.gov.ar/DataTables/datatables.min.js"></script>
+    <script type="text/javascript" src="https://www.csjn.gov.ar/DataTables/dataTables.bootstrap4.min.js"></script>
+    <script type="text/javascript" src="https://www.csjn.gov.ar/js2/jquery.validate.min.js"></script>
+    <script type="text/javascript" src="https://www.csjn.gov.ar/js2/additional-methods.min.js"></script>
+    <script type="text/javascript" src="https://www.csjn.gov.ar/js2/jquery.validator.messagesRules.js"></script>
+    <script type="text/javascript" src="https://www.csjn.gov.ar/js/utiles.js"></script>
+    <script type="text/javascript" src="js/supersized.3.2.7.js"></script>
+    <script type="text/javascript" src="js/supersized/theme/supersized.shutter.js?v=4"></script>
+    <script type="text/javascript" src="js/jquery-ui/jquery-ui.js"></script>
+    <script type="text/javascript" src="js/jplayer/jquery.jplayer.min.js"></script>
+    <script type="text/javascript" src="js/jplayer/add-on/jquery.jplayer.inspector.js"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-MCRLQ836LB"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-MCRLQ836LB');
+     </script>
+    <title>Corte Suprema de Justicia de la Naci&oacute;n</title>
+</head>
+<body>
+<style>
+
+.container-adjust-col-left {
+  width: 70%;
+  display: inline-block;
+}
+
+/* Celulares (menos de 768px) */
+@media only screen and (max-width: 767px) {
+  .container-adjust-col-left {
+    width: 100%;
+    display: inline-block;
+  }
+}
+
+/* Tablets (entre 768px y 1023px) */
+@media only screen and (min-width: 768px) and (max-width: 1023px) {
+  .container-adjust-col-left {
+    width: 60%;
+    display: inline-block;
+  }
+}
+
+/* Escritorio (1024px en adelante) */
+@media only screen and (min-width: 1024px) {
+  .container-adjust-col-left {
+    width: 75%;
+    display: inline-block;
+  }
+}
+</style>
+<!-- --------------------- -->  
+<!-- GALERIA DE IMAGENES-- --> 
+<!-- --------------------- -->  
+
+<script>
+
+	function start_supersized(totalContent,inicio) {
+		$.supersized({
+			
+			// Functionality
+			slideshow               :   1,			// Slideshow on/off
+			autoplay				:	0,			// Slideshow starts playing automatically
+			start_slide             :   inicio,		// Start slide (0 is random)
+			stop_loop				:	0,			// Pauses slideshow on last slide
+			random					: 	0,			// Randomize slide order (Ignores start slide)
+			slide_interval          :   3000,		// Length between transitions
+			transition              :   6, 			// 0-None, 1-Fade, 2-Slide Top, 3-Slide Right, 4-Slide Bottom, 5-Slide Left, 6-Carousel Right, 7-Carousel Left
+			transition_speed		:	1000,		// Speed of transition
+			new_window				:	1,			// Image links open in new window/tab
+			pause_hover             :   0,			// Pause slideshow on hover
+			keyboard_nav            :   1,			// Keyboard navigation on/off
+			performance				:	1,			// 0-Normal, 1-Hybrid speed/quality, 2-Optimizes image quality, 3-Optimizes transition speed // (Only works for Firefox/IE, not Webkit)
+			image_protect			:	0,			// Disables image dragging and right click with Javascript
+													   
+			// Size & Position						   
+			min_width		        :   0,			// Min width allowed (in pixels)
+			min_height		        :   0,			// Min height allowed (in pixels)
+			vertical_center         :   1,			// Vertically center background
+			horizontal_center       :   1,			// Horizontally center background
+			fit_always				:	1,			// Image will never exceed browser width or height (Ignores min. dimensions)
+			fit_portrait         	:   1,			// Portrait images will not exceed browser height
+			fit_landscape			:   1,			// Landscape images will not exceed browser width
+													   
+			// Components							
+			slide_links				:	'blank',	// Individual links for each slide (Options: false, 'num', 'name', 'blank')
+			thumb_links				:	0,			// Individual thumb links for each slide
+			thumbnail_navigation    :   0,			// Thumbnail navigation
+			slides 					:   totalContent
+										,
+			// Theme Options			   
+			progress_bar			:	1,			// Timer for each slide							
+			mouse_scrub				:	1
+			
+		});		
+		//var supersized = document.getElementById('supersized');
+		/*var hammertime = new Hammer(supersized);
+	
+		hammertime.on('swipeleft swiperight', function(ev) {
+			if(ev.type == 'swipeleft'){
+				$('#nextslide').click();
+			}else{
+				$('#prevslide').click();
+			}
+		});*/
+	};
+    
+	
+	function runGal(carousel_images,auto){
+		auto = typeof auto !== 'undefined' ? auto : false;
+		var totalContent = [];
+		
+	    $.each(carousel_images, function(index, val) {
+			array_push = {
+				"image": val[0].image,
+				"thumb": val[0].thumb,
+				"title": decodeURIComponent(escape(val[0].title)),
+				"captions": decodeURIComponent(escape(val[0].captions))
+			};
+            totalContent.push(array_push)
+		});
+		if(auto){
+			start_supersized(totalContent,1);
+		}else{
+			start_supersized(totalContent,1);
+		}
+		//CERRAR GALERIA
+		$("#full_screen_player a#close-gallery").click(function(){
+			$("#full_screen_player").fadeOut();
+			$("#supersized").fadeOut();
+			$('div#share-options-fb-tw').hide();		
+		})
+
+		$("#full_screen_player a#nextslide").click(function(){
+			$('div#share-options-fb-tw').hide();
+		})
+		$("#full_screen_player a#prevslide").click(function(){
+			$('div#share-options-fb-tw').hide();
+		})			
+	}
+	
+	function getGal(gid,type,auto){
+		auto = typeof auto !== 'undefined' ? auto : false;
+		$('#supersized-loader').empty().remove();
+		$('#supersized').empty().remove();
+        $("#thumb-list").remove();		
+		$('#hzDownscaled').empty().remove();
+		$('div#share-options-fb-tw').empty().remove();	
+		$('body').append('<div id="share-options-fb-tw" class="share-options-total"><div id="share-options"><div class="option" id="share-galeria">Compartir galer&iacute;a</div><div class="close-share">X</div><div class="option" id="share-foto">Compartir foto</div></div></div><div id="supersized-loader"></div><ul id="supersized"></ul>');
+		
+		$("#full_screen_player").fadeIn();
+		$("#supersized").fadeIn();	
+			
+		var carousel_images = [];
+		$.ajax({
+			type: "GET",
+			url: "js/getGal.php",
+			data: "acc=show&gid="+gid+"&type="+type,
+			success: function(msg)
+			{
+				var k = eval('(' + msg + ')');
+				for (var i = 0; i < k.length; i++) {
+					carousel_images[i] = [{"image":k[i].aImage,"title":unescape(encodeURIComponent(k[i].aTitles)),"thumb":k[i].aThumb,"captions":k[i].aCaptions}];
+				}
+								runGal(carousel_images,auto);
+			}
+		});
+	}
+	$(document).ready(function(){
+		var shareText = "";
+		var shareLink = "";
+		var shareImg = 0;
+		var shareRed = "";
+		var tipoRed = "";
+		var esconder = "";
+			$('#full_screen_player .tw').click(function(ev){
+			ev.preventDefault();
+			clearTimeout(esconder);
+			if(tipoRed == "tw" && $('div#share-options-fb-tw').css('display') == 'block'){
+				$('div#share-options-fb-tw').hide();
+			}else{
+				shareImg = $("#supersized li.activeslide").index();
+				shareText = $('#full_screen_player .social-share .tw a').attr('data-title');
+				shareLink = $('#full_screen_player .social-share .tw a').attr('data-url');
+				shareRed = "https://twitter.com/intent/tweet?text=";
+				tipoRed = "tw";
+				$('div#share-options').css('right','40px');
+				$('div#share-options-fb-tw').show();
+			}
+			esconder = setTimeout(function(){ $('div#share-options-fb-tw').hide(); }, 5000);
+		})
+
+		$('#full_screen_player .fb').click(function(ev){
+			ev.preventDefault();
+			clearTimeout(esconder);
+			if(tipoRed == "fb" && $('div#share-options-fb-tw').css('display') == 'block'){
+				$('div#share-options-fb-tw').hide();
+			}else{
+				shareImg = $("#supersized li.activeslide").index();
+				//shareText = $('#full_screen_player .social-share .fb a').attr('data-title');
+				shareLink = $('#full_screen_player .social-share .fb a').attr('data-url');
+				shareRed = "http://www.facebook.com/sharer/sharer.php?u=";
+				tipoRed = "fb";
+				$('div#share-options').css('right','30px');
+				$('div#share-options-fb-tw').show();
+			}
+			esconder = setTimeout(function(){ $('div#share-options-fb-tw').hide(); }, 5000);
+			
+		})
+
+		$(document).on('click','.close-share',function(ev){
+			ev.preventDefault();
+			$('div#share-options-fb-tw').hide();
+		})
+
+		$(document).on('click','#share-galeria',function(ev){
+			var redURL = '';
+			if(tipoRed == "tw"){
+				window.open(shareRed+shareText+'&url='+shareLink,'_Blank');
+			}else{
+				window.open(shareRed+shareLink,'_Blank');
+			}
+			$('div#share-options-fb-tw').hide();
+		})
+
+		$(document).on('click','#share-foto',function(ev){
+			ev.preventDefault();
+			if(shareImg > 0){
+				var fid = encodeURIComponent('&fid='+shareImg);
+				if(tipoRed == "tw"){
+					window.open(shareRed+shareText+'&url='+shareLink+fid,'_Blank');
+				}else{
+					window.open(shareRed+shareLink+fid,'_Blank');
+				}
+			}else{
+				if(tipoRed == "tw"){
+					window.open(shareRed+shareText+'&url='+shareLink,'_Blank');
+				}else{
+					window.open(shareRed+shareLink,'_Blank');
+				}
+			}
+			$('div#share-options-fb-tw').hide();
+		})
+
+
+	})
+</script>
+
+<!-- ----------------------- -->  
+<!-- FIN GALERIA DE IMAGENES --> 
+<!-- ----------------------- -->
+
+<!--PARA FULLSCREN PLAYER DE IMAGENES Y OTRAS COSAS-->
+        
+<div id="full_screen_player">
+	<!--Thumbnail Navigation-->
+	<div id="prevthumb"></div>
+	<div id="nextthumb"></div>
+	
+	<!--Cerrar-->            
+	<a id="close-gallery" class="close-gallery">X</a>
+
+	<!--Arrow Navigation-->
+	<a id="prevslide" class="load-item"></a>
+	<a id="nextslide" class="load-item"></a>
+	
+	<div id="thumb-tray" class="load-item">
+		<div id="thumb-back"></div>
+		<div id="thumb-forward"></div>
+	</div>
+	
+	<!--Time Bar-->
+	<div id="progress-back" class="load-item">
+		<div id="progress-bar"></div>
+	</div>
+	
+	<!--Control Bar-->
+	<div id="controls-wrapper" class="load-item">
+		<div id="controls">
+			
+			<a id="play-button"><img id="pauseplay" src="imgs-2015/supersized/pause.png"/></a>
+		
+			<!--Slide counter-->
+			<div id="slidecounter">
+				<span class="slidenumber"></span> / <span class="totalslides"></span>
+			</div>
+			
+			<!--CONTAINERS--> 
+			<div class="container-text-captions">
+				<!--Slide Title displayed here-->  
+				<div id="titulo-galeria"></div>
+				<!--Slide captions displayed here-->
+				<div id="slidecaption"></div>
+			</div>
+
+			<!--Thumb Tray button-->
+			<a id="tray-button"><img id="tray-arrow" src="imgs-2015/supersized/button-tray-up.png"/></a>
+			
+			<!--Navigation-->
+			<ul id="slide-list"></ul>
+			
+		</div>
+	</div>
+</div>
+<header>
+	<!--NODO: csjn130.csjn.gov.ar -->
+	<!--URL: http://www.csjn.gov.ar/ -->
+	<!-- row encabezado 1 -->
+	<div class="container">
+		<div class="row align-items-center">
+			<div class="col-12 col-sm-12 col-lg-5">
+				<div class="pt-2 pb-2 pr-1">
+					<a href="https://www.csjn.gov.ar/"> <img class="img-fluid"
+						src="https://www.csjn.gov.ar/imagenes/logo_CSJN_top5.png" alt="Logo CSJN" /></a>
+				</div>
+			</div>
+			<div class="col-12 col-sm-12 col-lg-7">
+				<ul id="menuSuperior"
+					class="nav d-none d-lg-flex align-items-start justify-content-end border-lg-top pt-3">
+
+					<li class="nav-item"><a class="nav-link" href="https://www.csjn.gov.ar/preguntas-frecuentes">Preguntas frecuentes</a></li>
+
+					<li class="nav-item "><a class="nav-link" href="https://www.csjn.gov.ar/acceso-informacion-publica">Acceso a la
+							informaci&oacute;n p&uacute;blica</a></li>
+					<li class="nav-item"><a href="https://www.justicia.ar/" target="_blank" class="nav-link"><i class="icono-justicia-ar mr-1" aria-hidden="true"></i><span>Justicia.ar</span></a></li>
+					<li class="nav-item"><a
+						href="https://www.x.com/cortesupremaar" target="_blank"
+						class="nav-link"><i class="icono-x-twitter"
+							aria-hidden="true"></i><span class="off-screen">X</span></a></li>
+					<li class="nav-item"><a
+						href="https://www.instagram.com/cortesupremaar" target="_blank"
+						class="nav-link"><i class="icono-instagram"
+							aria-hidden="true"></i><span class="off-screen">Instagram</span></a></li>
+				</ul>
+				<div class="d-lg-flex mt-3 justify-content-end border-lg-top mr-2">
+
+					<form id="buscadorSimpleForm" action="/buscador/documentos"
+						method="get">
+						<div class="input-group">
+							<input type="text" title="Buscar en todo el sitio"
+								class="form-control place-holder-2" maxlength="30"
+								placeholder="Buscar en todo el sitio"
+								aria-label="Buscar en todo el sitio"
+								aria-describedby="btnBuscar" id="busquedaLibre" name="busquedaLibre" value="">
+
+							<div class="input-group-append">
+								<button class="btn btn-gris-2" title="Buscar" type="button"
+									id="btnBuscarGral">
+									<i class="fas fa-search" aria-hidden="true" title="Buscar"></i><span
+										class="sr-only">Buscar</span>
+								</button>
+							</div>
+						</div>
+						<small id="msgError" class="error"></small>&nbsp;
+					</form>
+					<script type="text/javascript">
+						$("#buscadorSimpleForm").validate({
+							errorClass : "error-white",
+							ignore : [],
+							rules : {
+								busquedaLibre : {
+									required : true,
+									maxlength : 30,
+									minlength : 5
+								}
+							},
+							messages : {
+								busquedaLibre : "Al menos 5 a 30 caracteres"
+							},
+							errorLabelContainer : "#msgError"
+						});
+						$("#btnBuscarGral").click(function(e) {
+							e.preventDefault();
+							$("#msgError").html("");
+							$("#buscadorSimpleForm").submit();
+						});
+					</script>
+				</div>
+
+			</div>
+			<!-- fin encabezado derecho derecho -->
+		</div>
+	</div>
+	<!--fin row encabezado 1 -->
+	<!-- row encabezado 2 -->
+	<div class="bg_menu">
+		<div class="container px-0">
+			<div class="row m-0">
+				<div class="col-12 p-0">
+					<nav
+						class="navbar navbar-expand-lg justify-content-between navbar-light">
+
+						<button class="navbar-toggler" type="button"
+							data-toggle="collapse" data-target="#menusm"
+							aria-controls="menusm" aria-expanded="false" aria-label="Men&uacute;">
+							<span class="icono-menu"></span>
+						</button>
+						<div class="collapse navbar-collapse" id="menusm">
+
+							<ul class="navbar-nav mr-auto">
+
+								<li class="nav-item dropdown"><a href="https://www.csjn.gov.ar/institucional"
+									class="nav-link dropdown-toggle text-white text-uppercase"
+									id="instDropdown">Institucional</a>
+									<div class="dropdown-menu" aria-labelledby="instDropdown">
+
+										<a class="dropdown-item" href="https://www.csjn.gov.ar/institucional/el-tribunal"> El Tribunal </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item" href="https://www.csjn.gov.ar/institucional/jueces"
+											id="navbarMinistros">
+											Jueces </a>
+										<div class="dropdown-divider"></div>
+										<!-- 
+						         <a class="dropdown-item" href="#" th:href="@{/institucional/jueces/historicos}" id="navbarMinistros" >
+						           	Jueces hist&oacute;ricos
+						         </a> 
+						         <div class="dropdown-divider"></div> -->
+										<a class="dropdown-item" href="https://www.csjn.gov.ar/institucional/palacio-de-justicia"> Palacio
+											de Justicia </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item" href="https://www.csjn.gov.ar/institucional/organigrama"> Organigrama </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item"
+											href="https://www.csjn.gov.ar/institucional/biblioteca" target="_self">
+											Biblioteca </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item"
+											href="https://www.csjn.gov.ar/archivo-general/archivo-historico"
+											target="_self"> Archivo Hist&oacute;rico </a>
+									</div></li>
+								<li class="nav-item dropdown"><a href="https://www.csjn.gov.ar/decisiones"
+									class="nav-link dropdown-toggle text-white text-uppercase"
+									id="decDropdown">Decisiones</a>
+									<div class="dropdown-menu" aria-labelledby="decDropdown">
+										<a class="dropdown-item" href="https://sj.csjn.gov.ar/"
+											target="_blank"> Sentencias </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item" href="https://www.csjn.gov.ar/decisiones/acordadas">
+											Acordadas </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item"
+											href="https://www.csjn.gov.ar/decisiones/resoluciones"> Resoluciones </a>
+
+									</div></li>
+								<li class="nav-item dropdown"><a href="https://www.csjn.gov.ar/transparencia"
+									class="nav-link dropdown-toggle text-white text-uppercase"
+									id="trDropdown">Transparencia</a>
+									<div class="dropdown-menu" aria-labelledby="trDropdown">
+										<a class="dropdown-item"
+											href="https://www.csjn.gov.ar/transparencia#Presupuesto"> Presupuesto </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item" href="https://www.csjn.gov.ar/transparencia#Recursos">
+											Recursos </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item"
+											href="https://www.csjn.gov.ar/transparencia#Adquisiciones"> Adquisiciones
+											y contrataciones </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item"
+											href="https://www.csjn.gov.ar/transparencia#Otras erogaciones"> Otras
+											erogaciones </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item"
+											href="https://www.csjn.gov.ar/transparencia#Cuenta de inversi&oacute;n"> Cuenta
+											de inversi&oacute;n </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item"
+											href="https://www.csjn.gov.ar/transparencia#Organizaci&oacute;n interna">
+											Organizaci&oacute;n interna </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item" href="https://www.csjn.gov.ar/transparencia#Personal">
+											Personal Judicial </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item" href="https://www.csjn.gov.ar/subastas-judiciales">
+											Remates </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item" href="https://www.csjn.gov.ar/transparencia"> Ver
+											todos </a>
+									</div></li>
+								<li class="nav-item dropdown"><a
+									class="nav-link dropdown-toggle text-white text-uppercase"
+									href="https://www.csjn.gov.ar/?#servicios">Servicios</a>
+									<div class="dropdown-menu" aria-labelledby="trDropdown">
+
+										<a class="dropdown-item" href="https://www.csjn.gov.ar/causas-en-tramite"> Causas en tr&aacute;mite </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item"
+											href="https://servicios.csjn.gov.ar/formularios/index.html"
+											target="_blank"> Presentaciones remotas </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item"
+											href="https://www.csjn.gov.ar/tribunales-federales-nacionales/"> Tribunales Federales y Nacionales </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item" href="https://turnos.csjn.gov.ar"
+											target="_blank"> Turnos </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item" href="https://www.pjn.gov.ar/guia"
+											target="_blank"> Gu&iacute;a judicial </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item" href="https://datos.csjn.gov.ar/"
+											target="_blank"> Datos abiertos </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item"
+											href="https://servicios.csjn.gov.ar/formularios/deox.html"
+											target="_blank"> Oficios Externos </a>
+
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item"
+											href="https://serv.csjn.gov.ar/usoPersonal/" target="_blank">
+											Uso del personal </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item" href="https://www.csjn.gov.ar/oficina-de-matricula"
+											target="_self">
+											Oficina de Matr&iacute;cula </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item" href="https://www.csjn.gov.ar/notificaciones"
+											target="_self">
+											Notificaciones </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item" href="https://www.csjn.gov.ar/mandamientos" target="_self"> Mandamientos </a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item" href="https://www.csjn.gov.ar/archivo-general"
+											target="_self"> Archivo
+											General </a>
+									</div></li>
+								<li class="nav-item"><a
+									class="nav-link text-white text-uppercase" href="https://www.csjn.gov.ar/novedades">Novedades</a></li>
+								<li class="nav-item d-lg-none text-white"><hr
+										style="color: white"></hr></li>
+
+
+								<li class="nav-item d-lg-none"><a
+									class="nav-link text-white" href="https://www.csjn.gov.ar/preguntas-frecuentes">Preguntas frecuentes</a></li>
+								<li class="nav-item d-lg-none"><a
+									class="nav-link text-white" href="https://www.csjn.gov.ar/acceso-informacion-publica">Acceso a la
+										informaci&oacute;n p&uacute;blica</a></li>
+								<li class="nav-item d-lg-none">
+									<a href="https://www.justicia.ar" target="_blank" class="nav-link text-white">
+										<i class="icono-justicia-ar mr-1" aria-hidden="true"></i><span>Justicia.ar</span>
+									</a>
+								</li>
+								<li class="nav-item d-lg-none"><a
+									href="https://www.x.com/cortesupremaar" target="_blank"
+									class="nav-link text-white"><i class="icono-x-twitter"
+										aria-hidden="true"></i><span class="off-screen">X</span></a></li>
+								<li class="nav-item d-lg-none"><a
+									href="https://www.instagram.com/cortesupremaar"
+									target="_blank" class="nav-link text-white"><i
+										class="icono-instagram" aria-hidden="true"></i><span
+										class="off-screen">Instagram</span></a></li>
+							</ul>
+
+
+						</div>
+
+					</nav>
+				</div>
+			</div>
+		</div>
+	</div>
+	<!-- fin encabezado 2 -->
+	<!--ESTE SEPARADOR DETERMINA DONDE EMPIEZA LA BARRA DE NAVEGACION CUANDO EMPIEZO A SCROLLEAR-->
+    <div id="separador" style="height:1px"></div>
+</header><!-- fin cabecera -->
+ <div role="main">
+		<section class="mt-0 pt-0 m-footer">
+			<div class="bg-gris-4">
+				<div class="container">
+					<nav aria-label="breadcrumb mb-0">
+						<ol class="breadcrumb parrafo-mini">
+							<li class="breadcrumb-item"><a href="https://www.csjn.gov.ar/">Inicio</a></li>
+
+							<li class="breadcrumb-item"><a href="https://www.csjn.gov.ar/?#servicios">Servicios</a></li>
+
+																							<li class="breadcrumb-item" aria-current="page">
+									<span class="active">Tribunales Federales y Nacionales</span>
+								</li>
+															
+																						
+																												</ol>
+					</nav>
+				</div>
+			</div>
+
+
+			<div class="container">
+				<div class="row">
+
+
+<!-- ACA VIENE EL CONTENIDO -->
+   
+    
+    <!---------------------->      
+    <!-------TAGS----------->  
+    <!---------------------->     
+    
+          
+    
+    <!---------------------->      
+    <!-------TEMPLATE------->  
+    <!---------------------->        
+       
+            <!----------------------------------------------------------------------------------------------------------->
+        <!--3 COLUMNAS---->  
+        <!----------------------------------------------------------------------------------------------------------->   
+        
+	    
+        <!----------------------------------------------------------------------------------------------------------->
+        <!--CONTAINER-->  
+        <!----------------------------------------------------------------------------------------------------------->
+        
+                
+		             <div id="container" class="buscador-sentencias-fallos no-home clearfix">
+         
+             <!--BLOQUE 1-->  
+               
+                  
+			     
+             
+             <!------------------------------------------------------------------------------------------>     
+		 	   	
+             <!--FIN BLOQUE 1--> 
+                                    
+             
+        <!--FIN CONTAINER 2015-->         
+                
+             <!----------------------------------------------------------------------------------------------------------->
+        <!--3 COLUMNAS---->  
+        <!----------------------------------------------------------------------------------------------------------->   
+        
+	    
+        <!----------------------------------------------------------------------------------------------------------->
+        <!--CONTAINER-->  
+        <!----------------------------------------------------------------------------------------------------------->
+        
+                
+		 
+             <!--BLOQUE 1-->  
+                                      
+                              
+                 <div id="bloque-1-container" class="container bloque-n-container clearfix">
+                     <div class="bloque-resizer-container row">       
+                
+                  
+			           
+                                     				 <!--COL LEFT-->                           
+                             <div class="col-12 col-lg-8">
+                                     <!-- ------------------------------------------------------------------------------------------------------- -->
+<!--BUSCADOR DE SENTENCIAS-->
+<!-- ------------------------------------------------------------------------------------------------------- -->
+<link rel="stylesheet" href="css/select2.min.css" type="text/css" media="screen">
+<style>
+  #camara-requerida {
+    color:red;
+    padding:10px 0px 0px 0px;
+    margin-bottom:0px;
+  }
+  .incompleto{
+    border-color:red;
+  }
+  .select2-container .select2-selection--single,.select2-container--default .select2-selection--single .select2-selection__arrow{
+    height: calc(1.5em + .75rem + 2px);
+  }
+  .select2-container--default .select2-selection--single .select2-selection__rendered{
+    line-height: calc(1.5em + .75rem + 2px);
+  }
+
+  .result_error {
+    color: #000 !important;
+    padding: 9px 12px 11px 18px;
+    background: #f6f5f5;
+    font-size: 13px !important;
+    position: relative;
+    border: 1px solid #ececec;
+    text-align: center;
+    padding-bottom: 11px !important;
+  }
+
+  /*CAPTCHA*/
+  .captcha-box a {
+    position: absolute;
+    top: 70px;
+    left: 191px;
+    background-color: #fff;
+    border-radius: 2px;
+    border: solid thin #999;
+    height: 24px;
+  }
+
+  .captcha-box a img {
+    width: 24px;
+  }
+
+  div.captcha-box {
+    position:relative;
+  }
+
+  /*FIN CAPCHA*/
+  .captcha-audio-player {
+    margin-top: 8px;
+    width: 100%;
+    display:none;
+  }
+  .captcha-audio-btn {
+    position: absolute;
+    right: 30px;
+    bottom: -10px;
+  }
+  .captcha-repeat-btn {
+    position: absolute;
+    right: -3px;
+    bottom: -10px;
+  }
+
+  #btn-fallos h4,
+  #btn-acordadas-administrativas h4 {
+    font-size: 1em;
+  }
+
+  div.icon-box-3
+  {
+    cursor:pointer;
+  }
+
+  a.ui-state-default.ui-state-highlight.ui-state-active { background: #007bff!important;border: 1px solid #006cdf;color: #fff;}
+  .ui-state-highlight, .ui-widget-content .ui-state-highlight, .ui-widget-header .ui-state-highlight {border: 1px solid #006cdf;color: #006cdf;background:#f6f6f6!important}
+  .ui-state-active, .ui-widget-content .ui-state-active, .ui-widget-header .ui-state-active, a.ui-button:active, .ui-button:active, .ui-button.ui-state-active:hover {border: 1px solid #003eff;background: #007fff;font-weight: normal;color: #fff;}
+
+  div.icon-box-3.active {
+    color: #fff !important;
+    background-color: #007bff !important;
+  }
+
+  .fill{
+    height:1.5em;
+    margin-bottom:.5em;
+  }
+  .info {
+    list-style: none;
+    margin: 0px;
+    padding: 0px;
+  }
+  .result {
+    border-bottom:solid thin #ccc;
+    margin-bottom:30px;
+  }
+  .s2 {
+    font-weight:500;
+    font-size:1.01em;
+    color:#343a40;
+  }
+  .download{
+    display:block;
+    margin-top:10px;
+    margin-bottom:20px;
+  }
+  #paginado-sup {
+    margin-bottom:20px;
+  }
+  .page-link.active {
+    z-index: 3;
+    color: #fff;
+    background-color: #007bff;
+    border-color: #007bff;
+  }
+  .pagination {
+    margin: 20px 0px 40px 0px;
+    white-space: nowrap;
+    justify-content: flex-end;
+  }
+  @media (max-width: 767.98px) {
+    .fill{
+      display:none;
+    }
+  }
+</style>
+<div class="finder-obj">
+
+      <h1 class="titulo-principal ml-2">Tribunales Federales y Nacionales</h1>
+    <div class="card mb-5">
+      <div class="card-body">
+        <!-- Agregar una descripciÃ³n -->
+        <div class="row mb-4">
+          <div class="col-12 col-sm-12 col-md-4 col-lg-4 pb-1">
+            <div id="btn-fallos" href="#" class="card icon-box-3 text-semi-dark active">
+              <div class="card-body d-flex align-items-center justify-content-center pl-3 pt-3 p-2 active">
+                <div class="media-body">
+                  <h4>Buscador de fallos</h4>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-sm-12 col-md-8 col-lg-8 pb-1">
+            <div class="card icon-box-3 text-semi-dark" id="btn-acordadas-administrativas" href="#">
+              <div class="card-body d-flex align-items-center justify-content-center pl-3 pt-3 p-2">
+                <div class="media-body">
+                  <h4>Buscador de acordadas y resoluciones administrativas</h4>
+                </div>
+              </div>
+            </div>
+          </div><!-- fin columna submenu -->
+        </div>
+        <!-- Buscador de Fallos -->
+        <form name="fallos" id="fallos" method="post">
+          <input type="hidden" name="acc" value="searchFallos">
+          <input type="hidden" name="tipo" value="fallo" />
+          <input type="hidden" name="paginado" value="0" />
+          <input type="hidden" name="token" value="" />
+          <input type="hidden" name="pagina" value="0">
+          <div class="form-row mt-4">
+            <div class="form-group col-lg-6">
+              <select name="jurisdiccion" id="jurisdiccion" class="form-control" onchange="actualizarTribunales(this)">
+                <option value="">Jurisdicci&oacute;n</option>
+                <!-- <option value="">Indistinta</option> -->
+                                  <option value="1-1" >Buenos Aires</option>
+                                  <option value="24-2" >Catamarca</option>
+                                  <option value="3-3" >Chaco</option>
+                                  <option value="4-4" >Chubut</option>
+                                  <option value="5-5" selected>Ciudad de Buenos Aires</option>
+                                  <option value="6-6" >Córdoba</option>
+                                  <option value="7-7" >Corrientes</option>
+                                  <option value="8-8" >Entre Ríos</option>
+                                  <option value="3-9" >Formosa</option>
+                                  <option value="17-10" >Jujuy</option>
+                                  <option value="1-11" >La Pampa</option>
+                                  <option value="6-12" >La Rioja</option>
+                                  <option value="13-13" >Mendoza</option>
+                                  <option value="14-14" >Misiones</option>
+                                  <option value="16-15" >Neuquén</option>
+                                  <option value="16-16" >Río Negro</option>
+                                  <option value="17-17" >Salta</option>
+                                  <option value="13-18" >San Juan</option>
+                                  <option value="13-19" >San Luis</option>
+                                  <option value="4-20" >Santa Cruz</option>
+                                  <option value="21-21" >Santa Fe</option>
+                                  <option value="24-22" >Santiago del Estero</option>
+                                  <option value="4-23" >Tierra del Fuego</option>
+                                  <option value="24-24" >Tucumán</option>
+                              </select>
+            </div>
+            <div class="form-group col-lg-6">
+              <input type="text" class="form-control" name="expediente" value="" placeholder="Expediente N&deg;" />
+            </div>
+          </div>
+          <div class="form-row mt-2">
+              <div class="form-group col-lg-7">
+              <select name="camara_id" id="selector-camara" class="form-control">
+                      <option value="">C&aacute;mara</option>
+                <!-- <option value="">Indistinto</option> -->
+                                                                          <option value="C_5" >CÁMARA FEDERAL DE APELACIONES DE LA SEGURIDAD SOCIAL</option>
+                                                                                                                                                                                                                              <option value="C_11" >CÁMARA FEDERAL DE CASACIÓN PENAL</option>
+                                                                                                                                                                                                                                                <option value="C_7" selected>CÁMARA NACIONAL DE APELACIONES DEL TRABAJO</option>
+                                                                                                                                                                                                                                                                                    <option value="C_1" >CÁMARA NACIONAL DE APELACIONES EN LO CIVIL</option>
+                                                                                                                                                                                                                                                                                                                                                                                                                  <option value="C_3" >CÁMARA NACIONAL DE APELACIONES EN LO CIVIL Y COMERCIAL FEDERAL</option>
+                                                                                                                                                                        <option value="C_10" >CÁMARA NACIONAL DE APELACIONES EN LO COMERCIAL</option>
+                                                                                                                                                                                                                              <option value="C_2" >CÁMARA NACIONAL DE APELACIONES EN LO CONTENCIOSO ADMINISTRATIVO FEDERAL</option>
+                                                                                                                                                                                                            <option value="C_9" >CÁMARA NACIONAL DE APELACIONES EN LO CRIMINAL Y CORRECCIONAL</option>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <option value="C_8" >CÁMARA NACIONAL DE APELACIONES EN LO CRIMINAL Y CORRECCIONAL FEDERAL</option>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <option value="C_6" >CÁMARA NACIONAL DE APELACIONES EN LO PENAL ECONÓMICO</option>
+                                                                                                                                                                                                                                                                                                                                                            <option value="C_12" >CÁMARA NACIONAL DE CASACIÓN PENAL</option>
+                                                                                                                                                                                                            <option value="C_4" >CÁMARA NACIONAL ELECTORAL</option>
+                                                    </select>
+              <p id="camara-requerida" style="display:none;">Debe seleccionar una C&aacute;mara</p>
+            </div>
+            <div class="form-group col-lg-5">
+                <select name="tipo_oficina_id" id="selector-tipo" class="form-control" disabled>
+                  <option value="">Tipo de oficina</option>
+                                      <option value="1" >Juzgado</option>
+                                      <option value="3" >Sala</option>
+                                      <option value="8" >Secretar&iacute;a Especial de C&aacute;mara</option>
+                                      <option value="9" >Tribunal Oral</option>
+                                      <option value="167" >Oficina Judicial</option>
+                                  </select>
+            </div>
+          </div>
+          <div class="form-row mt-2">
+            <div class="form-group col-lg-12">
+              <select name="tribunal_id" id="selector-tribunal" style="width:100%" class="form-control" disabled>
+                <option value="">Tribunal</option>
+              </select>
+            </div>
+            <input type="hidden" value="" name="tid" id="tid">
+          </div>
+          <div class="form-row mt-2">
+            <div class="form-group col-lg-4">
+              <input type="text" class="form-control" name="caratula" placeholder="Car&aacute;tula" value="" />
+            </div>
+            <div class="form-group col-lg-4">
+              <select name="tipofallo" class="form-control">
+                <option value="">Tipo de fallo</option>
+                <option value="I" >Interlocutoria</option>
+                <option value="D" >Definitiva</option>
+                <option value="P" >Plenario</option>
+                <option value="V" >Veredicto</option>
+              </select>
+            </div>
+            <div class="form-group col-lg-4">
+              <input type="text" class="form-control" name="firmantes" value="" placeholder="Palabra clave" />
+            </div>
+          </div>
+          <div class="row mt-2">
+            <div class="form-group col-sm-5 col-md-4">
+                            <label for="fechaDesde">Fecha de sentencia:</label>
+              <div id="filtroDesde">
+                <input type="hidden" id="fecha_fallo_desde" name="fecha_fallo_desde" value="24-01-01" class="start" />
+                <input type="text" id="fecha_fallo_desde_aux" name="fecha_fallo_desde_aux" maxlength="10" value="" class="start form-control" />
+                <small class="form-text text-muted">
+                  inicio
+                </small>
+              </div>
+                          </div>
+            
+            <div class="form-group col-sm-5 col-md-4">
+              <label for="fechaHasta" class="d-none d-sm-block">&nbsp;</label>
+              <div id="filtroHasta">
+                <input type="hidden" id="fecha_fallo_hasta" name="fecha_fallo_hasta" value="24-12-31" class="end" />
+                <input type="text" id="fecha_fallo_hasta_aux" name="fecha_fallo_hasta_aux" maxlength="10" value="" class="form-control end" />
+                <small class="form-text text-muted">
+                  fin
+                </small>
+              </div>
+            </div>
+            
+          </div>
+          <div class="form-row mt-3">
+            <div class="form-group col-lg-4">
+                <div class="captcha-box">
+                  <img id="captcha" src="" alt="CAPTCHA Image" />
+                  <button type="button" class="btn btn-light btn-sm captcha-audio-btn" onclick="playCaptchaAudio('captcha_audio');" aria-label="Escuchar captcha">
+                    <i class="fas fa-volume-up"></i>
+                  </button>
+                  <button type="button" class="btn btn-light btn-sm captcha-repeat-btn" onclick="reloadCaptcha(); return false" aria-label="Generar nuevo captcha">
+                    <i class="fas fa-redo"></i>
+                  </button>
+                </div>
+                
+                <audio id="captcha_audio" style="display:none" class="captcha-audio-player" controls preload="none" aria-label="Audio del captcha"></audio>
+            </div>
+            <div class="form-group col-lg-4">
+                <label for="captcha_code">Ingrese el c&oacute;digo Captcha</label>
+                <input type="text" name="captcha_code" class="form-control" maxlength="6" />
+                            </div>
+            <div class="form-group col-lg-4 text-right">
+                <div class="fill"></div>
+                <div>
+                <button type="button" class="btn btn-default submit d-inline-block" id="limpiar_fallos" onclick="resetFormFallos();" aria-label="Limpiar formulario">
+                  <span class="fa fa-eraser"></span>
+                </button>
+                <button type="button" class="submit btn btn-primary d-inline-block" onclick="buscarFallos();">
+                  <i class="fas fa-cog fa-spin preloading"></i>
+                  <span class="txt-search">Buscando</span>
+                </button>  
+                </div>
+            </div>
+          </div>
+        </form>
+        
+        <!-- Buscador de acordadas -->
+        <form name="acordadas_administrativas" id="acordadas_administrativas" method="post" action="sentencias.html" style="display:none;">
+            <input type="hidden" name="acc" value="search">
+            <input type="hidden" name="paginado" value="0" />
+            <input type="hidden" name="pagina" value="0">
+            <div class="form-row mt-2">
+              <div class="form-group col-lg-4">
+                    <select name="jurisdiccion" id="jurisdiccion" class="form-control" onchange="actualizarTribunalesAR(this)">
+                      <option value="">Jurisdicci&oacute;n</option>
+                                              <option value="1-1" >Buenos Aires</option>
+                                              <option value="24-2" >Catamarca</option>
+                                              <option value="3-3" >Chaco</option>
+                                              <option value="4-4" >Chubut</option>
+                                              <option value="5-5" selected>Ciudad de Buenos Aires</option>
+                                              <option value="6-6" >Córdoba</option>
+                                              <option value="7-7" >Corrientes</option>
+                                              <option value="8-8" >Entre Ríos</option>
+                                              <option value="3-9" >Formosa</option>
+                                              <option value="17-10" >Jujuy</option>
+                                              <option value="1-11" >La Pampa</option>
+                                              <option value="6-12" >La Rioja</option>
+                                              <option value="13-13" >Mendoza</option>
+                                              <option value="14-14" >Misiones</option>
+                                              <option value="16-15" >Neuquén</option>
+                                              <option value="16-16" >Río Negro</option>
+                                              <option value="17-17" >Salta</option>
+                                              <option value="13-18" >San Juan</option>
+                                              <option value="13-19" >San Luis</option>
+                                              <option value="4-20" >Santa Cruz</option>
+                                              <option value="21-21" >Santa Fe</option>
+                                              <option value="24-22" >Santiago del Estero</option>
+                                              <option value="4-23" >Tierra del Fuego</option>
+                                              <option value="24-24" >Tucumán</option>
+                                          </select>
+              </div>
+
+              <div class="form-group col-lg-4">
+                <select id="tidAR" name="tid" class="form-control">
+                  <option value="">Tribunal</option>
+                                  </select>
+              </div>
+
+              <div class="form-group col-lg-4">
+                    <select name="tipo" class="form-control">
+                      <option value="resolucion" >Resoluci&oacute;n administrativa</option>
+                      <option value="acordada" >Acordada</option>
+                    </select>
+              </div>
+            </div>
+
+            <div class="form-row mt-2">
+              <div class="form-group col-lg-4">
+                <input type="text" class="form-control" placeholder="N&uacute;mero" name="numero" value="" />
+              </div>
+              <div class="form-group col-lg-4">
+                <input type="text" onkeypress="return justNumbers(event);" maxlength="4" class="form-control" name="anio" value="" placeholder="A&ntilde;o"/>
+              </div>
+              <div class="form-group col-lg-4">
+                <input type="text" class="form-control" placeholder="Palabra clave" name="descripcion" value="" />
+              </div>
+            </div>
+                        
+            <div class="form-row mt-2">
+              <div class="form-group col-sm-4">
+                <label for="fechaDesde">Fecha:</label>
+                <div id="filtroDesde" class="input-group">
+                  <input type="hidden" id="fecha_ini" name="fecha_ini" value="" class="form-control" />
+                  <input type="text" id="fecha_ini_aux" name="fecha_ini_aux" maxlength="10" value="Inicio" class="form-control" />
+                </div>
+              </div>
+              <div class="form-group col-sm-2">
+                <div class="fill"></div>
+                <div class="p-2">inicio</div>
+              </div>
+              <div class="form-group col-sm-4">
+                <div class="fill"></div>
+                <input type="hidden" id="fecha_fin" name="fecha_fin" value="" class="form-control" />
+                <input type="text" id="fecha_fin_aux" name="fecha_fin_aux" maxlength="10" value="Fin" class="form-control" />
+              </div>
+              <div class="form-group col-sm-2">
+                <div class="fill"></div>
+                <div class="p-2">fin</div>
+              </div>
+            </div>
+            <div class="form-row mt-3">
+            <div class="form-group col-lg-4">
+                <div class="captcha-box">
+                  <img id="captcha2" src="" alt="CAPTCHA Image" />
+                  <button type="button" class="btn btn-light btn-sm captcha-audio-btn" onclick="playCaptchaAudio('captcha_audio2');" aria-label="Escuchar captcha">
+                  <i class="fas fa-volume-up"></i>
+                  </button>
+                  <button type="button" class="btn btn-light btn-sm captcha-repeat-btn" onclick="reloadCaptcha(); return false" aria-label="Generar nuevo captcha">
+                    <i class="fas fa-redo"></i>
+                  </button>
+                </div>
+                <audio id="captcha_audio2" style="display:none" class="captcha-audio-player" controls preload="none" aria-label="Audio del captcha"></audio>
+            </div>
+            <div class="form-group col-lg-4">
+                <label for="captcha_code">Ingrese el c&oacute;digo Captcha</label>
+                <input type="text" name="captcha_code2" class="form-control" maxlength="6" />
+                            </div>
+            <div class="form-group col-lg-4 text-right">
+                <div class="fill"></div>
+                <div>
+                  <button type="button" class="btn btn-default submit d-inline-block" id="limpiar_fallos" onclick="resetFormResoluciones();" aria-label="Limpiar formulario">
+                    <span class="fa fa-eraser"></span>
+                  </button>
+                  <button type="button" class="submit btn btn-primary d-inline-block" onclick="buscarAcordadasResoluciones();">
+                    <i class="fas fa-cog fa-spin preloading d-none"></i>
+                    <span class="txt-search">Buscando</span>
+                  </button>  
+                </div>
+            </div>
+          </div>
+        </form>
+
+      </div>
+    </div>
+
+    <div id="mensaje" class="clearfix">
+      <p>
+        <strong>
+                  </strong>
+      </p>
+    </div>
+
+                
+            <pre>DATE      : 2026-04-10 02:47:41
+SERVER IP : 10.200.1.130
+CLIENT IP : 10.200.56.110
+FILE      : /var/www/cij.gov.ar/prod/scp/obj/2015-obj-buscador-de-sentencias.php
+LINE      : 901
+FUNCTION  : PHP Parser
+MESSAGE   : [WARNING] Undefined array key "token"
+BACKTRACE : line (0078) file : /var/www/cij.gov.ar/prod/scp/include/clsErrors.php
+BACKTRACE : line (0901) file : /var/www/cij.gov.ar/prod/scp/obj/2015-obj-buscador-de-sentencias.php
+BACKTRACE : line (0104) file : /var/www/cij.gov.ar/prod/scp/home/2025-temp-clean.php
+BACKTRACE : line (0051) file : /var/www/cij.gov.ar/prod/scp/include/redir.php
+BACKTRACE : line (0053) file : /var/www/cij.gov.ar/prod/scp/index.php
+</pre>                <script>
+                  document.fallos.token.value = "da78ae3872a8806a164f78000ba6a9f4b61d0276bcd63c92b94f41f2c6e5b731";
+                </script>
+            
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CAMARA PENAL ECONOMICO - SALA A</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CPE 000994/2024/2/CA001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> Legajo Nº 2 -  NN: R. A, H. R. s/LEGAJO DE APELACION</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 31/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-1437814a-79c8-4e12-8eda-2609c5b36e2e.pdf?fecha=31/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtMTQzNzgxNGEtNzljOC00ZTEyLThlZGEtMjYwOWM1YjM2ZTJlLnBkZj9mZWNoYT0zMS8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkNBTUFSQSBQRU5BTCBFQ09OT01JQ08gLSBTQUxBIEEiLCJFeHBlZGllbnRlIE7CsCI6IkNQRSAwMDA5OTQvMjAyNC8yL0NBMDAxIiwiQ2Fyw6F0dWxhIjoiTGVnYWpvIE7CuiAyIC0gIE5OOiBSLiBBLCBILiBSLiBzL0xFR0FKTyBERSBBUEVMQUNJT04iLCJGZWNoYSBkZSBzZW50ZW5jaWEiOiIzMS8xMi8yMDI0In0&signature=e7c7f0f398bc678841d17d6c5baa87ffb0eb4d0297cf53169a706a5279b37323" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA I</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CNT 044625/2024/CA001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> OLMEDO, FELIX ARIEL c/ GALENO ART S.A. s/RECURSO LEY 27348</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 30/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-6c158c60-c9b2-49f9-a6d2-e1deead12870.pdf?fecha=30/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtNmMxNThjNjAtYzliMi00OWY5LWE2ZDItZTFkZWVhZDEyODcwLnBkZj9mZWNoYT0zMC8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkPDgU1BUkEgTkFDSU9OQUwgREUgQVBFTEFDSU9ORVMgREVMIFRSQUJBSk8gLSBTQUxBIEkiLCJFeHBlZGllbnRlIE7CsCI6IkNOVCAwNDQ2MjUvMjAyNC9DQTAwMSIsIkNhcsOhdHVsYSI6Ik9MTUVETywgRkVMSVggQVJJRUwgYy8gR0FMRU5PIEFSVCBTLkEuIHMvUkVDVVJTTyBMRVkgMjczNDgiLCJGZWNoYSBkZSBzZW50ZW5jaWEiOiIzMC8xMi8yMDI0In0&signature=e6f77ffa407be490ff0fb65b9deb7ce9549e69b489d85c28abb15be751a87025" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA I</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CNT 028553/2024/CA001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> SOSA, ANA MARIA c/ GALENO ART S.A. s/RECURSO LEY 27348</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 30/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-2a7a0757-d9d4-4ec7-9d60-43c73d7152ab.pdf?fecha=30/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtMmE3YTA3NTctZDlkNC00ZWM3LTlkNjAtNDNjNzNkNzE1MmFiLnBkZj9mZWNoYT0zMC8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkPDgU1BUkEgTkFDSU9OQUwgREUgQVBFTEFDSU9ORVMgREVMIFRSQUJBSk8gLSBTQUxBIEkiLCJFeHBlZGllbnRlIE7CsCI6IkNOVCAwMjg1NTMvMjAyNC9DQTAwMSIsIkNhcsOhdHVsYSI6IlNPU0EsIEFOQSBNQVJJQSBjLyBHQUxFTk8gQVJUIFMuQS4gcy9SRUNVUlNPIExFWSAyNzM0OCIsIkZlY2hhIGRlIHNlbnRlbmNpYSI6IjMwLzEyLzIwMjQifQ&signature=9a46d6a60e54188ce1606e5902c2e501f33f41e4f1aeaff23f4da715b1a5c538" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA I</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CNT 006427/2024/CA001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> DIAZ, FERNANDO JAVIER c/ PROVINCIA ART S.A. s/RECURSO LEY 27348</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 30/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-cceb5122-6b90-4ff0-abe0-09924c4109b1.pdf?fecha=30/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtY2NlYjUxMjItNmI5MC00ZmYwLWFiZTAtMDk5MjRjNDEwOWIxLnBkZj9mZWNoYT0zMC8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkPDgU1BUkEgTkFDSU9OQUwgREUgQVBFTEFDSU9ORVMgREVMIFRSQUJBSk8gLSBTQUxBIEkiLCJFeHBlZGllbnRlIE7CsCI6IkNOVCAwMDY0MjcvMjAyNC9DQTAwMSIsIkNhcsOhdHVsYSI6IkRJQVosIEZFUk5BTkRPIEpBVklFUiBjLyBQUk9WSU5DSUEgQVJUIFMuQS4gcy9SRUNVUlNPIExFWSAyNzM0OCIsIkZlY2hhIGRlIHNlbnRlbmNpYSI6IjMwLzEyLzIwMjQifQ&signature=654e0d2a2618ad1e3e816184c11673406ddecd61b0f0de37058d6b1ff4c51442" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA I</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CNT 045873/2024/CA001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> VIVEROS, VICENTE MARIO c/ HIJOS DE SALVADOR MUÑOZ S.A. Y OTRO s/ACCIDENTE - ACCION CIVIL</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 30/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-d77305b0-3e9a-4417-a638-192309435d18.pdf?fecha=30/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtZDc3MzA1YjAtM2U5YS00NDE3LWE2MzgtMTkyMzA5NDM1ZDE4LnBkZj9mZWNoYT0zMC8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkPDgU1BUkEgTkFDSU9OQUwgREUgQVBFTEFDSU9ORVMgREVMIFRSQUJBSk8gLSBTQUxBIEkiLCJFeHBlZGllbnRlIE7CsCI6IkNOVCAwNDU4NzMvMjAyNC9DQTAwMSIsIkNhcsOhdHVsYSI6IlZJVkVST1MsIFZJQ0VOVEUgTUFSSU8gYy8gSElKT1MgREUgU0FMVkFET1IgTVXDkU9aIFMuQS4gWSBPVFJPIHMvQUNDSURFTlRFIC0gQUNDSU9OIENJVklMIiwiRmVjaGEgZGUgc2VudGVuY2lhIjoiMzAvMTIvMjAyNCJ9&signature=ffc7fe3c0adf24abff81525c25b4ff429b2e0ec1ef8431fa9e3895b083258da8" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA I</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CNT 042242/2024/CA001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> DINARDI, RICARDO ESTEBAN c/ FEDERACION PATRONAL S.A. s/ACCIDENTE - LEY ESPECIAL</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 30/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-28f7f1ed-c574-4525-959c-adf4924fee4a.pdf?fecha=30/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtMjhmN2YxZWQtYzU3NC00NTI1LTk1OWMtYWRmNDkyNGZlZTRhLnBkZj9mZWNoYT0zMC8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkPDgU1BUkEgTkFDSU9OQUwgREUgQVBFTEFDSU9ORVMgREVMIFRSQUJBSk8gLSBTQUxBIEkiLCJFeHBlZGllbnRlIE7CsCI6IkNOVCAwNDIyNDIvMjAyNC9DQTAwMSIsIkNhcsOhdHVsYSI6IkRJTkFSREksIFJJQ0FSRE8gRVNURUJBTiBjLyBGRURFUkFDSU9OIFBBVFJPTkFMIFMuQS4gcy9BQ0NJREVOVEUgLSBMRVkgRVNQRUNJQUwiLCJGZWNoYSBkZSBzZW50ZW5jaWEiOiIzMC8xMi8yMDI0In0&signature=508eeb056b8ca4c373f568f0bfe9845c5dbd3f3e5528a7dd500c902276f23ed2" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA I</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CNT 043902/2022/CA001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> GODOY, ADRIAN GONZALO c/ EXPERTA ART S.A. s/RECURSO LEY 27348</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 30/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-d7c3fe45-32db-460b-9da9-60901402ccf1.pdf?fecha=30/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtZDdjM2ZlNDUtMzJkYi00NjBiLTlkYTktNjA5MDE0MDJjY2YxLnBkZj9mZWNoYT0zMC8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkPDgU1BUkEgTkFDSU9OQUwgREUgQVBFTEFDSU9ORVMgREVMIFRSQUJBSk8gLSBTQUxBIEkiLCJFeHBlZGllbnRlIE7CsCI6IkNOVCAwNDM5MDIvMjAyMi9DQTAwMSIsIkNhcsOhdHVsYSI6IkdPRE9ZLCBBRFJJQU4gR09OWkFMTyBjLyBFWFBFUlRBIEFSVCBTLkEuIHMvUkVDVVJTTyBMRVkgMjczNDgiLCJGZWNoYSBkZSBzZW50ZW5jaWEiOiIzMC8xMi8yMDI0In0&signature=7d1d61185785dcb031eec4f6b778ee7cb0bf54b9ac800c1a5eaaeeb8a84ba95f" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA I</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CNT 035349/2009/CA002 - CA001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> GAUNA JORGE c/ CURTIEMBRES BECAS S.A. Y OTRO s/ACCIDENTE - ACCION CIVIL</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 30/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-b0ad40c3-f674-4018-9dbb-7b8fbaaca765.pdf?fecha=30/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtYjBhZDQwYzMtZjY3NC00MDE4LTlkYmItN2I4ZmJhYWNhNzY1LnBkZj9mZWNoYT0zMC8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkPDgU1BUkEgTkFDSU9OQUwgREUgQVBFTEFDSU9ORVMgREVMIFRSQUJBSk8gLSBTQUxBIEkiLCJFeHBlZGllbnRlIE7CsCI6IkNOVCAwMzUzNDkvMjAwOS9DQTAwMiAtIENBMDAxIiwiQ2Fyw6F0dWxhIjoiR0FVTkEgSk9SR0UgYy8gQ1VSVElFTUJSRVMgQkVDQVMgUy5BLiBZIE9UUk8gcy9BQ0NJREVOVEUgLSBBQ0NJT04gQ0lWSUwiLCJGZWNoYSBkZSBzZW50ZW5jaWEiOiIzMC8xMi8yMDI0In0&signature=3977a3b8d0c03af008676dc6a68d3110dcefaa5fd2c0f32fe123e05319046b0a" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA I</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CNT 011944/2024/CA001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> ALEGRE, CLAUDIA ROSANA c/ EXPERTA -2- ASEGURADORA DE RIESGOS DEL TRABAJO S.A. s/RECURSO LEY 27348</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 30/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-9faab477-a537-4c19-886c-77c7f3827141.pdf?fecha=30/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtOWZhYWI0NzctYTUzNy00YzE5LTg4NmMtNzdjN2YzODI3MTQxLnBkZj9mZWNoYT0zMC8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkPDgU1BUkEgTkFDSU9OQUwgREUgQVBFTEFDSU9ORVMgREVMIFRSQUJBSk8gLSBTQUxBIEkiLCJFeHBlZGllbnRlIE7CsCI6IkNOVCAwMTE5NDQvMjAyNC9DQTAwMSIsIkNhcsOhdHVsYSI6IkFMRUdSRSwgQ0xBVURJQSBST1NBTkEgYy8gRVhQRVJUQSAtMi0gQVNFR1VSQURPUkEgREUgUklFU0dPUyBERUwgVFJBQkFKTyBTLkEuIHMvUkVDVVJTTyBMRVkgMjczNDgiLCJGZWNoYSBkZSBzZW50ZW5jaWEiOiIzMC8xMi8yMDI0In0&signature=afdddf15aa3896bbd51ce45a908614b24cf1a30eda8e64aa2b707cc173760e06" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA I</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CNT 057601/2013/CA001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> LOPEZ ROBERTO HERNAN c/ MAPFRE ARGENTINA A.R.T. S.A. Y OTRO s/ACCIDENTE - ACCION CIVIL</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 30/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-58ea2677-a8c6-4444-9753-917f328fd72a.pdf?fecha=30/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtNThlYTI2NzctYThjNi00NDQ0LTk3NTMtOTE3ZjMyOGZkNzJhLnBkZj9mZWNoYT0zMC8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkPDgU1BUkEgTkFDSU9OQUwgREUgQVBFTEFDSU9ORVMgREVMIFRSQUJBSk8gLSBTQUxBIEkiLCJFeHBlZGllbnRlIE7CsCI6IkNOVCAwNTc2MDEvMjAxMy9DQTAwMSIsIkNhcsOhdHVsYSI6IkxPUEVaIFJPQkVSVE8gSEVSTkFOIGMvIE1BUEZSRSBBUkdFTlRJTkEgQS5SLlQuIFMuQS4gWSBPVFJPIHMvQUNDSURFTlRFIC0gQUNDSU9OIENJVklMIiwiRmVjaGEgZGUgc2VudGVuY2lhIjoiMzAvMTIvMjAyNCJ9&signature=fdee198a5feaa76c3ce30386c22b4a3d074283d6a10f5622b69fb3cba63172f5" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA I</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CNT 001491/2017/CA001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> VIDAL, GUSTAVO EZEQUIEL c/ AGRO INDUSTRIAS BAIRES S.A. Y OTRO s/ACCIDENTE - ACCION CIVIL</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 30/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-a1fd4a8e-b6a4-4986-a881-26c46256f36d.pdf?fecha=30/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtYTFmZDRhOGUtYjZhNC00OTg2LWE4ODEtMjZjNDYyNTZmMzZkLnBkZj9mZWNoYT0zMC8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkPDgU1BUkEgTkFDSU9OQUwgREUgQVBFTEFDSU9ORVMgREVMIFRSQUJBSk8gLSBTQUxBIEkiLCJFeHBlZGllbnRlIE7CsCI6IkNOVCAwMDE0OTEvMjAxNy9DQTAwMSIsIkNhcsOhdHVsYSI6IlZJREFMLCBHVVNUQVZPIEVaRVFVSUVMIGMvIEFHUk8gSU5EVVNUUklBUyBCQUlSRVMgUy5BLiBZIE9UUk8gcy9BQ0NJREVOVEUgLSBBQ0NJT04gQ0lWSUwiLCJGZWNoYSBkZSBzZW50ZW5jaWEiOiIzMC8xMi8yMDI0In0&signature=e51f1022426aa67b764c56388ae91e7e1526834e520c8ece506f09f8aae70e53" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA I</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CNT 020918/2022/CA001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> IZAGUIRRE, CLAUDIO MAXIMILIANO c/ PROVINCIA ART S.A. s/RECURSO LEY 27348</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 30/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-9f854ced-8fd1-4b97-9b25-1cd2e9312ed3.pdf?fecha=30/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtOWY4NTRjZWQtOGZkMS00Yjk3LTliMjUtMWNkMmU5MzEyZWQzLnBkZj9mZWNoYT0zMC8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkPDgU1BUkEgTkFDSU9OQUwgREUgQVBFTEFDSU9ORVMgREVMIFRSQUJBSk8gLSBTQUxBIEkiLCJFeHBlZGllbnRlIE7CsCI6IkNOVCAwMjA5MTgvMjAyMi9DQTAwMSIsIkNhcsOhdHVsYSI6IklaQUdVSVJSRSwgQ0xBVURJTyBNQVhJTUlMSUFOTyBjLyBQUk9WSU5DSUEgQVJUIFMuQS4gcy9SRUNVUlNPIExFWSAyNzM0OCIsIkZlY2hhIGRlIHNlbnRlbmNpYSI6IjMwLzEyLzIwMjQifQ&signature=405587d53ff4edaca16138c91800f022501da91b44c3d1f84c5badf1561c3dcc" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA I</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CNT 036615/2024/CA001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> SAIDEL, SANTIAGO CARLO c/ EXPERTA ART S.A. s/RECURSO LEY 27348</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 30/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-574d2df2-8dcb-44a2-9b30-b8b890271808.pdf?fecha=30/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtNTc0ZDJkZjItOGRjYi00NGEyLTliMzAtYjhiODkwMjcxODA4LnBkZj9mZWNoYT0zMC8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkPDgU1BUkEgTkFDSU9OQUwgREUgQVBFTEFDSU9ORVMgREVMIFRSQUJBSk8gLSBTQUxBIEkiLCJFeHBlZGllbnRlIE7CsCI6IkNOVCAwMzY2MTUvMjAyNC9DQTAwMSIsIkNhcsOhdHVsYSI6IlNBSURFTCwgU0FOVElBR08gQ0FSTE8gYy8gRVhQRVJUQSBBUlQgUy5BLiBzL1JFQ1VSU08gTEVZIDI3MzQ4IiwiRmVjaGEgZGUgc2VudGVuY2lhIjoiMzAvMTIvMjAyNCJ9&signature=f7d47957b25e8dbc05bd1def51458473db24a60b52eda0d5fb5c8d41315f76de" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA I</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CNT 041576/2024/CA001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> YERSUL, JUAN PABLO c/ PROVINCIA ART S.A. s/RECURSO LEY 27348</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 30/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-1e45b5c4-dfb1-48ca-ad72-e0257a6ebd86.pdf?fecha=30/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtMWU0NWI1YzQtZGZiMS00OGNhLWFkNzItZTAyNTdhNmViZDg2LnBkZj9mZWNoYT0zMC8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkPDgU1BUkEgTkFDSU9OQUwgREUgQVBFTEFDSU9ORVMgREVMIFRSQUJBSk8gLSBTQUxBIEkiLCJFeHBlZGllbnRlIE7CsCI6IkNOVCAwNDE1NzYvMjAyNC9DQTAwMSIsIkNhcsOhdHVsYSI6IllFUlNVTCwgSlVBTiBQQUJMTyBjLyBQUk9WSU5DSUEgQVJUIFMuQS4gcy9SRUNVUlNPIExFWSAyNzM0OCIsIkZlY2hhIGRlIHNlbnRlbmNpYSI6IjMwLzEyLzIwMjQifQ&signature=c6dcfd6adb054f909e2318101315827a0563836f6709729d2814c99987252711" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA I</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CNT 039069/2021/CA001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> TOLENTINO GOMEZ, PAULA ISABEL c/ ARCOS DORADOS ARGENTINA S.A. s/DESPIDO</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 30/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-8ab62359-e909-418c-9fbe-817eb50a8107.pdf?fecha=30/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtOGFiNjIzNTktZTkwOS00MThjLTlmYmUtODE3ZWI1MGE4MTA3LnBkZj9mZWNoYT0zMC8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkPDgU1BUkEgTkFDSU9OQUwgREUgQVBFTEFDSU9ORVMgREVMIFRSQUJBSk8gLSBTQUxBIEkiLCJFeHBlZGllbnRlIE7CsCI6IkNOVCAwMzkwNjkvMjAyMS9DQTAwMSIsIkNhcsOhdHVsYSI6IlRPTEVOVElOTyBHT01FWiwgUEFVTEEgSVNBQkVMIGMvIEFSQ09TIERPUkFET1MgQVJHRU5USU5BIFMuQS4gcy9ERVNQSURPIiwiRmVjaGEgZGUgc2VudGVuY2lhIjoiMzAvMTIvMjAyNCJ9&signature=869a283b18e591ea865808f43d4333cec05d31792c7ec117fe3cfc27a2f7fc57" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA I</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CNT 038791/2024/1/RH001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> Recurso Queja Nº 1 - COVELLO, GUSTAVO JAVIER c/ GOBIERNO DE LA CIUDAD AUTONOMA DE BUENOS AIRES s/MEDIDA CAUTELAR</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 30/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-79eec7a9-a932-457d-a23b-dda17dd5795e.pdf?fecha=30/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtNzllZWM3YTktYTkzMi00NTdkLWEyM2ItZGRhMTdkZDU3OTVlLnBkZj9mZWNoYT0zMC8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkPDgU1BUkEgTkFDSU9OQUwgREUgQVBFTEFDSU9ORVMgREVMIFRSQUJBSk8gLSBTQUxBIEkiLCJFeHBlZGllbnRlIE7CsCI6IkNOVCAwMzg3OTEvMjAyNC8xL1JIMDAxIiwiQ2Fyw6F0dWxhIjoiUmVjdXJzbyBRdWVqYSBOwrogMSAtIENPVkVMTE8sIEdVU1RBVk8gSkFWSUVSIGMvIEdPQklFUk5PIERFIExBIENJVURBRCBBVVRPTk9NQSBERSBCVUVOT1MgQUlSRVMgcy9NRURJREEgQ0FVVEVMQVIiLCJGZWNoYSBkZSBzZW50ZW5jaWEiOiIzMC8xMi8yMDI0In0&signature=80d0c3b06f5919be6f5f233ae96c0e2562e5f88f976b8a2d5221e4bc76775d4b" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA I</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CNT 008474/2024/CA001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> CARRIZO, JOSE ANGEL c/ OMINT ART S.A. s/RECURSO LEY 27348</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 30/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-b6164745-d032-4446-b57e-fa74097c4014.pdf?fecha=30/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtYjYxNjQ3NDUtZDAzMi00NDQ2LWI1N2UtZmE3NDA5N2M0MDE0LnBkZj9mZWNoYT0zMC8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkPDgU1BUkEgTkFDSU9OQUwgREUgQVBFTEFDSU9ORVMgREVMIFRSQUJBSk8gLSBTQUxBIEkiLCJFeHBlZGllbnRlIE7CsCI6IkNOVCAwMDg0NzQvMjAyNC9DQTAwMSIsIkNhcsOhdHVsYSI6IkNBUlJJWk8sIEpPU0UgQU5HRUwgYy8gT01JTlQgQVJUIFMuQS4gcy9SRUNVUlNPIExFWSAyNzM0OCIsIkZlY2hhIGRlIHNlbnRlbmNpYSI6IjMwLzEyLzIwMjQifQ&signature=61f57e527ac4950c35fa9861fbdc3ebdbd68d0323162c5df897b5f5d2bf86393" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA I</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CNT 029654/2024/CA001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> MORON, VICTOR HUGO c/ EXPERTA ART S.A. s/ACCIDENTE - LEY ESPECIAL</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 30/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-610ee0c4-3240-416d-9af8-02786705db09.pdf?fecha=30/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtNjEwZWUwYzQtMzI0MC00MTZkLTlhZjgtMDI3ODY3MDVkYjA5LnBkZj9mZWNoYT0zMC8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkPDgU1BUkEgTkFDSU9OQUwgREUgQVBFTEFDSU9ORVMgREVMIFRSQUJBSk8gLSBTQUxBIEkiLCJFeHBlZGllbnRlIE7CsCI6IkNOVCAwMjk2NTQvMjAyNC9DQTAwMSIsIkNhcsOhdHVsYSI6Ik1PUk9OLCBWSUNUT1IgSFVHTyBjLyBFWFBFUlRBIEFSVCBTLkEuIHMvQUNDSURFTlRFIC0gTEVZIEVTUEVDSUFMIiwiRmVjaGEgZGUgc2VudGVuY2lhIjoiMzAvMTIvMjAyNCJ9&signature=4ca8cb5985a046bdd7e6757ea1d90b4090288758d39880572a8185d059bce91f" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA I</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CNT 031405/2023/CA001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> MARTOGLIO, MARCELO FABIAN c/ PROVINCIA ART S.A. s/RECURSO LEY 27348</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 30/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-6d45d1e8-0cca-4465-a03d-a64902396ae8.pdf?fecha=30/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtNmQ0NWQxZTgtMGNjYS00NDY1LWEwM2QtYTY0OTAyMzk2YWU4LnBkZj9mZWNoYT0zMC8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkPDgU1BUkEgTkFDSU9OQUwgREUgQVBFTEFDSU9ORVMgREVMIFRSQUJBSk8gLSBTQUxBIEkiLCJFeHBlZGllbnRlIE7CsCI6IkNOVCAwMzE0MDUvMjAyMy9DQTAwMSIsIkNhcsOhdHVsYSI6Ik1BUlRPR0xJTywgTUFSQ0VMTyBGQUJJQU4gYy8gUFJPVklOQ0lBIEFSVCBTLkEuIHMvUkVDVVJTTyBMRVkgMjczNDgiLCJGZWNoYSBkZSBzZW50ZW5jaWEiOiIzMC8xMi8yMDI0In0&signature=f8e4851903ed7a39e8c3a620d4ac0449275cd41087642b5790ed6a2d0be46193" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    <div class="result" tabindex="0">
+                      <ul class="info">
+                        <li><span class="s2">Tribunal:</span> CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA I</li>
+                        <li><span class="s2">Expediente N&deg;:</span> CNT 025257/2022/CA001</li>
+                        <li><span class="s2">Car&aacute;tula:</span> ALVARENGA, DANIEL EMMANUEL c/ FALABELLA S.A. Y OTRO s/DESPIDO</li>
+                        <li><span class="s2">Fecha de sentencia:</span> 30/12/2024</li>
+                      </ul>
+                      <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <a class="download" href="https://www.csjn.gov.ar/tribunales-federales-nacionales/d/sentencia-SGU-2dd1068f-e18e-42da-a6cd-af1c1a741c46.pdf?fecha=30/12/2024" download rel="nofollow">Descargar</a>
+                        <a class="download" href="https://www.csjn.gov.ar/visor/?url=aHR0cHM6Ly93d3cuY3Nqbi5nb3YuYXIvdHJpYnVuYWxlcy1mZWRlcmFsZXMtbmFjaW9uYWxlcy9kL3NlbnRlbmNpYS1TR1UtMmRkMTA2OGYtZTE4ZS00MmRhLWE2Y2QtYWYxYzFhNzQxYzQ2LnBkZj9mZWNoYT0zMC8xMi8yMDI0&tipo=fallo&info=eyJUcmlidW5hbCI6IkPDgU1BUkEgTkFDSU9OQUwgREUgQVBFTEFDSU9ORVMgREVMIFRSQUJBSk8gLSBTQUxBIEkiLCJFeHBlZGllbnRlIE7CsCI6IkNOVCAwMjUyNTcvMjAyMi9DQTAwMSIsIkNhcsOhdHVsYSI6IkFMVkFSRU5HQSwgREFOSUVMIEVNTUFOVUVMIGMvIEZBTEFCRUxMQSBTLkEuIFkgT1RSTyBzL0RFU1BJRE8iLCJGZWNoYSBkZSBzZW50ZW5jaWEiOiIzMC8xMi8yMDI0In0&signature=3f4bd2da84563c91f645649e1bc7979289966350055d35770b39b65916f2d240" target="_blank" rel="nofollow">Ver Fallo</a>
+                      </div>
+                    </div>
+                    
+                    
+
+
+                    <div class="cols3 clearfix" id="paginado-inf">
+                      <div class="col1 row mt-5">
+                        <div class="col-auto">
+                          La consulta ingresada arroja 192565 resultados, se muestran los primeros 100, por favor refine la consulta. 
+                        </div>
+                      </div>
+                                              <div class="pagination">
+                          <span  class="page-link active more">1</span><a href="javascript:irPaginaF(1)" class="page-link">2</a><a href="javascript:irPaginaF(2)" class="page-link">3</a><a href="javascript:irPaginaF(3)" class="page-link">4</a><a href="javascript:irPaginaF(4)" class="page-link">5</a><a href="javascript:irPaginaF(1)" class="page-link next">Siguiente</a>                        </div>
+                                          </div>
+          
+</div><!--//BUSCADOR -->
+
+<script language="JavaScript">
+  function resetFormFallos() {
+    document.fallos.expediente.value = "";
+    document.fallos.caratula.value = "";
+    document.fallos.fecha_fallo_desde.value = "";
+    document.fallos.fecha_fallo_hasta.value = "";
+    document.fallos.firmantes.value = "";
+    document.fallos.tipofallo.value = "";
+    document.fallos.jurisdiccion.value = "";
+    document.fallos.tid.value = "";
+    document.fallos.tipo.value = "fallo";
+
+    actualizarTribunales(document.fallos.jurisdiccion);
+
+  }
+
+  function resetFormResoluciones() {
+    document.acordadas_administrativas.descripcion.value = "";
+    document.acordadas_administrativas.fecha_ini.value = "";
+    document.acordadas_administrativas.fecha_fin.value = "";
+    document.acordadas_administrativas.numero.value = "";
+    document.acordadas_administrativas.anio.value = "";
+    document.acordadas_administrativas.jurisdiccion.value = "";
+    document.acordadas_administrativas.tid.value = "";
+    document.acordadas_administrativas.tipo.value = "resolucion";
+
+    actualizarTribunalesAR(document.acordadas_administrativas.jurisdiccion);
+  }
+
+  function irPaginaF(pag) {
+    //document.fallos.action="sentencias.html"
+    document.fallos.paginado.value = 1;
+    document.fallos.pagina.value = pag;
+    document.fallos.submit();
+  }
+
+  function irPaginaAR(pag) {
+    //document.fallos.action="sentencias.html"      
+    document.acordadas_administrativas.paginado.value = 1;
+    document.acordadas_administrativas.pagina.value = pag;
+    document.acordadas_administrativas.submit();
+  }
+
+  function buscarFallos() {
+    if($('#tid').val() == ""){
+      $("#selector-camara").focus();
+      $("#selector-camara").addClass("incompleto");
+      $("#camara-requerida").show();
+      return false;
+    }
+    document.fallos.pagina.value = 0;
+    document.fallos.submit();
+  }
+
+  function buscarAcordadasResoluciones() {
+    document.acordadas_administrativas.pagina.value = 0;
+    document.acordadas_administrativas.submit();
+  }
+
+  function actualizarTribunales(jurisdiccion) {
+    $.ajax({
+      url: "ajax/request_tribunales_fallos_new.php",
+      dataType: "html",
+      data: "jurisdiccion=" + jurisdiccion.value,
+      success: function(data) {
+        document.fallos.tid.value = "";
+        $("#selector-camara").html(data);
+        $("#selector-tribunal").html('<option value="">Tribunal</option>');
+        $("#selector-tribunal").prop("disabled", true);
+        $("#mensaje p strong").html($("#mensajeAjax").html());
+      }
+    });
+  }
+  var camaraSeleccionada = "C_7";
+  $('#selector-camara').on('change',function(ev) {
+    const tid = $(this).val();
+    if(tid != '' && camaraSeleccionada != tid){
+      //console.log("refresco selector")
+      $("#camara-requerida").hide();
+      $("#selector-camara").removeClass("incompleto");
+      $("#selector-tipo").val("")
+      obtenerTribunales(tid);
+      camaraSeleccionada = tid
+    }
+  });
+
+    let prevSelectorTipo = ''
+    $('#selector-tipo').on('change',function(ev) {
+      if(prevSelectorTipo != $(this).val()){
+        obtenerTribunales($('#selector-camara').val());
+        prevSelectorTipo = $(this).val();
+      }
+    });
+
+  function obtenerTribunales(tid) {
+    $("#selector-tipo").prop("disabled", false);
+    let parametros_oficina = "tid=" + tid;
+    let selectorTipo = $('#selector-tipo').val()
+    if(selectorTipo && selectorTipo !=''){
+      parametros_oficina +='&tipo_oficina_id=' + selectorTipo 
+    }
+    //console.log("PARAMETROS:",parametros_oficina)
+    $.ajax({
+      url: "ajax/request_tribunales_fallos_new.php",
+      dataType: "html",
+      data: parametros_oficina,
+      success: function(data) {
+        $("#selector-tribunal").html(data);
+        $("#selector-tribunal").prop("disabled", false);
+        if($.trim(data) == '<option value="">Indistinto</option>'){
+          $("#selector-tribunal").html('<option value="">No se encontraron oficinas del tipo seleccionado</option>');
+          $("#selector-tribunal").prop("disabled", true);
+        }
+        $("#tid").val(tid);
+
+        if(camaraSeleccionada == tid){
+          console.log("Fijo tid")
+                }
+      }
+      });
+  }
+
+      obtenerTribunales("C_7");
+  
+  function actualizarTribunalesAR(jurisdiccion) {
+    $.ajax({
+      url: "ajax/request_tribunales-acordadas.php",
+      dataType: "html",
+      data: "jurisdiccion=" + jurisdiccion.value,
+      success: function(data) {
+        $("#tidAR").html(data);
+      }
+    });
+  }
+
+  function justNumbers(e) {
+    var keynum = window.event ? window.event.keyCode : e.which;
+    if ((keynum == 8) || (keynum == 46))
+      return true;
+    return /\d/.test(String.fromCharCode(keynum));
+  }
+</script>
+
+<script language="JavaScript">
+  function fromflash(jid) {
+    document.fallos.jid.value = jid;
+    document.fallos.camara_id.value = '';
+    document.fallos.tid.value = '';
+    document.fallos.submit();
+  }
+
+  function showAyuda() {
+    $("#ayuda-fallos").show();
+    $("html, body").animate({
+      scrollTop: $('#ayuda-fallos').offset().top
+    }, 700, "easeOutQuad");
+  }
+
+  function utf8_decode(str_data) {
+
+    var tmp_arr = [],
+      i = 0,
+      ac = 0,
+      c1 = 0,
+      c2 = 0,
+      c3 = 0,
+      c4 = 0;
+
+    str_data += '';
+
+    while (i < str_data.length) {
+      c1 = str_data.charCodeAt(i);
+      if (c1 <= 191) {
+        tmp_arr[ac++] = String.fromCharCode(c1);
+        i++;
+      } else if (c1 <= 223) {
+        c2 = str_data.charCodeAt(i + 1);
+        tmp_arr[ac++] = String.fromCharCode(((c1 & 31) << 6) | (c2 & 63));
+        i += 2;
+      } else if (c1 <= 239) {
+        c2 = str_data.charCodeAt(i + 1);
+        c3 = str_data.charCodeAt(i + 2);
+        tmp_arr[ac++] = String.fromCharCode(((c1 & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
+        i += 3;
+      } else {
+        c2 = str_data.charCodeAt(i + 1);
+        c3 = str_data.charCodeAt(i + 2);
+        c4 = str_data.charCodeAt(i + 3);
+        c1 = ((c1 & 7) << 18) | ((c2 & 63) << 12) | ((c3 & 63) << 6) | (c4 & 63);
+        c1 -= 0x10000;
+        tmp_arr[ac++] = String.fromCharCode(0xD800 | ((c1 >> 10) & 0x3FF));
+        tmp_arr[ac++] = String.fromCharCode(0xDC00 | (c1 & 0x3FF));
+        i += 4;
+      }
+    }
+
+    return tmp_arr.join('');
+  }
+  function makeCaptchaURL() {
+    var url = 'lib/securimage/securimage_show.php?';
+    var random = Math.random();
+    url += 'rand=' + random;
+    return url;
+  }
+  function makeCaptchaAudioURL() {
+    var url = 'lib/securimage/securimage_play.php?';
+    var random = Math.random();
+    url += 'rand=' + random;
+    return url;
+  }
+  function setCaptchaAudioSrc(audioId) {
+    var audio = document.getElementById(audioId);
+    if (!audio) {
+      return;
+    }
+    audio.src = makeCaptchaAudioURL();
+  }
+  function playCaptchaAudio(audioId) {
+    var audio = document.getElementById(audioId);
+    if (!audio) {
+      return;
+    }
+    audio.src = makeCaptchaAudioURL();
+    audio.play();
+  }
+  function reloadCaptcha() {
+    var captchaURL = makeCaptchaURL();
+    document.getElementById('captcha').src = captchaURL;
+    document.getElementById('captcha2').src = captchaURL;
+    setCaptchaAudioSrc('captcha_audio');
+    setCaptchaAudioSrc('captcha_audio2');
+  }
+</script>
+<script type="text/javascript" src="js/select2.min.js"></script>
+<script language="javascript">
+  $(function() {
+    let captchaURL = makeCaptchaURL();
+    document.getElementById('captcha').src = captchaURL;
+    document.getElementById('captcha2').src = captchaURL;
+    setCaptchaAudioSrc('captcha_audio');
+    setCaptchaAudioSrc('captcha_audio2');
+    $("#btn-fallos").click(function() {
+      $(this).addClass("active");
+      $("#btn-acordadas-administrativas").removeClass("active");
+      $("#acordadas_administrativas").hide();
+      $("#fallos").show()
+      $("#mensaje").html("");
+      $(".result").remove();
+      $("#paginado-sup").remove();
+      $("#paginado-inf").remove();
+      $("#limpiar_fallos").click();
+      $('.preloading').hide();
+      $('.txt-search').html('Buscar');
+    })
+
+    $("#btn-acordadas-administrativas").click(function() {
+      $(this).addClass("active");
+      $("#btn-fallos").removeClass("active");
+      $("#acordadas_administrativas").show();
+      $("#fallos").hide()
+      $("#mensaje").html("");
+      $(".result").remove();
+      $("#paginado-sup").remove();
+      $("#paginado-inf").remove();
+      $("#limpiar_acordadas").click();
+      $('.preloading').hide();
+      $('.txt-search').html('Buscar');
+    })
+
+              
+    $("span[class='checkbox']").addClass("unchecked");
+
+    $(".checkbox").click(function() {
+      if ($(this).hasClass("checked")) {
+        // uncheck
+        $("#my-chkbox").removeAttr("checked");
+        $(this).removeClass("checked");
+        $(this).addClass("unchecked");
+      } else {
+        // check
+        $("#my-chkbox").attr({
+          checked: "checked"
+        });
+        $(this).removeClass("unchecked");
+        $(this).addClass("checked");
+      }
+    });
+
+    $("#fecha_fallo_desde_aux").datepicker({
+      beforeShow: function(input, inst) {
+        var cal = inst.dpDiv;
+        var top = $(this).offset().top + $(this).outerHeight();
+        var left = $(this).offset().left;
+        setTimeout(function() {
+          cal.css({
+            'top': top,
+            'left': left
+          });
+        }, 10);
+      },
+      altField: "#fecha_fallo_desde",
+      altFormat: "yy-mm-dd",
+      maxDate: "+0D",
+      minDate: new Date(2013, 8 - 1, 21),
+      changeYear: true
+    });
+
+    $("#fecha_fallo_desde_aux").keyup(function(e) {
+      $('#fecha_fallo_desde').val($(this).val());
+    })
+    $("#fecha_fallo_hasta_aux").keyup(function(e) {
+      $('#fecha_fallo_hasta').val($(this).val());
+    })
+
+    $("#fecha_fallo_hasta_aux").datepicker({
+      beforeShow: function(input, inst) {
+        var cal = inst.dpDiv;
+        var top = $(this).offset().top + $(this).outerHeight();
+        var left = $(this).offset().left;
+        setTimeout(function() {
+          cal.css({
+            'top': top,
+            'left': left
+          });
+        }, 10);
+      },
+      altField: "#fecha_fallo_hasta",
+      altFormat: "yy-mm-dd",
+      maxDate: "+0D",
+      minDate: new Date(2013, 8 - 1, 21),
+      changeYear: true
+    });
+
+    $("#fecha_fallo_desde_aux").datepicker("option", "dateFormat", "dd/mm/yy");
+    $("#fecha_fallo_hasta_aux").datepicker("option", "dateFormat", "dd/mm/yy");
+
+    ///////////////////////////////////////////////////////////////////////////////////
+
+    $("#fecha_ini_aux").datepicker({
+      beforeShow: function(input, inst) {
+        var cal = inst.dpDiv;
+        var top = $(this).offset().top + $(this).outerHeight();
+        var left = $(this).offset().left;
+        setTimeout(function() {
+          cal.css({
+            'top': top,
+            'left': left
+          });
+        }, 10);
+      },
+      altField: "#fecha_ini",
+      altFormat: "yy-mm-dd",
+      maxDate: "+0D",
+      changeYear: true
+    });
+
+    $("#fecha_fin_aux").datepicker({
+      beforeShow: function(input, inst) {
+        var cal = inst.dpDiv;
+        var top = $(this).offset().top + $(this).outerHeight();
+        var left = $(this).offset().left;
+        setTimeout(function() {
+          cal.css({
+            'top': top,
+            'left': left
+          });
+        }, 10);
+      },
+      altField: "#fecha_fin",
+      altFormat: "yy-mm-dd",
+      maxDate: "+0D",
+      changeYear: true
+    });
+
+    $("#fecha_ini_aux").datepicker("option", "dateFormat", "dd/mm/yy");
+    $("#fecha_fin_aux").datepicker("option", "dateFormat", "dd/mm/yy");
+
+    $('.preloading').hide();
+    $('.txt-search').html('Buscar');
+
+          $('#selector-tribunal').select2({
+        matcher: function(params, data) {
+          // Si no hay tÃ©rmino de bÃºsqueda, mostrar todas las opciones
+          if ($.trim(params.term) === '') {
+        return data;
+          }
+
+          // FunciÃ³n para normalizar texto: quita acentos y caracteres especiales
+          function normalize(str) {
+        if (!str) return '';
+        return str
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '') // quita acentos
+          .replace(/[^a-zA-Z0-9\s]/g, '') // quita caracteres especiales
+          .toLowerCase();
+          }
+
+          var term = normalize(params.term);
+          var text = normalize(data.text);
+
+          if (text.indexOf(term) > -1) {
+        return data;
+          }
+
+          // No hay coincidencia
+          return null;
+        }
+      });
+
+      // Cuando se selecciona una opciÃ³n en el selector de tribunal, guardar el valor en el input hidden "tid"
+      $('#selector-tribunal').on('change', function() {
+        //console.log("Seleccionado",$(this).val())
+        if($(this).val() != undefined && $(this).val() != ''){
+          //console.log("CAMBIO VALOR DE TID")
+          $('#tid').val($(this).val());
+        }
+      });
+  });
+</script>
+
+                         
+                             </div>
+                                                  
+                                                    
+                    
+             
+             <!------------------------------------------------------------------------------------------>     
+		 	   	
+             <!--FIN BLOQUE 1--> 
+                                    
+             
+        <!--FIN CONTAINER 2015-->         
+                
+             <!----------------------------------------------------------------------------------------------------------->
+        <!--3 COLUMNAS---->  
+        <!----------------------------------------------------------------------------------------------------------->   
+        
+	    
+        <!----------------------------------------------------------------------------------------------------------->
+        <!--CONTAINER-->  
+        <!----------------------------------------------------------------------------------------------------------->
+        
+                
+		 
+             <!--BLOQUE 1-->  
+               
+                  
+			           
+                                                  
+                             
+            				 <!--COL RIGHT-->  
+                             <div class="col-right col-12 col-lg-4 mb-2">
+                                     <div class="bg-gray rounded pm-15 pt-1 pb-3 mb-3">
+    <h2 class="mt-1">
+        <span class="badge badge-gray text-wrap text-left">Informaci&oacute;n de la C&aacute;mara Nacional en lo Criminal y Correccional Federal</span>
+    </h2>
+    <a class="d-flex flex-column icon-box" href="sorteos">
+        <p class="mt-0 mb-0 pt-1 pb-1 border-bottom text-secondary">
+            <i class="fas fa-angle-double-right text-secondary"></i> Sorteos
+        </p>
+    </a> <a class="d-flex flex-column icon-box" href="causas-de-la-camara-federal.html">
+        <p class="mt-0 mb-0 pt-1 pb-1 border-bottom text-secondary">
+            <i class="fas fa-angle-double-right text-secondary"></i> Causas
+        </p>
+    </a> <a class="d-flex flex-column icon-box" href="causas-de-corrupcion.html">
+        <p class="mt-0 mb-0 pt-1 pb-1 border-bottom text-secondary">
+            <i class="fas fa-angle-double-right text-secondary"></i> Observatorio de corrupci&oacute;n
+        </p>
+    </a>
+</div>
+<div class="bg-gray rounded pm-15 pt-1 pb-3">
+<div id="ayuda-sentencias">
+       <div class="how-obj">        
+       
+              <div class="content-widget-3 default-height clearfix el-pais-widget">   
+                <h2 class="mt-3">
+                    <span class="badge badge-primary">C&oacute;mo realizar una b&uacute;squeda</span>
+                </h2>          
+                <div class="widget-content-el-pais">                                     
+                    <div class="how">
+                            <p></p>
+                            <p>
+                            Para buscar un fallo, completar alguno de los campos o mantener la opci&oacute;n "indistinto", que incluye todas las alternativas.
+                            </p>
+
+                            <p><strong>Jurisdicci&oacute;n:</strong> Seleccionar la provincia o el distrito donde est&aacute; radicado el tribunal que dict&oacute; la sentencia.</p>
+                            <p><strong>Expediente:</strong> indicar en forma exacta.</p>
+                            <p><strong>C&aacute;mara:</strong> Seleccionar en raz&oacute;n del fuero. La jurisdicci&oacute;n indicada arriba restringe las opciones.</p>
+                            <p><strong>Tipo de oficina:</strong> Refinar por instancias y oficinas especiales.</p>
+                            <p><strong>Tribunal:</strong> Indicar la c&aacute;mara o el tribunal que realiz&oacute; el pronunciamiento.</p>
+                            <p><strong>Fecha:</strong> Rango o fecha exacta, desde el 21 de agosto de 2013 (acordada CSJN 24/2013). <a href="buscador-de-fallos.html">Consultar fallos anteriores.</a></p>
+                            <p><strong>Car&aacute;tula:</strong> Incluir toda o una fracci&oacute;n de la designaci&oacute;n de las partes y/o tipo de juicio.</p>
+                            <p><strong>Palabras clave:</strong> Una o m&aacute;s palabras o frases exactas para refinar la b&uacute;squeda.</p>
+                            <p>Las sentencias, resoluciones y acordadas disponibles son publicadas por los tribunales que las dictan.</p>
+                    </div>
+                 </div>  
+            </div>
+         </div>
+     </div>
+</div>                                                                 
+                             </div>   
+                                                    
+                    
+             
+             <!------------------------------------------------------------------------------------------>     
+		 	                          
+                     </div>      
+                 </div>      
+                	
+             <!--FIN BLOQUE 1--> 
+                                    
+             
+        <!--FIN CONTAINER 2015-->         
+                           
+       		 </div>
+                
+             <!----------------------------------------------------------------------------------------------------------->
+        <!--3 COLUMNAS---->  
+        <!----------------------------------------------------------------------------------------------------------->   
+        
+	    
+        <!----------------------------------------------------------------------------------------------------------->
+        <!--CONTAINER-->  
+        <!----------------------------------------------------------------------------------------------------------->
+        
+                
+		 
+             <!--BLOQUE 1-->  
+               
+                  
+			     
+             
+             <!------------------------------------------------------------------------------------------>     
+		 	   	
+             <!--FIN BLOQUE 1--> 
+                                    
+             
+        <!--FIN CONTAINER 2015-->         
+                
+             <!----------------------------------------------------------------------------------------------------------->
+        <!--3 COLUMNAS---->  
+        <!----------------------------------------------------------------------------------------------------------->   
+        
+	    
+        <!----------------------------------------------------------------------------------------------------------->
+        <!--CONTAINER-->  
+        <!----------------------------------------------------------------------------------------------------------->
+        
+                
+		 
+             <!--BLOQUE 1-->  
+               
+                  
+			     
+             
+             <!------------------------------------------------------------------------------------------>     
+		 	   	
+             <!--FIN BLOQUE 1--> 
+                                    
+             
+        <!--FIN CONTAINER 2015-->         
+                
+             <!----------------------------------------------------------------------------------------------------------->
+        <!--3 COLUMNAS---->  
+        <!----------------------------------------------------------------------------------------------------------->   
+        
+	    
+        <!----------------------------------------------------------------------------------------------------------->
+        <!--CONTAINER-->  
+        <!----------------------------------------------------------------------------------------------------------->
+        
+                
+		 
+             <!--BLOQUE 1-->  
+               
+                  
+			     
+             
+             <!------------------------------------------------------------------------------------------>     
+		 	   	
+             <!--FIN BLOQUE 1--> 
+                                    
+             
+        <!--FIN CONTAINER 2015-->         
+                
+             <!----------------------------------------------------------------------------------------------------------->
+        <!--3 COLUMNAS---->  
+        <!----------------------------------------------------------------------------------------------------------->   
+        
+	    
+        <!----------------------------------------------------------------------------------------------------------->
+        <!--CONTAINER-->  
+        <!----------------------------------------------------------------------------------------------------------->
+        
+                
+		 
+             <!--BLOQUE 1-->  
+               
+                  
+			     
+             
+             <!------------------------------------------------------------------------------------------>     
+		 	   	
+             <!--FIN BLOQUE 1--> 
+                                    
+             
+        <!--FIN CONTAINER 2015-->         
+                
+             <!----------------------------------------------------------------------------------------------------------->
+        <!--3 COLUMNAS---->  
+        <!----------------------------------------------------------------------------------------------------------->   
+        
+	    
+        <!----------------------------------------------------------------------------------------------------------->
+        <!--CONTAINER-->  
+        <!----------------------------------------------------------------------------------------------------------->
+        
+                
+		 
+             <!--BLOQUE 1-->  
+               
+                  
+			     
+             
+             <!------------------------------------------------------------------------------------------>     
+		 	   	
+             <!--FIN BLOQUE 1--> 
+                                    
+             
+        <!--FIN CONTAINER 2015-->         
+                
+            
+
+     <!---------------------->      
+     <!-------SCRIPTS-------->  
+     <!---------------------->      
+    
+     
+<script>
+  
+  var mostrar_nav_original=true;
+  
+  <!--------------------------->      
+  <!-------NUEVO 2019---------->  
+  <!--------------------------->   
+	  
+	  var first_home_load_2019=false;
+	  var first_time_load_2019_A =false;
+	  var show_new_cij_tv_player_live_2019=false;
+	  var saved_position_novedades_2019;
+	  var first_cijtv_player_2019_load=false;
+	  
+	  OPTIONS_NOVEDADES_CAROUSEL={
+		    loop: true,
+			margin: 10,
+			responsiveClass: true,
+			responsiveBaseElement:$("#contenedor-novedades-refresh .otras-noticias.contenedor-resizable"),
+			responsive: {
+			  0: {
+					 items: 1,
+					 nav: false,
+					 loop: true,
+					 dots: true,
+					 margin: 20,
+					 autoplay: true,
+					 autoPlayTimeout: 2000,
+					 autoplayHoverPause: true,
+				 }
+			}
+	  } 
+	  
+	  function owlResize($owl) {
+		 $("#container-2015 #contenedor-novedades-refresh .otras-noticias.contenedor-resizable").css("width",$("div#contenedor-novedades-refresh").width());		 	
+		 var $carousel = $('.novedades-carousel-2019')      
+		 $carousel.data('owl.carousel')._invalidated.width = true;
+		 $carousel.trigger('refresh.owl.carousel');
+	  }  
+
+  <!---------------------->      
+  <!-------FECHA---------->  
+  <!---------------------->   
+  	
+  function setClock(){
+	
+	  var weekDays = ["Domingo", "Lunes", "Martes", "Mi&eacute;rcoles", "Jueves", "Viernes", "S&aacute;bado"];
+	  var meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+  
+	  momentoActual = new Date()
+	  hora = momentoActual.getHours()
+	  minuto = momentoActual.getMinutes()
+	  segundo = momentoActual.getSeconds()
+	
+	  diaSemana = momentoActual.getDay();
+	  dia = momentoActual.getDate();
+	  mes = momentoActual.getMonth();
+	  anio = momentoActual.getFullYear();
+	
+	  var result = minuto.length;
+	
+	  if(minuto > 9 ) {
+		horaImprimible = hora + ":" + minuto;
+	  } else {
+		horaImprimible = hora + ":0" + minuto;
+	  }
+	  	 
+	  variable=weekDays[diaSemana]+", "+ dia + " de " + meses[mes] + " de  " + anio;
+	  $('.cabecera-fecha').html(variable);
+
+  } 
+  
+  setClock();
+  setInterval("setClock()",60000)
+					
+  <!---------------------->    
+  <!------CIJ TV HOME----->      
+  <!---------------------->      
+  
+  first25=false;
+  
+  function reCall(){
+	  if (mostrarVideoCijTVSiNOhayTransmision){		
+		mostrarVideoCijTVSiNOhayTransmision=false;	
+				canalActual="";
+		if (listDirection==1){ 
+		  first25=true;
+		  $("#cij-tv-widget .arrow").trigger("click");
+		};				   	
+	  }
+  } 
+				
+  $(document).ready(function(){  	
+		
+		//AutoScroll	  
+		$(".auto-scroll").click(function(){
+			$('html, body').animate({
+				scrollTop: 0
+			}, 400); 	
+			$(this).hide();		
+		})		 		
+		
+		//Menu desktop
+		$( ".menu-btn" ).click(function(event ){
+			
+			 event.stopPropagation();
+			
+			if (!$("nav").hasClass("desktop-menu")){
+				if (!pchange){
+				
+					$("nav").addClass("fixed-nav desktop-menu");
+					$("nav .container-menu").show();
+					$("#header").addClass("more-margin-bottom");
+					$( ".menu-btn" ).addClass("selected");
+					
+					if($(".search-container").css("display")=="block"){  
+						$(".search-icon-menu" ).css({background: "#fff"}, 500)
+						$(".search-fixed").css({background: "none"});
+						$(".search-container").hide();
+
+						//new
+						$("header .top-header").removeClass("margin-bottom")
+					}
+				}else{
+					pchange=false;	
+				}
+			}else{
+				
+				$("nav").removeClass("fixed-nav desktop-menu");
+				$("#header").removeClass("more-margin-bottom");
+				$(".menu-btn").removeClass("selected");
+			}
+		});
+			
+		allow_action=true;
+			
+		//Menu en celular
+		$( ".icono-secciones" ).click(function(){
+			
+			if (allow_action){
+				allow_action=false;
+				setTimeout(function(){allow_action=true;},800)
+				$(".container-menu").animate({height: "toggle"}, 400);	
+				
+				if($(".search-container").css("display")=="block"){  
+					$(".search-icon-menu" ).css({background: "#fff"}, 500)
+					$(".search-fixed").css({background: "none"});
+					$(".search-container").hide();
+
+					//new
+					$("header .top-header").removeClass("margin-bottom")					
+				}
+			}
+										
+		});
+		var pchange=false;
+		$(".sub-menu-especial .close").click(function() {
+									
+			if($("nav").hasClass("desktop-menu")){
+				pchange=true;
+				$("nav").removeClass("fixed-nav desktop-menu");
+				$("#header").removeClass("more-margin-bottom");  
+				$(".menu-btn").removeClass("selected");
+			}else{
+				$("nav .container-menu").hide();
+				$("nav").removeClass("desktop-menu");
+			}
+			setTimeout(function(){pchange=false;},100)
+		})
+							 
+		$( ".secciones-texto-celular" ).click(function(){
+			$(".container-menu").animate({height: "toggle"}, 500);				
+		});			
+		//Buscar			
+		$( ".search-icon-menu" ).click(function(){
+			
+			if ($("nav").hasClass("desktop-menu")){
+				$("nav").removeClass("fixed-nav desktop-menu");
+			}
+						
+			if($(".search-container").css("display")=="block"){  
+				$(this).css({background: "#fff"}, 500)
+				$(".search-fixed").css({background: "none"});
+
+				//new
+				$("header .top-header").removeClass("margin-bottom")	
+							
+			}else{ 
+				$(this).css({background: "#F5F5F5"}, 500)
+				$(".search-fixed").css({background: "#f7f7f7"});	
+
+				//new
+				$("header .top-header").addClass("margin-bottom")
+			};
+			if (mostrar_nav_original){
+				$(".search-container").animate({opacity:"toggle"}, 500);
+			    $("#campo-busqueda-search-bar").focus();					
+			}else{
+				$(".search-container").animate({opacity:"toggle"}, 500);					
+			}
+			
+
+		});
+		
+		$( ".search-fixed" ).click(function(){
+			if($(".search-container").css("display")=="block"){  
+				$(this).css({background: "none"}, 500)
+				$(".search-icon-menu").css({background: "#fff"});
+
+				//new
+				$("header .top-header").removeClass("margin-bottom")
+			}else{ 
+				$(this).css({background: "#f5f5f5"}, 500)
+
+				//new
+				$("header .top-header").addClass("margin-bottom")
+				
+				$(".search-icon-menu").css({background: "#F5F5F5"});
+				
+				if($(".fixed-nav .container-menu").css("display")=="block"){
+					$(".icono-secciones").click();
+				}
+			};
+			
+			if (mostrar_nav_original){
+				$(".search-container").animate({opacity:"toggle"}, 500);
+			}else{
+				$(".search-container").animate({opacity:"toggle"}, 500);	
+     			$("#campo-busqueda-search-bar").focus();																			
+			}
+
+		});			
+		//Se ejecuta la primera vez
+		setTimeout(function() {	$(window).trigger('resize'); $(window).trigger('resize'); cambiar_relacion_imagen(); nav_menu_check();}, 1000);					
+	 })
+	 
+	 <!---------------------->    
+	 <!---------TAGS--------->      
+	 <!---------------------->	 
+	 
+	 function showTagsHome() {
+		$("#showtagshome").animate({height: "toggle",opacity:"1"}, 500);	
+	 }
+	
+	 function hideTagsHome() {
+		$("#showtagshome").animate({height: "toggle",opacity:"0"}, 500);
+	 }	
+			 
+	 <!---------------------->    
+	 <!------CIJ TV HOME----->      
+	 <!---------------------->
+	 
+	 //ALERTA CIJTV VA ROTANDO
+	 
+	 counterFirstTime=false;	 //Para que no falle la primera vez que se muestra
+	 
+	 function cambiaCanalCIJTV(){
+		 
+		 if (window.matchMedia('(max-width: 767px)').matches)	{
+			 MUEVE_TOP=50;
+		 }else{
+			 MUEVE_TOP=30;
+		 }
+		  
+		 total_lista_cijtv=$(".contenedor-items-cijtv").children("div").length; 
+
+ 		 if(total_lista_cijtv>1 || !counterFirstTime){
+			 
+			 counterFirstTime=true;
+			 counter++;
+			 
+			 if ($(".live-video-player").css("display")=="none"){
+					 
+				 if (counter==total_lista_cijtv){
+					$(".contenedor-items-cijtv").append($(".contenedor-items-cijtv .i-am-item-cijtv").first().clone());
+					$(".contenedor-items-cijtv .i-am-item-cijtv").last().addClass("borrame") ;
+					
+					$(".contenedor-items-cijtv").animate({"margin-top":"-"+counter*MUEVE_TOP+"px"},1000, function(){					
+						 $(".contenedor-items-cijtv .borrame").remove();
+						 $(".contenedor-items-cijtv").css({"margin-top":"0"});	
+					});
+					
+					counter=0;			
+					
+				 }else{
+	
+					$(".contenedor-items-cijtv").animate({"margin-top":"-"+counter*MUEVE_TOP+"px"},1000);
+				 }	
+				 
+			 }
+		 }
+	 }
+	 counterFirstTimeLoop = false;
+	 function cambiaCanalLoopAlerta(){
+		 
+		 if (window.matchMedia('(max-width: 767px)').matches)	{
+			 MUEVE_TOP=50;
+		 }else{
+			 MUEVE_TOP=30;
+		 }
+		 		 
+		 total_lista_loop=$(".contenedor-items-loop").children("div").length; 
+
+ 		 if(total_lista_loop>1 || !counterFirstTimeLoop){
+			 
+			 counterFirstTimeLoop=true;
+			 counter_loop++;
+			 
+			 if (counter_loop==total_lista_loop){
+				$(".contenedor-items-loop").append($(".contenedor-items-loop .i-am-item-cijtv").first().clone());
+				$(".contenedor-items-loop .i-am-item-cijtv").last().addClass("borrame") ;
+				
+				$(".contenedor-items-loop").animate({"margin-top":"-"+counter_loop*MUEVE_TOP+"px"},1000, function(){					
+					 $(".contenedor-items-loop .borrame").remove();
+					 $(".contenedor-items-loop").css({"margin-top":"0"});	
+				});
+				
+				counter_loop=0;			
+				
+			 }else{
+
+				$(".contenedor-items-loop").animate({"margin-top":"-"+counter_loop*MUEVE_TOP+"px"},1000);
+			 }	
+			
+		 }
+	 }
+							
+	 listDirection=0;	//VARIABLE QUE DICE SI VA PARA ARRIBA O ABAJO EN LA LISTA DE CIJTV PLAYER DE VIDEOS YOUTUBE
+   
+	 $("#cij-tv-widget .arrow").click(function(){
+		if (listDirection==0){
+		  listDirection=1;
+		  $(".slide-content .content").animate({top: "-100%"}, 1000, 'easeOutCubic', function() {});						
+		  $("#cij-tv-widget .arrow").addClass("arrow-up");  							  
+		}else{
+		  listDirection=0;
+		  if (first25){
+			  first25=false;
+		      $(".slide-content .content").animate({top: "-25%"}, 1000, 'easeOutCubic', function() {});																  
+		  }else{
+		      $(".slide-content .content").animate({top: "0%"}, 1000, 'easeOutCubic', function() {});													
+		  }
+		  $("#cij-tv-widget .arrow").removeClass("arrow-up");  
+		}		   
+	 });		
+	 
+	 ///////////////////////////////////////////
+	 //CAMBIAR LA RELACION DE LAS IMAGENES UI
+	 ////////////////////////////////////////// 
+			 
+	 function cambiar_relacion_primera_vez(){
+		//SE LLAMA 2 veces; 
+		cambiar_relacion_imagen();
+		cambiar_relacion_imagen();
+	 }
+	 	 
+	 ///////////////////////////////////////////
+	 //Detengo el player si se achica a celular
+	 ////////////////////////////////////////// 
+	 
+	 var cambioACelular=false;//VARIABLE QUE CAMBIA SOLO UNA VEZ CUANDO PASO DE CELU O VICEVERSA
+	 var soyCelular=false;
+     var soyTablet=false;
+	 
+	 var cambioMenuNew=false;
+	 	 
+	 var hacerCambioDeTamanoAlScrollear=false;
+			 
+	 $(window).resize(function() {
+		 
+	   //MENU SOLO PARA DESKTOP , SI HAY SCROLL O RESIZE SE CIERRA AUTOMATICAMENTE
+	   if ( $("nav").hasClass("fixed-nav desktop-menu")){
+		 $("nav").removeClass("fixed-nav desktop-menu");
+		 $("#header").removeClass("more-margin-bottom")	
+		 $(".menu-btn").removeClass("selected");	
+	   }
+		 		 
+	   //NEW MENU	 
+	   if (window.matchMedia('(max-width: 767px)').matches)	{
+		   if (!cambioMenuNew){
+			  cambioMenuNew=true;
+			  $(".container-menu").css("display","none");
+		   }
+	   }else{
+		   if (cambioMenuNew){
+			  cambioMenuNew=false;
+			  if(!$("nav").hasClass("fixed-nav")){
+				$(".container-menu").css("display","block");
+			  }
+		   }		   
+	   }
+	   
+	   /**************/
+	   /**NUEVO 2019**/
+	   /**************/
+		 	   
+		   								 
+	   
+	   if (window.matchMedia('(max-width: 767px)').matches)	{
+		   soyCelular=true;
+		   if (!cambioACelular){
+			   cambioACelular=true;
+			   
+			   //Oculto los videos de interior de notas en el celular
+			   				   			   
+		   }
+   
+		   		   
+			///////////////////////////////////////////////////////////////////
+			//CUANDO HAY VIDEO EN UNA NOTA PRINCIPAL O SECUNDARIA EN LA HOME //
+			///////////////////////////////////////////////////////////////////
+			 
+								   
+		   		   
+	   }else{
+		   soyCelular=false;			   
+		   if (cambioACelular){
+			  cambioACelular=false;
+
+			   //Muestro los videos de interior de notas 
+			   				  
+		   }	
+		   
+		   if (window.matchMedia('(max-width: 767px)').matches)	{		   		   		    
+		      soyTablet=true;
+		   }else{
+		      soyTablet=false;			   
+		   }
+		   
+		   	   }		
+	   
+				  
+	   //HAGO RESIZE DE LA GALERIA DE IMAGENES
+					
+	   						  
+	   hacerCambioDeTamanoAlScrollear=true;			   
+	   for(i=0;i<2;i++){ cambiar_relacion_imagen();  }		   
+	   nav_menu_check();
+	 });		
+	 
+	 cambiar_relacion_primera_vez();
+		   
+	 //////////////
+	 //NUEVO 2019//
+	 //////////////
+				   
+		 function element_in_scroll(elem,obj){
+			 if($(obj).length>0){
+				var docViewTop = $(window).scrollTop();
+				var docViewBottom = docViewTop + $(window).height();
+				if($(elem).offset()){
+					var elemTop = $(elem).offset().top;
+					var elemBottom = elemTop + $(elem).height();
+					var final = parseInt($(obj).offset().top) + parseInt($(obj).height());
+					return ((elemBottom <= docViewBottom) && (elemTop >= docViewTop) || docViewBottom >= final);
+				}else{
+					return false;
+				}
+			 }
+		 }
+				   
+	 ///////////////////////////////////////////
+	 //BARRA DE MENU SUPERIOR AL NAVEGAR
+	 //////////////////////////////////////////
+	 		  
+	 function nav_menu_check(){
+
+		 var y = $(window).scrollTop();			 
+		 var SEPARADOR = $( "#separador" );
+		 var SEPARADOR_POS = SEPARADOR.position(); 
+		 
+		 var dif=0;//LE AGREGO UNA DIFERENCIA DE ALTURA PARA CELU O TABLET Y PC
+		 
+		 (soyCelular)? dif=0 : dif=0;
+
+		 //Si es IE7
+		 iamie7=false;
+		 if (/MSIE (\d+\.\d+);/.test(navigator.userAgent)) {
+			var ieversion=new Number(RegExp.$1);
+			if (ieversion==7) {
+				iamie7=true;
+			}
+		 }		
+		 
+		 var TOTAL=SEPARADOR_POS.top+dif;	
+		
+		 /**************/
+		 /**NUEVO 2019**/
+		 /**************/
+		 
+		    		
+				 
+			  
+	  
+		 /**************/
+		 /**NUEVO 2019**/
+		 /**************/
+		 
+						
+						
+							 
+		 //////////////////////////////
+	 	 //SE VUELVE FIXED EL NAV BAR//
+		 //////////////////////////////
+
+		 if( y > TOTAL){
+				
+			 /**************/
+			 /**NUEVO 2019**/
+			 /**************/
+				
+			 	tamano_height_owlscroll=$("div#contenedor-novedades-refresh .owl-carousel.owl-theme").height()
+
+				if ($("#contenedor-novedades-refresh .otras-noticias.contenedor-resizable").hasClass("fixed")){
+					
+					$("#contenedor-novedades-refresh .fixed").width($("#contenedor-novedades-refresh").width());
+					
+					 tamano_scroll_a_comparar=$("div#contenedor-otros-fueros-refresh").height();					
+					 altura_a_comparar=$("div#contenedor-otros-fueros-refresh").offset().top;
+					
+					 comparation=((altura_a_comparar+tamano_scroll_a_comparar)-tamano_height_owlscroll) -y-90;
+					 comparation_c=-tamano_height_owlscroll;
+					 
+					 if (!$(".live-video-player.fixed").hasClass("hide-forever")&&($(".live-video-player").css("display")=="block")){$("#contenedor-novedades-refresh .otras-noticias.contenedor-resizable").addClass("no_top")}
+					 
+					 if (comparation <= 0 && !$("#contenedor-novedades-refresh .otras-noticias.contenedor-resizable").hasClass("fixed-block")){
+					
+						///////////////////////////
+						//AGREGA EL BLOQUEO ABAJO//
+						///////////////////////////
+						
+							$("#contenedor-novedades-refresh .otras-noticias.contenedor-resizable").addClass("fixed-block") ;						
+							P=$(".otras-noticias.contenedor-resizable.clearfix.fixed.fixed-block").height();
+
+					 }else{
+						
+						//////////////////////////////////////
+						//CHEQUEO CUANDO ESTOY DESPLAZANDOME//
+						//////////////////////////////////////
+						
+						    							  if ($(".noticia-super-principal").length>0 || $(".noticias-secundarias").length>0 ){
+						   	     $("#contenedor-novedades-refresh .otras-noticias.contenedor-resizable").css("top","0px")	
+							  }else{
+								 $("#contenedor-novedades-refresh .otras-noticias.contenedor-resizable").css("top","0px")	
+							  }
+							  
+													
+						///////////////////////////
+						//AGREGA EL BLOQUEO ABAJO//
+						///////////////////////////
+						
+							if ($("#contenedor-novedades-refresh .otras-noticias.contenedor-resizable").hasClass("fixed-block")){
+								 P=$(".otras-noticias.contenedor-resizable.clearfix.fixed.fixed-block").height();
+								 
+								 if (!$(".live-video-player.fixed").hasClass("hide-forever"));
+							}
+						
+						//////////////////////////////////////
+						//CHEQUEO CUANDO ESTOY DESPLAZANDOME//
+						//////////////////////////////////////
+						
+							if (comparation >0  && $("#contenedor-novedades-refresh .otras-noticias.contenedor-resizable").hasClass("fixed-block")){
+								$("#contenedor-novedades-refresh .otras-noticias.contenedor-resizable").removeClass("fixed-block")
+								$("#contenedor-novedades-refresh .otras-noticias.contenedor-resizable").css("top","auto")
+							}
+					 }
+					 
+					 if (!$(".live-video-player.fixed").hasClass("hide-forever")&&($(".live-video-player").css("display")=="block")){$("#contenedor-novedades-refresh .otras-noticias.contenedor-resizable").addClass("no_top")}
+
+				}else{
+					
+				    					
+					   if ($(".noticia-super-principal").length>0 || $(".noticias-secundarias").length>0 ){
+						  $("#contenedor-novedades-refresh .otras-noticias.contenedor-resizable").css("top","0px")
+					   }else{
+						   $("#contenedor-novedades-refresh .otras-noticias.contenedor-resizable").css("top","0px") 
+					   }
+					   
+										
+					$("#contenedor-novedades-refresh .otras-noticias.contenedor-resizable").removeClass("fixed-block")
+					$("#contenedor-novedades-refresh .otras-noticias.contenedor-resizable").removeClass("no_top")
+					
+						  								
+				}
+
+			 /**********************************************************************************************************/
+			 /**********************************************************************************************************/
+					
+			 if (mostrar_nav_original){		
+					 
+				  /////////////////////////////////////////////////////////////////////////////////////////////////
+				  
+			      		
+				 $(".container-menu").css("display","none");
+				 mostrar_nav_original=false;
+				 $("#search-nav-principal").appendTo(".fixed-nav .place-search-nav-fixed");
+				
+				 //DE CIJ TV
+				 if ($(".cij-tv-vivo-menu-celular").hasClass("mostrar-en-vivo")){
+					 $(".cij-tv-vivo-menu-celular").removeClass("ocultar-en-celular-vivo");
+				 }
+			
+			 }
+		 } else {
+			 
+			 //VUELVE A SER ORIGINAL EL NAV BAR				 
+			 if (!mostrar_nav_original){
+				 
+		
+				  				 
+				 $("nav").removeClass("fixed-nav");
+					  										 
+				  /////////////////////////////////////////////////////////////////////////////////////////////////				 
+				 
+				 //MENU DESKTOP
+				 if (window.matchMedia('(min-width: 768px)').matches)	{
+				 	{
+						$(".container-menu").css("display","block")
+					}
+				 }
+				 
+				 mostrar_nav_original=true;
+				 $("#search-nav-principal").appendTo(".place-search-nav-original");		
+				 $(".auto-scroll").hide();			
+				 //DE CIJ TV
+				 if ($(".cij-tv-vivo-menu-celular").hasClass("mostrar-en-vivo")){					 
+					 $(".cij-tv-vivo-menu-celular").addClass("ocultar-en-celular-vivo");
+				 }
+			 }		 
+		 }	
+		 
+		 //MENU SOLO PARA DESKTOP , SI HAY SCROLL O RESIZE SE CIERRA AUTOMATICAMENTE
+		 if ( $("nav").hasClass("fixed-nav desktop-menu")){
+			 $("nav").removeClass("fixed-nav desktop-menu");
+			 $(".menu-btn").removeClass("selected");
+			 $("#header").removeClass("more-margin-bottom")		
+		 }
+	 }	  
+	  
+	 ///////////////////////////////////////////
+	 //FUNCION QUE CAMBIA LA RELACION DE TAMAÃO	
+	 ////////////////////////////////////////// 
+	 	 
+	 function cambiar_relacion_imagen(){
+		 var CANTBLOQUES=$(".bloque-n-container").length;
+		 for(i=1;i<CANTBLOQUES+1;i++){
+			if (!soyCelular){ 
+			
+				ALTURA_CONTENEDOR=$("#bloque-"+i+"-container .bloque-resizer-container .container-resizable-bloque-relative").height();//esto lo uso para cada contenedor relativo
+
+				CANT=$("#bloque-"+i+"-container .bloque-resizer-container .mini-contenedor-resizable").length;
+				if (CANT>1){
+					
+										
+					//SOLO ALTERO LOS PORCENTAJES PARA LAS NOTICIAS SECUNDARIAS POR LA CUESTION DE CANTIDAD DE IMAGENES Y LOS WIDGETS DE LA DERECHA
+					if (i==1)
+						PORCENTAJE_ALTURA=96;
+					else
+						PORCENTAJE_ALTURA=96;
+						
+					PORCENTAJE_SEPARACION=100-PORCENTAJE_ALTURA; //ahora queda en 4% 
+					
+					//CANT /2 - 1*XCANT NOS DA EN EL CASO DE CANT=2 48	 ETC		
+					CUANTO=PORCENTAJE_ALTURA/CANT;
+					ALTURA_MINICONTENEDOR=((CUANTO)*ALTURA_CONTENEDOR)/100;
+					Math.round(ALTURA_MINICONTENEDOR)
+					//DIF_CANT de %2 * CANT que es el margin bottom
+					DIF_CANT=PORCENTAJE_SEPARACION/(CANT-1)
+					DIFERENCIA=(DIF_CANT*ALTURA_CONTENEDOR)/100;									
+					Math.ceil(DIFERENCIA);	
+					 
+				}else{
+					ALTURA_MINICONTENEDOR=ALTURA_CONTENEDOR;
+					DIFERENCIA=0;
+				}
+				if (ALTURA_MINICONTENEDOR && ALTURA_MINICONTENEDOR>200){					
+					$("#bloque-"+i+"-container .bloque-resizer-container .mini-contenedor-resizable").css("height",ALTURA_MINICONTENEDOR.toPrecision(3));				
+					$("#bloque-"+i+"-container .bloque-resizer-container .mini-contenedor-resizable").css("margin-bottom",Math.ceil(DIFERENCIA));
+					$("#bloque-"+i+"-container .bloque-resizer-container .mini-contenedor-resizable:last-child").css("margin-bottom","0px");					
+				}
+			}else{
+				$("#bloque-"+i+"-container .bloque-resizer-container .mini-contenedor-resizable").css("height","auto");
+				
+				//HOME
+				$("#bloque-"+i+"-container .otras-noticias .noticia").css("height","auto");								
+			}
+			
+			/////////////////////////////////////////////////////////////////////
+			//TITLE HOME SUPER NOTA
+			/////////////////////////////////////////////////////////////////////
+             
+				
+			
+			///////////////////////////////////////////////////////////////////
+			//CUANDO HAY VIDEO EN UNA NOTA PRINCIPAL O SECUNDARIA EN LA HOME //
+			///////////////////////////////////////////////////////////////////
+             
+													
+			
+			for (i=1;i<=15;i++){
+				var highest = null;
+				var hi = 0;
+				var hayImagen=false;
+				var heightImagen=0;
+				$(".otras-noticias .fila-"+ i).css("height","auto");
+				
+				$(".otras-noticias .fila-"+ i).each(function(){
+				  var h = $(this).height();
+				  if(h > hi){
+					 hi = h;
+					 highest = $(this);  
+				  } 
+				  if ($(this).find("img").length>0){
+					  hayImagen=true;
+					  heightImagen=$(this).find("img").height();
+				  }   
+				});
+			
+			  	if(highest!=null)
+				
+					$(".otras-noticias .fila-"+i).css("height",highest.height());
+						
+					if (hayImagen){
+					  $(".otras-noticias .fila-"+i+" embed").height(heightImagen);
+					  $(".otras-noticias .fila-"+i+" object").height(heightImagen);
+					  $(".otras-noticias .fila-"+i+" iframe").height(heightImagen);
+					}else{
+						
+					  $(".otras-noticias .fila-"+i+" embed").height($(this).width()/6.25);					 	
+					  $(".otras-noticias .fila-"+i+" object").height($(this).width()/6.25);			
+					  $(".otras-noticias .fila-"+i+" iframe").height($(this).width()/6.25);	
+											
+					  $(".otras-noticias .fila-"+i+" embed").css("max-height","215px");
+					  $(".otras-noticias .fila-"+i+" object").css("max-height","215px");
+					  $(".otras-noticias .fila-"+i+" iframe").css("max-height","215px");					  					  		  		 	
+					}
+				}			
+		   }
+		   
+		////////////////////////////////////////
+		//NUEVO 2019 ALTURA DE ULTIMOS FALLOS //
+		////////////////////////////////////////
+		 
+				
+			   
+		////////////////////////////////////////////////////////////////				
+		/////CIJ TV HOME
+		////////////////////////////////////////////////////////////////
+		
+		$("#cij-tv-widget .slide-content").css("height",$("#cij-tv-widget .player .video-container").height());
+					
+		////////////////////////////////////////////////////////////////				
+		/////CONTENEDOR IMAGENES 
+		////////////////////////////////////////////////////////////////
+		
+		$("#container-2015 #bloque-2-container .imagenes-player ul.thumbs").css("height",$("#container-2015  #bloque-2-container .imagenes-player .contenedor-imagen-grande").height());
+		
+		////////////////////////////////////////////////////////////////				
+		/////VIDEOS AL 100% COMO PRINCIPAL
+		////////////////////////////////////////////////////////////////
+		
+		$(".noticia-principal embed").height($(this).width()/2.9);	
+		$(".noticia-principal object").height($(this).width()/2.9);	
+		$(".noticia-principal iframe").height($(this).width()/2.9);	
+		
+		$(".noticia-secundaria embed").height($(this).width()/2.9);	
+		$(".noticia-secundaria object").height($(this).width()/2.9);	
+		$(".noticia-secundaria iframe").height($(this).width()/2.9);	
+		
+		$(".noticia-principal embed").css("max-height","463px");	
+		$(".noticia-principal object").css("max-height","463px");	
+		$(".noticia-principal iframe").css("max-height","463px");	
+		
+		$(".noticia-secundaria embed").css("max-height","463px");	
+		$(".noticia-secundaria object").css("max-height","463px");	
+		$(".noticia-secundaria iframe").css("max-height","463px");			
+		
+		////////////////////////////////////////////////////////////////				
+		/////VIDEOS AL 100% COMO NOTAS
+		////////////////////////////////////////////////////////////////
+		
+		$("#container-2015.interior-nota embed").width("100%");
+		$("#container-2015.interior-nota object").width("100%");
+		
+		if (!soyCelular){ 
+			$("#container-2015.interior-nota embed").height($(this).width()/2.9);	
+			$("#container-2015.interior-nota object").height($(this).width()/2.9);		
+			
+			////////////////////////////////////////////////////////////////				
+			/////VIDEOS AL 100% COMO MULTIMEDIA
+			////////////////////////////////////////////////////////////////
+			
+			$(".multimedia embed").width("100%");	
+			$(".multimedia object").width("100%");		
+			
+			porc=(($("#showfotvid").height()*4.5)/100);
+
+			$(".multimedia embed").height($("#showfotvid").height()-porc+5-62);	//62 es el alto de los controles
+			$(".multimedia object").height($("#showfotvid").height()-porc+5-62);//62 es el alto de los controles		
+			$(".jp-jplayer").height($("#showfotvid").height()-porc+5-62);	//62 es el alto de los controles
+				
+			//REPRODUCTOR DE IMAGENES 2016
+			if (!$("#container-2015  #bloque-2-container").hasClass("widget-site-mode-2")){
+				$(".buscar-en-imagenes").insertAfter($("#bloque-2-container .bloque-resizer-container"));
+			}				
+										
+		}else{
+			$("#container-2015.interior-nota embed").height($(this).width()/1.8);
+			$("#container-2015.interior-nota object").height($(this).width()/1.8);
+			
+			////////////////////////////////////////////////////////////////				
+			/////VIDEOS AL 100% COMO MULTIMEDIA
+			////////////////////////////////////////////////////////////////
+			
+			$(".multimedia embed").width("100%");	
+			$(".multimedia object").width("100%");		
+					
+			$(".multimedia embed").height($(this).width()/2.08);	
+			$(".multimedia object").height($(this).width()/2.08);	
+			
+			//REPRODUCTOR DE IMAGENES 2016
+			if (!$("#container-2015  #bloque-2-container").hasClass("widget-site-mode-2")){
+				$(".buscar-en-imagenes").insertAfter($("#bloque-2-container .bloque-resizer-container .imagenes-player .cont"));
+			}				
+
+		}
+		 
+		////////////////////////////////////////////////////////////////				
+		/////BANNERS EN LA HOME
+		////////////////////////////////////////////////////////////////
+					 
+		$(".im-banner embed").each(function(){
+			  var w = $(this).width();
+			  $(this).height(w/7.042553191489362);
+		}); 
+					
+		nav_menu_check();
+	 }
+	 	  
+	 /////////////////////////////////////
+	 //Compartir
+	 /////////////////////////////////////
+	 
+	 compartir_visible=false;
+	 $( ".compartir" ).click(function(){
+		$(".share-box").animate({opacity: "toggle"}, 500);				
+		compartir_visible=!compartir_visible;
+		(compartir_visible)?$(".compartir ").addClass("compartir_seleccionado"):$(".compartir ").removeClass("compartir_seleccionado");
+	 });		
+	 
+	 $(window).scroll(function(){
+
+		 if (hacerCambioDeTamanoAlScrollear){
+			 hacerCambioDeTamanoAlScrollear=false;
+			 cambiar_relacion_imagen();
+		 }
+		 nav_menu_check(); 		
+		 ocultar_cosas();		 
+	 });			
+	 
+	 function ocultar_cosas(){
+		 $(".ui-datepicker").fadeOut();
+	 }
+	 
+	 /////////////////////
+	 //OTRAS NOTICIAS HOME
+	 /////////////////////
+			
+	 $("#container-2015 #bloque-3-container .container-resizable-bloque-relative .otras-noticias .imagen" ).hover(
+		 function() {
+			 $("#container-2015 #bloque-3-container .container-resizable-bloque-relative .otras-noticias imagen .bajada-imagen" ).hide();
+			 $(this).find(".bajada-imagen").fadeIn();
+		 }, function() {
+			 $(this).find(".bajada-imagen").hide();				
+		 }
+	 );
+			 
+	 ///////////////////////
+	 //INICIALIZAR VARIABLES
+	 ///////////////////////
+	 
+	 total_lista_cijtv=$(".contenedor-items-cijtv").children("div").length;
+	 counter=0;				
+	 
+	 ///////////////////////
+	 //INICIALIZAR FUNCIONES
+	 ///////////////////////
+	 soyIntervalo=setInterval("cambiaCanalCIJTV()",3500);			 // cambiar por 3500
+
+	 // ALERTA LOOP
+	 total_lista_loop=$(".contenedor-items-loop").children("div").length;
+	 counter_loop=0;
+	 soyIntervaloLoop=setInterval("cambiaCanalLoopAlerta()",5000);
+	 
+	 //ABRIR PRIMER VIDEO
+	 
+     //////////////////////
+	 ///SEARCHBAR
+	 //////////////////////
+	 
+	 $('#campo-busqueda-search-bar').on('keyup', function(e) {
+		if (e.keyCode === 13) {
+			busquedaSearchBar(); 
+		}
+	 });
+
+	 
+	 function busquedaSearchBar() {
+	 	var permitido = ["OJA","OM","OVD","BGD","CIJ","oja","om","ovd","bgd","cij"];
+	
+ 		if(document.busquedaSearch.search.value!='Palabra o frase ...'){
+ 			if((document.busquedaSearch.search.value.length < 4 ) && permitido.indexOf(document.busquedaSearch.search.value) < 0){
+ 				alert('Debe ingresar una palabra o frase mayor a 3 letras.'); // 
+ 			}else{
+ 				document.busquedaSearch.submit(); 	
+ 			}
+ 		}else{
+ 			alert('Debe ingresar una palabra o frase mayor a 3 letras.');
+ 		}  
+	 }
+	 
+
+</script>        
+  
+     
+         
+<!---------------------->      
+<!-------FOOTER--------->  
+<!---------------------->      
+
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+ <footer id="footer" class="bg-dark text-white">
+     <div class="footer-top">
+        <div class="container">
+          <div class="row">
+              <div class="col-12 col-sm-3 col-md-2 mb-1 text-center">
+                  <img src="https://www.csjn.gov.ar/imagenes/logo_CSJN_bn_pie.png" class="img-fluid" alt="Logo CSJN"/>
+              </div>
+              <div class="col-6 col-sm-3 col-md-3  mb-1">
+                  &nbsp;
+              </div>
+              <div class="col-6 col-sm-3 col-md-3  mb-1">
+                  <i class="fas fa-map-marker" aria-hidden="true"></i>&nbsp;Talcahuano 550 - CABA - Argentina 
+              </div>   
+              <div class="col-6 col-sm-3 col-md-2 mb-1">
+                  <i class="fas fa-at" aria-hidden="true"></i>&nbsp;<a class="text-white" href="https://www.csjn.gov.ar/contacto">Contacto</a>
+              </div>
+              <div class="col-6 col-sm-3 col-md-2 mb-1">
+                  <i class="fas fa-sitemap" aria-hidden="true"></i>&nbsp;<a class="text-white" href="https://www.csjn.gov.ar/mapa-del-sitio">Mapa del sitio</a>
+              </div>
+              
+            </div>
+          </div>
+      </div>        
+  </footer>             
+</body>
+</html>

@@ -1,0 +1,30 @@
+{"id": "7299d21f796f5e39", "instancia": "camara", "sala": "I", "resultado": "revoca", "votos": ["Vázquez", "Hockl"], "numero": "", "evidencia": "p20", "nota": ""}
+{"id": "bc8b8943ed03fa92", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "SD 26802", "evidencia": "p37", "nota": ""}
+{"id": "fad5d7055dd298c2", "instancia": "camara", "sala": "IX", "resultado": "confirma", "votos": ["Fera", "Pesino"], "numero": "", "evidencia": "p12", "nota": ""}
+{"id": "a7e05947e38c1d5a", "instancia": "primera", "sala": "", "resultado": "rechaza", "votos": [], "numero": "SD 8894", "evidencia": "p28", "nota": ""}
+{"id": "4c672906c6de5452", "instancia": "primera", "sala": "", "resultado": "revoca", "votos": [], "numero": "", "evidencia": "p19", "nota": "Recurso ley 27348: revoca lo decidido por Comision Medica y condena a la ART (tambien podria leerse como hace lugar)"}
+{"id": "76d51615bf7f761e", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "SD 7183", "evidencia": "p51", "nota": ""}
+{"id": "4aff625a5dfba6c2", "instancia": "primera", "sala": "", "resultado": "modifica", "votos": [], "numero": "SD 9111", "evidencia": "p49", "nota": "Recurso ley 27348: 'Modificar lo resuelto por la Comision Medica' y hace lugar al recurso"}
+{"id": "333a6e23ff5a7852", "instancia": "camara", "sala": "VI", "resultado": "modifica", "votos": ["Pose", "Vázquez", "Cañal"], "numero": "", "evidencia": "p31", "nota": "RESUELVE comienza al final de p31 y continua en p32"}
+{"id": "39f4daabe64be4a6", "instancia": "camara", "sala": "VIII", "resultado": "confirma", "votos": ["Pesino", "González"], "numero": "", "evidencia": "p11", "nota": ""}
+{"id": "011f10f9cb3c3025", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "SD 18756", "evidencia": "p46", "nota": ""}
+{"id": "575df474ae439fea", "instancia": "camara", "sala": "", "resultado": "confirma", "votos": ["Perugini", "Cañal", "Fera"], "numero": "", "evidencia": "p18", "nota": "Sala no indicada en el texto; Cañal vota en disidencia"}
+{"id": "7f58330381e7f215", "instancia": "camara", "sala": "X", "resultado": "modifica", "votos": ["Ambesi", "Hockl"], "numero": "", "evidencia": "p51", "nota": "'SENT.DEF. 2-3' es codigo de sala, no numero"}
+{"id": "23ad0c81e8fd0c48", "instancia": "camara", "sala": "VII", "resultado": "modifica", "votos": ["Díez Selva", "Pose"], "numero": "SD 60370", "evidencia": "p31", "nota": "Sudera no vota"}
+{"id": "dafa55ae8a102eec", "instancia": "camara", "sala": "IX", "resultado": "confirma", "votos": ["Fera", "Pesino"], "numero": "", "evidencia": "p21", "nota": ""}
+{"id": "458e2b93ff3bc8aa", "instancia": "camara", "sala": "I", "resultado": "modifica", "votos": ["Vázquez", "Catani"], "numero": "", "evidencia": "p53", "nota": ""}
+{"id": "0bf73616ec4c0b18", "instancia": "camara", "sala": "IX", "resultado": "modifica", "votos": ["Fera", "Perugini"], "numero": "", "evidencia": "p8", "nota": "Solo modifica la distribucion de costas"}
+{"id": "09ccb35695d38fe5", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "SD 15.747", "evidencia": "p70", "nota": ""}
+{"id": "58d005fb1c0a1c80", "instancia": "camara", "sala": "IV", "resultado": "modifica", "votos": ["Guisado", "Pinto Varela"], "numero": "SD 122.387", "evidencia": "p54", "nota": ""}
+{"id": "f0713aaf03b5c11b", "instancia": "camara", "sala": "VI", "resultado": "confirma", "votos": ["Pose", "Craig"], "numero": "", "evidencia": "p18", "nota": "Confirma salvo honorarios del letrado actor, que eleva (podria verse como modifica en parte)"}
+{"id": "845f4c11fa33e225", "instancia": "camara", "sala": "X", "resultado": "modifica", "votos": ["Jueguen", "Ambesi"], "numero": "", "evidencia": "p23", "nota": "'SENT.DEF. 1 - 2' es codigo de sala, no numero"}
+{"id": "e1926537ec93ceef", "instancia": "camara", "sala": "", "resultado": "revoca", "votos": ["Cañal", "Perugini"], "numero": "", "evidencia": "p27", "nota": "Sala no indicada; 'RESUELVE: I.' en p26 y 'Revocar la resolucion apelada' en p27; es interlocutoria (litispendencia) sin numero"}
+{"id": "b278757529e7be2d", "instancia": "camara", "sala": "VII", "resultado": "modifica", "votos": ["Díez Selva", "Sudera"], "numero": "SD 60183", "evidencia": "p40", "nota": "Pose no vota"}
+{"id": "89042f466938c5ed", "instancia": "camara", "sala": "IV", "resultado": "confirma", "votos": ["Guisado", "Pinto Varela"], "numero": "SD 121.262", "evidencia": "p19", "nota": ""}
+{"id": "4604735de14a7612", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "SD 9144", "evidencia": "p25", "nota": "Juzgado no nombrado ni firma de juez, pero estructura de sentencia de primera instancia (VISTOS/FALLO)"}
+{"id": "3b36bf5d0f552ce2", "instancia": "primera", "sala": "", "resultado": "revoca", "votos": [], "numero": "SD 25.013", "evidencia": "p24", "nota": "Recurso ley 27348: revoca lo decidido por Comision Medica y condena a la ART (tambien podria leerse como hace lugar); encabezado 'Sentencia No:25.013'"}
+{"id": "513c7416689a71fc", "instancia": "camara", "sala": "VIII", "resultado": "modifica", "votos": ["Pesino", "González"], "numero": "", "evidencia": "p30", "nota": ""}
+{"id": "8b765c5b4b359d4a", "instancia": "camara", "sala": "VII", "resultado": "modifica", "votos": ["Russo", "Díez Selva"], "numero": "SD 59530", "evidencia": "p29", "nota": "Ferdman no vota"}
+{"id": "f0290f972832ca95", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "SD 4986", "evidencia": "p49", "nota": ""}
+{"id": "66c77f6cda470f8c", "instancia": "camara", "sala": "I", "resultado": "confirma", "votos": ["Hockl", "Catani"], "numero": "", "evidencia": "p62", "nota": "Confirma con la excepcion de dejar sin efecto la condena de hacer (art. 80 certificados); podria verse como modifica"}
+{"id": "616ceddf4e5ceaa6", "instancia": "camara", "sala": "X", "resultado": "confirma", "votos": ["Ambesi", "Russo"], "numero": "", "evidencia": "p18", "nota": "'SENT.DEF. 2 - 1' es codigo de sala, no numero"}

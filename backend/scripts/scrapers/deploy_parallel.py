@@ -1,380 +1,360 @@
-"""Deploy PJN scraper to 10 Vultr VPS instances in parallel.
+"""Run the PJN scraper on N Vultr VPS in parallel (one IP each), then merge their catalogs.
 
-Each VPS scrapes ~2 jurisdictions with its own IP.
-Total: ~500K sentencias in ~5 hours. Cost: ~$0.50 Vultr + ~$1.50 Haiku captchas.
+Each VPS gets one slice of the date range, the scripts/ package over SSH and a .env with
+the keys read from backend/.env (never printed). Every VPS keeps its own catalog.db;
+`collect` snapshots them, downloads them and merges them into the local catalog, which
+re-applies the data contract and enrichment.
 
-Usage:
-    python -m scripts.scrapers.deploy_parallel --deploy     # create 10 VPS + start scraping
-    python -m scripts.scrapers.deploy_parallel --status     # check progress on all VPS
-    python -m scripts.scrapers.deploy_parallel --collect    # download results from all VPS
-    python -m scripts.scrapers.deploy_parallel --destroy    # destroy all VPS
+Usage (from backend/):
+    python -m scripts.scrapers.deploy_parallel deploy --camara C_7 --desde 2025-09-27 --hasta 2026-09-27 -n 10
+    python -m scripts.scrapers.deploy_parallel status
+    python -m scripts.scrapers.deploy_parallel update      # ship new code to running VPS, restart
+    python -m scripts.scrapers.deploy_parallel collect     # download + merge (+ audit)
+    python -m scripts.scrapers.deploy_parallel destroy
 """
 
 import argparse
+import io
 import json
-import sys
+import sqlite3
+import subprocess
+import tarfile
 import time
+from concurrent.futures import ThreadPoolExecutor
+from datetime import date, timedelta
 from pathlib import Path
 
 import httpx
 
-VULTR_API = "https://api.vultr.com/v2"
-PLAN = "vc2-1c-1gb"  # $5/mo = $0.007/h
-OS_ID = 2284  # Ubuntu 24.04 LTS x64
-
-# 10 regions for 10 different IPs
-REGIONS = ["ewr", "ord", "dfw", "mia", "lax", "sao", "atl", "sjc", "scl", "fra"]
-
-# 18 jurisdictions split across 10 servers
-JURISDICTION_SPLITS = [
-    ["5-5"],                          # CABA (biggest)
-    ["1-1"],                          # Buenos Aires (second biggest)
-    ["6-6", "13-13"],                 # Cordoba + Mendoza
-    ["17-17", "17-10"],               # Salta + Jujuy
-    ["7-7", "3-3"],                   # Corrientes + Chaco
-    ["4-4", "8-8"],                   # Chubut + Entre Rios
-    ["3-9", "1-11"],                  # Formosa + La Pampa
-    ["6-12", "14-14"],                # La Rioja + Misiones
-    ["16-15", "16-16"],               # Neuquen + Rio Negro
-    ["13-18", "24-2"],                # San Juan + Catamarca
-]
-
-STATE_FILE = Path("D:/litigia-data/logs/parallel_deploy_state.json")
-
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from scripts.catalog import Catalog
 from scripts.config import settings
 
+VULTR = "https://api.vultr.com/v2"
+PLAN = "vc2-1c-1gb"
+OS_ID = 2284                    # Ubuntu 24.04 LTS x64
+REGIONS = ["ewr", "ord", "dfw", "mia", "lax", "sao", "atl", "sjc", "scl", "fra"]
+TAG = "litigia-pjn"
+SSH_KEY_NAME = "litigia-deploy"
+KEY = Path.home() / ".ssh" / "id_ed25519"
+SSH_OPTS = ["-i", str(KEY), "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
+            "-o", "LogLevel=ERROR", "-o", "ConnectTimeout=15", "-o", "BatchMode=yes"]
+SCRIPTS_DIR = Path(__file__).resolve().parents[1]
+STATE = settings.data_logs / "parallel_state.json"
+REMOTE_DB_DIR = settings.data_root / "parallel"
+DEPS = "httpx pymupdf anthropic pydantic-settings"
 
-def _headers():
-    return {"Authorization": f"Bearer {settings.vultr_api_key}", "Content-Type": "application/json"}
+DOC_FIELDS = ["url", "tribunal", "jurisdiccion", "fecha", "caratula", "expediente", "tipo_fallo", "texto"]
 
 
-def _cloud_init(anthropic_key: str, jurisdictions: list[str], server_id: int) -> str:
-    """Generate cloud-init script that installs deps and runs the scraper."""
-    jur_args = " ".join(jurisdictions)
-    return f"""#!/bin/bash
-set -e
+def log(msg: str) -> None:
+    print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
-# Log everything
-exec > /var/log/scraper-setup.log 2>&1
 
-echo "=== [{server_id}] Setting up PJN scraper ==="
-apt-get update -qq
-apt-get install -y -qq python3 python3-pip python3-venv git
+# -- pure helpers ---------------------------------------------------------------------
 
-# Create workspace
-mkdir -p /opt/scraper /data/clean /data/logs
-cd /opt/scraper
+def split_range(start: date, end: date, n: int) -> list[tuple[date, date]]:
+    """n contiguous slices covering [start, end], sizes differing by at most one day."""
+    days = (end - start).days + 1
+    n = max(1, min(n, days))
+    out, cursor = [], start
+    for i in range(n):
+        length = days // n + (1 if i < days % n else 0)
+        out.append((cursor, cursor + timedelta(days=length - 1)))
+        cursor += timedelta(days=length)
+    return out
 
-# Install Python deps
-python3 -m venv venv
-source venv/bin/activate
-pip install -q httpx pymupdf anthropic pydantic-settings
 
-# Write the scraper files
-cat > config_minimal.py << 'PYEOF'
-from pathlib import Path
-from pydantic_settings import BaseSettings
+def package_scripts() -> bytes:
+    """scripts/ as tar.gz, without caches, secrets or local-only helpers."""
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+        for path in sorted(SCRIPTS_DIR.rglob("*")):
+            rel = path.relative_to(SCRIPTS_DIR.parent)
+            if path.is_dir() or "__pycache__" in rel.parts or path.suffix in (".pyc", ".ps1") or path.name == ".env":
+                continue
+            tar.add(path, arcname=rel.as_posix())
+    return buf.getvalue()
 
-class Settings(BaseSettings):
-    model_config = {{"env_file": ".env", "env_file_encoding": "utf-8"}}
-    anthropic_api_key: str = ""
-    data_root: Path = Path("/data")
-    data_clean: Path = Path("/data/clean")
-    data_logs: Path = Path("/data/logs")
 
-settings = Settings()
-PYEOF
+def merge_catalog(remote_db: Path, local: Catalog) -> dict:
+    """Upsert every document and search of a remote catalog into the local one (idempotent)."""
+    src = sqlite3.connect(f"file:{remote_db}?mode=ro", uri=True)
+    src.row_factory = sqlite3.Row
+    stats = {"documents": 0, "new": 0, "searches": 0}
+    for row in src.execute("SELECT * FROM documents"):
+        d = {k: row[k] for k in DOC_FIELDS}
+        d.update(source=row["source"], source_id=row["source_id"], firmantes=json.loads(row["firmantes"] or "[]"))
+        stats["new"] += not local.has(d["source"], d["source_id"])
+        local.upsert(d, commit=False)
+        stats["documents"] += 1
+    for s in src.execute("SELECT * FROM searches"):
+        local.db.execute("INSERT OR REPLACE INTO searches VALUES (?, ?, ?, ?, ?, ?, ?)", tuple(s))
+        stats["searches"] += 1
+    local.db.commit()
+    src.close()
+    return stats
 
-cat > schema_minimal.py << 'PYEOF'
-from dataclasses import dataclass, field, asdict
 
-@dataclass
-class LitigiaDocument:
-    id: str = ""
-    source: str = ""
-    source_id: str = ""
-    texto: str = ""
-    sumario: str = ""
-    caratula: str = ""
-    tipo_documento: str = ""
-    tipo_fallo: str = ""
-    tribunal: str = ""
-    tipo_tribunal: str = ""
-    sala: str = ""
-    magistrados: list = field(default_factory=list)
-    materia: str = ""
-    voces: list = field(default_factory=list)
-    descriptores: list = field(default_factory=list)
-    fecha: str = ""
-    jurisdiccion: str = ""
-    provincia: str = ""
-    localidad: str = ""
-    actor: str = ""
-    demandado: str = ""
-    sobre: str = ""
-    referencias_normativas: list = field(default_factory=list)
-    citas_jurisprudenciales: list = field(default_factory=list)
-    texto_embedding: str = ""
-    chunk_index: int = 0
-    total_chunks: int = 1
+# -- Vultr ------------------------------------------------------------------------------
 
-    def to_dict(self):
-        return asdict(self)
-PYEOF
+def _api() -> httpx.Client:
+    if not settings.vultr_api_key:
+        raise SystemExit("VULTR_API_KEY is missing in backend/.env")
+    return httpx.Client(base_url=VULTR, timeout=60,
+                        headers={"Authorization": f"Bearer {settings.vultr_api_key}"})
 
-# Write .env
-echo "ANTHROPIC_API_KEY={anthropic_key}" > .env
 
-# Write run script for each jurisdiction
-cat > run.sh << 'RUNEOF'
-#!/bin/bash
-source /opt/scraper/venv/bin/activate
-cd /opt/scraper
+def _ssh_key_id(api: httpx.Client) -> str:
+    pub = (KEY.parent / (KEY.name + ".pub")).read_text().strip()
+    for k in api.get("/ssh-keys", params={"per_page": 100}).json()["ssh_keys"]:
+        if k["ssh_key"].split()[:2] == pub.split()[:2]:
+            return k["id"]
+    r = api.post("/ssh-keys", json={"name": SSH_KEY_NAME, "ssh_key": pub})
+    r.raise_for_status()
+    return r.json()["ssh_key"]["id"]
 
-for JUR in {jur_args}; do
-    echo "=== Starting jurisdiction $JUR ==="
-    python3 scraper.py --jurisdiccion "$JUR" --limit 100000 >> /data/logs/scraper_$JUR.log 2>&1 &
-done
 
-wait
-echo "=== ALL DONE ==="
-RUNEOF
-chmod +x run.sh
+def _load_state() -> dict:
+    return json.loads(STATE.read_text()) if STATE.exists() else {"instances": []}
 
-# Download the actual scraper from the repo or write it inline
-# For now, we fetch it from the machine via a simplified version
-cat > scraper.py << 'SCRAPEREOF'
-{scraper_code}
-SCRAPEREOF
 
-# Start scraping
-nohup /opt/scraper/run.sh > /data/logs/run.log 2>&1 &
+def _save_state(state: dict) -> None:
+    settings.ensure_dirs()
+    STATE.write_text(json.dumps(state, indent=2))
 
-echo "=== Setup complete, scraper running ==="
+
+# -- SSH --------------------------------------------------------------------------------
+
+def ssh(ip: str, cmd: str, stdin: bytes | None = None, timeout: int = 900) -> subprocess.CompletedProcess:
+    return subprocess.run(["ssh", *SSH_OPTS, f"root@{ip}", cmd], input=stdin, capture_output=True, timeout=timeout)
+
+
+def scp_get(ip: str, remote: str, local: Path) -> None:
+    local.parent.mkdir(parents=True, exist_ok=True)
+    r = subprocess.run(["scp", *SSH_OPTS, f"root@{ip}:{remote}", str(local)], capture_output=True, timeout=900)
+    if r.returncode:
+        raise RuntimeError(r.stderr.decode(errors="replace")[:300])
+
+
+def _env_file() -> bytes:
+    lines = [f"ANTHROPIC_API_KEY={settings.anthropic_api_key}", "DATA_ROOT=/data"]
+    if settings.anthropic_workspace_id:
+        lines.append(f"ANTHROPIC_WORKSPACE_ID={settings.anthropic_workspace_id}")
+    return ("\n".join(lines) + "\n").encode()
+
+
+SETUP = (
+    "set -e; export DEBIAN_FRONTEND=noninteractive; "
+    "apt-get -o DPkg::Lock::Timeout=600 update -qq; "
+    "apt-get -o DPkg::Lock::Timeout=600 install -y -qq python3-venv >/dev/null; "
+    "mkdir -p /opt/litigia/app /data/logs; "
+    "[ -x /opt/litigia/venv/bin/python ] || python3 -m venv /opt/litigia/venv; "
+    f"/opt/litigia/venv/bin/pip install -q {DEPS}"
+)
+
+
+def _provision(inst: dict, package: bytes, env: bytes, jur: str, camara: str, tipo: str) -> str:
+    ip = inst["ip"]
+    for _ in range(40):                              # wait for sshd
+        if ssh(ip, "true", timeout=30).returncode == 0:
+            break
+        time.sleep(10)
+    else:
+        return "ssh never came up"
+    r = ssh(ip, SETUP, timeout=1800)
+    if r.returncode:
+        return "setup failed: " + r.stderr.decode(errors="replace")[-300:]
+    if ssh(ip, "tar -xz -C /opt/litigia/app", stdin=package).returncode:
+        return "upload failed"
+    if ssh(ip, "umask 077; cat > /opt/litigia/app/.env", stdin=env).returncode:
+        return "env upload failed"
+    return _start(inst, jur, camara, tipo)
+
+
+def _start(inst: dict, jur: str, camara: str, tipo: str) -> str:
+    ip = inst["ip"]
+    run = (f"cd /opt/litigia/app && DATA_ROOT=/data PYTHONIOENCODING=utf-8 setsid nohup "
+           f"/opt/litigia/venv/bin/python -u -m scripts.scrapers.pjn_tribunales --jurisdiccion {jur} "
+           f"--camara {camara} --tipo {tipo} --desde {inst['desde']} --hasta {inst['hasta']} "
+           f">> /data/logs/run.log 2>&1 < /dev/null &")
+    try:
+        ssh(ip, run, timeout=20)   # Git-for-Windows ssh can keep the channel open after `&`
+    except subprocess.TimeoutExpired:
+        pass
+    alive = ssh(ip, "pgrep -f pjn_tribunales", timeout=30).returncode == 0
+    return "running" if alive else "start failed"
+
+
+def update(_args=None) -> None:
+    """Ship the current scripts/ to every VPS that is still scraping and restart it.
+
+    The scraper resumes from its own catalog: finished searches are skipped, known
+    rulings are only refreshed. VPS that already finished are left alone.
+    """
+    state = _load_state()
+    package = package_scripts()
+    live = [i for i in state["instances"] if not i.get("destroyed") and i.get("ip")]
+
+    def one(inst: dict) -> str:
+        ip = inst["ip"]
+        if ssh(ip, "pgrep -f pjn_tribunales", timeout=30).returncode != 0:
+            return "finished, left alone"
+        ssh(ip, "pkill -f pjn_tribunales; sleep 2", timeout=60)
+        if ssh(ip, "rm -rf /opt/litigia/app/scripts && tar -xz -C /opt/litigia/app", stdin=package).returncode:
+            return "upload failed"
+        return _start(inst, state["jurisdiccion"], state["camara"], state["tipo"])
+
+    with ThreadPoolExecutor(max(1, len(live))) as pool:
+        for inst, res in zip(live, pool.map(one, live)):
+            log(f"{inst['label']:24} {res}")
+
+
+def deploy(args) -> None:
+    state = _load_state()
+    if [i for i in state["instances"] if not i.get("destroyed")]:
+        raise SystemExit(f"There is a live deployment in {STATE}. Run destroy first.")
+    ranges = split_range(date.fromisoformat(args.desde), date.fromisoformat(args.hasta), args.n)
+    package, env = package_scripts(), _env_file()
+    with _api() as api:
+        key_id = _ssh_key_id(api)
+        instances = []
+        for k, (s, e) in enumerate(ranges):
+            region = REGIONS[k % len(REGIONS)]
+            label = f"litigia-pjn-{k}-{region}"
+            r = api.post("/instances", json={"region": region, "plan": PLAN, "os_id": OS_ID, "label": label,
+                                             "hostname": label, "sshkey_id": [key_id], "tags": [TAG],
+                                             "backups": "disabled"})
+            if r.status_code not in (200, 201, 202):
+                log(f"create {label} failed: {r.status_code} {r.text[:200]}")
+                continue
+            instances.append({"id": r.json()["instance"]["id"], "label": label, "region": region,
+                              "desde": s.isoformat(), "hasta": e.isoformat(), "ip": ""})
+            log(f"created {label} for {s}..{e}")
+            time.sleep(1)
+        state = {"created_at": time.strftime("%Y-%m-%d %H:%M:%S"), "camara": args.camara,
+                 "jurisdiccion": args.jurisdiccion, "tipo": args.tipo, "instances": instances}
+        _save_state(state)
+        log("waiting for IPs…")
+        pending = {i["id"] for i in instances}
+        while pending:
+            for inst in instances:
+                if inst["id"] in pending:
+                    d = api.get(f"/instances/{inst['id']}").json()["instance"]
+                    if d["status"] == "active" and d["main_ip"] not in ("", "0.0.0.0"):
+                        inst["ip"] = d["main_ip"]
+                        pending.discard(inst["id"])
+            time.sleep(10)
+        _save_state(state)
+    log("provisioning over SSH (install + upload + start)…")
+    with ThreadPoolExecutor(len(instances)) as pool:
+        results = list(pool.map(lambda i: _provision(i, package, env, args.jurisdiccion, args.camara, args.tipo),
+                                instances))
+    for inst, res in zip(instances, results):
+        inst["provision"] = res
+        log(f"{inst['label']:24} {inst['ip']:16} {inst['desde']}..{inst['hasta']}  {res}")
+    _save_state(state)
+
+
+STATUS_PY = r"""
+import sqlite3, json, subprocess
+out = {"alive": subprocess.run(["pgrep", "-f", "pjn_tribunales"], capture_output=True).returncode == 0}
+try:
+    db = sqlite3.connect("file:/data/catalog.db?mode=ro", uri=True)
+    out["status"] = dict(db.execute("select status, count(*) from documents group by 1").fetchall())
+    out["searches"] = db.execute("select count(*), coalesce(sum(total),0), coalesce(sum(fetched),0) from searches where split=0").fetchone()
+except Exception as e:
+    out["error"] = str(e)[:100]
+try:
+    text = open("/data/logs/run.log", encoding="utf-8", errors="replace").read()
+    out["last"] = text.strip().splitlines()[-1][:160]
+    out["anomalies"] = {k: text.count(k) for k in ("PDF failed", "captcha rejected", "expected results", "SKIP", "Traceback")}
+except Exception:
+    out["last"] = ""
+print(json.dumps(out))
 """
 
 
-def get_scraper_code() -> str:
-    """Read the scraper and adapt imports for the VPS minimal environment."""
-    scraper_path = Path(__file__).parent / "pjn_tribunales.py"
-    code = scraper_path.read_text(encoding="utf-8")
-
-    # Replace imports to use minimal versions
-    code = code.replace(
-        "from scripts.config import settings",
-        "from config_minimal import settings",
-    )
-    code = code.replace(
-        "from scripts.normalizers.schema import LitigiaDocument",
-        "from schema_minimal import LitigiaDocument",
-    )
-
-    return code
+def _status_one(inst: dict) -> dict:
+    r = ssh(inst["ip"], "/opt/litigia/venv/bin/python -", stdin=STATUS_PY.encode(), timeout=60)
+    try:
+        return json.loads(r.stdout.decode())
+    except Exception:
+        return {"error": r.stderr.decode(errors="replace")[:120]}
 
 
-def deploy():
-    """Create 10 VPS instances and start scraping."""
-    scraper_code = get_scraper_code()
-    # Escape for bash heredoc
-    scraper_code_escaped = scraper_code.replace("\\", "\\\\").replace("$", "\\$").replace("`", "\\`")
-
-    instances = []
-    client = httpx.Client(headers=_headers(), timeout=30.0)
-
-    for i, (region, jurisdictions) in enumerate(zip(REGIONS, JURISDICTION_SPLITS)):
-        label = f"pjn-scraper-{i}-{region}"
-        jur_str = "+".join(jurisdictions)
-
-        print(f"  [{i+1}/10] Creating {label} in {region} for {jur_str}...")
-
-        init_script = _cloud_init(
-            settings.anthropic_api_key,
-            jurisdictions,
-            i,
-        )
-        # Replace the scraper code placeholder
-        init_script = init_script.replace("{scraper_code}", scraper_code_escaped)
-
-        import base64
-        user_data = base64.b64encode(init_script.encode()).decode()
-
-        r = client.post(f"{VULTR_API}/instances", json={
-            "region": region,
-            "plan": PLAN,
-            "os_id": OS_ID,
-            "label": label,
-            "hostname": label,
-            "user_data": user_data,
-            "backups": "disabled",
-            "tags": ["pjn-scraper"],
-        })
-
-        if r.status_code in (200, 201, 202):
-            data = r.json()["instance"]
-            instances.append({
-                "id": data["id"],
-                "label": label,
-                "region": region,
-                "jurisdictions": jurisdictions,
-                "ip": data.get("main_ip", "pending"),
-                "status": data.get("status", "pending"),
-            })
-            print(f"    Created: {data['id']} (IP: {data.get('main_ip', 'pending')})")
-        else:
-            print(f"    ERROR: {r.status_code} {r.text[:200]}")
-
-        time.sleep(2)  # Don't hit Vultr API too fast
-
-    # Save state
-    STATE_FILE.write_text(json.dumps({"instances": instances, "created_at": time.strftime("%Y-%m-%d %H:%M:%S")}, indent=2))
-    print(f"\n  {len(instances)} instances created. State saved to {STATE_FILE}")
-    print(f"  Wait ~3-5 minutes for setup, then check with --status")
-
-    client.close()
-
-
-def status():
-    """Check status of all VPS instances."""
-    if not STATE_FILE.exists():
-        print("No deployment found. Run --deploy first.")
-        return
-
-    state = json.loads(STATE_FILE.read_text())
-    client = httpx.Client(headers=_headers(), timeout=30.0)
-
-    print(f"  Deployed at: {state['created_at']}\n")
-
-    for inst in state["instances"]:
-        # Get current status from Vultr
-        r = client.get(f"{VULTR_API}/instances/{inst['id']}")
-        if r.status_code == 200:
-            data = r.json()["instance"]
-            ip = data.get("main_ip", "?")
-            status = data.get("status", "?")
-            power = data.get("power_status", "?")
-            print(f"  {inst['label']:30s} | {ip:16s} | {status:10s} | {power:8s} | {inst['jurisdictions']}")
-
-            # If running, try to check scraper progress via SSH/logs
-            if ip and ip != "0.0.0.0" and status == "active":
-                pass  # Could SSH to check /data/logs/ but needs SSH key setup
-        else:
-            print(f"  {inst['label']:30s} | ERROR: {r.status_code}")
-
-    client.close()
-    print(f"\n  To check logs on a server: ssh root@<IP> 'cat /data/logs/run.log'")
-    print(f"  To check scraper output: ssh root@<IP> 'wc -l /data/clean/pjn_tribunales.jsonl'")
-
-
-def collect():
-    """Download results from all VPS instances."""
-    if not STATE_FILE.exists():
-        print("No deployment found.")
-        return
-
-    import subprocess
-
-    state = json.loads(STATE_FILE.read_text())
-    output_dir = Path("D:/litigia-data/clean/parallel_results")
-    output_dir.mkdir(exist_ok=True)
-
-    for inst in state["instances"]:
-        ip = inst.get("ip", "")
-        if not ip or ip == "0.0.0.0":
-            # Get updated IP
-            r = httpx.get(f"{VULTR_API}/instances/{inst['id']}", headers=_headers())
-            if r.status_code == 200:
-                ip = r.json()["instance"].get("main_ip", "")
-
-        if ip and ip != "0.0.0.0":
-            label = inst["label"]
-            print(f"  Downloading from {label} ({ip})...")
-            dest = output_dir / f"{label}.jsonl"
-            result = subprocess.run(
-                ["scp", "-o", "StrictHostKeyChecking=no",
-                 f"root@{ip}:/data/clean/pjn_tribunales.jsonl",
-                 str(dest)],
-                capture_output=True, text=True,
-            )
-            if result.returncode == 0:
-                lines = sum(1 for _ in open(dest, encoding="utf-8"))
-                size = dest.stat().st_size / (1024 * 1024)
-                print(f"    OK: {lines:,} sentencias, {size:.1f}MB")
-            else:
-                print(f"    ERROR: {result.stderr[:200]}")
-
-    # Merge all files
-    merged = output_dir.parent / "pjn_tribunales.jsonl"
-    seen_ids = set()
+def status(_args=None) -> list[dict]:
+    state = _load_state()
+    live = [i for i in state["instances"] if not i.get("destroyed") and i.get("ip")]
+    with ThreadPoolExecutor(max(1, len(live))) as pool:
+        rows = list(pool.map(_status_one, live))
     total = 0
-
-    # Keep existing if any
-    if merged.exists():
-        with open(merged, "r", encoding="utf-8") as f:
-            for line in f:
-                try:
-                    sid = json.loads(line.strip()).get("source_id", "")
-                    if sid:
-                        seen_ids.add(sid)
-                        total += 1
-                except Exception:
-                    pass
-
-    with open(merged, "a", encoding="utf-8") as out:
-        for jsonl in sorted(output_dir.glob("*.jsonl")):
-            with open(jsonl, "r", encoding="utf-8") as f:
-                for line in f:
-                    try:
-                        doc = json.loads(line.strip())
-                        sid = doc.get("source_id", "")
-                        if sid and sid not in seen_ids:
-                            out.write(line.strip() + "\n")
-                            seen_ids.add(sid)
-                            total += 1
-                    except Exception:
-                        pass
-
-    print(f"\n  Merged: {total:,} unique sentencias in {merged}")
+    for inst, s in zip(live, rows):
+        n = sum(s.get("status", {}).values())
+        total += n
+        print(f"{inst['label']:24} {inst['desde']}..{inst['hasta']}  {'VIVO ' if s.get('alive') else 'PARADO'} "
+              f"docs {n:5}  {s.get('status', s.get('error', ''))}  "
+              f"{ {k: v for k, v in s.get('anomalies', {}).items() if v} or ''} | {s.get('last', '')[:80]}")
+    print(f"TOTAL documentos en las VPS: {total}")
+    return rows
 
 
-def destroy():
-    """Destroy all VPS instances."""
-    if not STATE_FILE.exists():
-        print("No deployment found.")
-        return
+SNAPSHOT_PY = ("import sqlite3; s=sqlite3.connect('/data/catalog.db'); d=sqlite3.connect('/data/snapshot.db'); "
+               "s.backup(d); d.close(); s.close()")
 
-    state = json.loads(STATE_FILE.read_text())
-    client = httpx.Client(headers=_headers(), timeout=30.0)
 
-    for inst in state["instances"]:
-        print(f"  Destroying {inst['label']}...")
-        r = client.delete(f"{VULTR_API}/instances/{inst['id']}")
-        if r.status_code in (200, 204):
-            print(f"    OK")
-        else:
-            print(f"    {r.status_code}: {r.text[:100]}")
+def collect(_args=None) -> dict:
+    state = _load_state()
+    live = [i for i in state["instances"] if not i.get("destroyed") and i.get("ip")]
+    local = Catalog(settings.data_root / "catalog.db")
+    totals = {"documents": 0, "new": 0, "searches": 0}
+    for inst in live:
+        try:
+            r = ssh(inst["ip"], f"/opt/litigia/venv/bin/python -c \"{SNAPSHOT_PY}\"", timeout=300)
+            if r.returncode:
+                raise RuntimeError(r.stderr.decode(errors="replace")[:200])
+            dest = REMOTE_DB_DIR / f"{inst['label']}.db"
+            scp_get(inst["ip"], "/data/snapshot.db", dest)
+            s = merge_catalog(dest, local)
+            for k in totals:
+                totals[k] += s[k]
+            log(f"{inst['label']:24} {s}")
+        except Exception as e:
+            log(f"{inst['label']:24} collect failed: {e}")
+    local.close()
+    log(f"merged: {totals}")
+    return totals
 
-    STATE_FILE.unlink(missing_ok=True)
-    print(f"\n  All instances destroyed.")
 
-    client.close()
+def destroy(_args=None) -> None:
+    state = _load_state()
+    with _api() as api:
+        ids = {i["id"] for i in state["instances"] if not i.get("destroyed")}
+        ids |= {i["id"] for i in api.get("/instances", params={"tag": TAG, "per_page": 100}).json()["instances"]}
+        for iid in ids:
+            r = api.delete(f"/instances/{iid}")
+            log(f"destroy {iid}: {r.status_code}")
+    for i in state["instances"]:
+        i["destroyed"] = True
+    _save_state(state)
+
+
+def main() -> None:
+    p = argparse.ArgumentParser(description="PJN scraper on parallel Vultr VPS")
+    sub = p.add_subparsers(dest="cmd", required=True)
+    d = sub.add_parser("deploy")
+    d.add_argument("--jurisdiccion", default="5-5")
+    d.add_argument("--camara", required=True)
+    d.add_argument("--tipo", default="D")
+    d.add_argument("--desde", required=True)
+    d.add_argument("--hasta", required=True)
+    d.add_argument("-n", type=int, default=10)
+    sub.add_parser("status")
+    sub.add_parser("update")
+    sub.add_parser("collect")
+    sub.add_parser("destroy")
+    args = p.parse_args()
+    {"deploy": deploy, "status": status, "collect": collect, "destroy": destroy, "update": update}[args.cmd](args)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--deploy", action="store_true")
-    parser.add_argument("--status", action="store_true")
-    parser.add_argument("--collect", action="store_true")
-    parser.add_argument("--destroy", action="store_true")
-    args = parser.parse_args()
-
-    if args.deploy:
-        deploy()
-    elif args.status:
-        status()
-    elif args.collect:
-        collect()
-    elif args.destroy:
-        destroy()
-    else:
-        print("Use --deploy, --status, --collect, or --destroy")
+    main()

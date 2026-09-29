@@ -1,190 +1,101 @@
-"""PJN Tribunales Federales y Nacionales Scraper — Sentencias de Cámaras.
+"""PJN Tribunales Federales y Nacionales — full-text sentencias into the catalog.
 
-Scrapes full-text sentencias (PDFs) from all federal and national courts.
-Source: https://www.csjn.gov.ar/tribunales-federales-nacionales/
+Source: https://www.csjn.gov.ar/tribunales-federales-nacionales/ (backend: cij.gov.ar)
 
-Strategy (proven through testing):
-- 1 fresh HTTP session per search (server invalidates captcha per PHPSESSID)
-- 1 search per month per cámara → POST with captcha → 20 results (page 0)
-- GET sentencias.html for page 1 → 20 more results
-- Total: 40 sentencias per search, most recent first
-- 15s cooldown between searches to respect rate limits
-- 152 months × 12 cámaras × 18 jurisdicciones = ~32K searches × 40 = ~1.3M capacity
-- Checkpoint/resume: survives interruptions, skips already-scraped IDs
+How it works:
+- Searches need a fresh session + captcha (solved with Haiku, ~$0.0001 each).
+  The filter is the hidden `tid` field (cámara, or a Sala/juzgado). Each search
+  returns at most 100 results (5 pages, re-posting the form with its token) but
+  reports the real total. `pjn_parse.crawl` splits the date range until each
+  search fits; a single day over 100 is split by Sala. Nothing is silently dropped.
+- Metadata (tribunal with Sala, expediente, carátula, fecha) comes from the
+  results page; firmantes and signature date from the PDF itself.
+- PDFs download without a session. Text is cleaned and split into paragraphs,
+  then `catalog.upsert` applies the data contract (scripts/quality.py).
+- Results already in the catalog are not downloaded again, only their metadata
+  is refreshed. Every search is recorded, so runs resume where they stopped and
+  `python -m scripts.audit` can measure completeness against the site.
 
-Usage:
-    python -m scripts.scrapers.pjn_tribunales                      # 1M sentencias
-    python -m scripts.scrapers.pjn_tribunales --limit 1000         # test
-    python -m scripts.scrapers.pjn_tribunales --jurisdiccion 5-5   # only CABA
-    python -m scripts.scrapers.pjn_tribunales --status             # progress
+Usage (from backend/):
+    python -m scripts.scrapers.pjn_tribunales --jurisdiccion 5-5 --camara C_7 --desde 2024-03-01 --hasta 2024-03-31
+    python -m scripts.scrapers.pjn_tribunales --jurisdiccion 5-5          # every cámara, definitivas, 2013 → today
+    python -m scripts.scrapers.pjn_tribunales --tipo I                    # interlocutorias instead
+    python -m scripts.scrapers.pjn_tribunales --list-camaras 5-5
 """
 
 import argparse
-import asyncio
 import base64
-import hashlib
-import json
 import re
 import sys
 import time
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
 import httpx
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from scripts import quality
+from scripts.catalog import Catalog
 from scripts.config import settings
-from scripts.normalizers.schema import LitigiaDocument
+from scripts.scrapers.pjn_parse import CAP, PAGE_SIZE, crawl, parse_oficinas, parse_results, parse_token, parse_total
 
+SOURCE = "pjn"
 BASE = "https://www.csjn.gov.ar/tribunales-federales-nacionales"
-OUTPUT = settings.data_clean / "pjn_tribunales.jsonl"
-CHECKPOINT = settings.data_logs / "pjn_tribunales_checkpoint.json"
-PROGRESS = settings.data_logs / "pjn_tribunales_progress.json"
+FIRST_DATE = date(2013, 8, 21)   # Ley 26.856: publication of sentencias starts
 
 REQUEST_DELAY = 1.0
-SEARCH_COOLDOWN = 15.0       # between searches — server rate limits at ~4/min
-MAX_RETRIES = 5
-RETRY_BACKOFF = [10, 30, 60, 120, 300]
+SEARCH_COOLDOWN = 15.0           # the server rate-limits at ~4 searches/min per IP
+SEARCH_ATTEMPTS = 5
+HTTP_RETRIES = 4
+HTTP_BACKOFF = [10, 30, 60, 120]
+
+# Tipos de oficina in the site's form: Sala, Juzgado, Secretaría Especial, Tribunal Oral, Oficina Judicial
+OFICINA_TIPOS = ("3", "1", "8", "9", "167")
+
+TIPOS = {"D": "Definitiva", "I": "Interlocutoria", "P": "Plenario", "V": "Veredicto"}
 
 JURISDICCIONES = {
     "5-5": "Ciudad de Buenos Aires",
     "1-1": "Buenos Aires",
-    "6-6": "Cordoba",
-    "13-13": "Mendoza",
-    "17-17": "Salta",
-    "17-10": "Jujuy",
-    "7-7": "Corrientes",
+    "24-2": "Catamarca",
     "3-3": "Chaco",
     "4-4": "Chubut",
-    "8-8": "Entre Rios",
+    "6-6": "Córdoba",
+    "7-7": "Corrientes",
+    "8-8": "Entre Ríos",
     "3-9": "Formosa",
+    "17-10": "Jujuy",
     "1-11": "La Pampa",
     "6-12": "La Rioja",
+    "13-13": "Mendoza",
     "14-14": "Misiones",
-    "16-15": "Neuquen",
-    "16-16": "Rio Negro",
+    "16-15": "Neuquén",
+    "16-16": "Río Negro",
+    "17-17": "Salta",
     "13-18": "San Juan",
-    "24-2": "Catamarca",
+    "13-19": "San Luis",
+    "4-20": "Santa Cruz",
+    "21-21": "Santa Fe",
+    "24-22": "Santiago del Estero",
+    "4-23": "Tierra del Fuego",
 }
 
 
 def _ts() -> str:
-    return time.strftime("%Y-%m-%d %H:%M:%S")
+    return time.strftime("%H:%M:%S")
 
 
-def _gen_id(source_id: str) -> str:
-    return hashlib.sha256(f"pjn:{source_id}".encode()).hexdigest()[:16]
+def log(msg: str) -> None:
+    print(f"[{_ts()}] {msg}", flush=True)
 
 
-def _fmt(d: date) -> str:
-    return d.strftime("%y-%m-%d")
+# -- HTTP ---------------------------------------------------------------------------
 
-
-def _extract_pdf_text(pdf_bytes: bytes) -> str:
-    try:
-        import pymupdf
-        doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
-        text_parts = []
-        for page in doc:
-            text_parts.append(page.get_text())
-        doc.close()
-        return "\n".join(text_parts).strip() or ""
-    except Exception as e:
-        print(f"    [{_ts()}] PDF extract failed: {e}", flush=True)
-        return ""
-
-
-# ---------------------------------------------------------------------------
-# Cost tracker
-# ---------------------------------------------------------------------------
-
-class CostTracker:
-    INPUT_PER_M = 1.0   # Haiku 4.5
-    OUTPUT_PER_M = 5.0
-
-    def __init__(self):
-        self.total_input_tokens = 0
-        self.total_output_tokens = 0
-        self.total_calls = 0
-
-    def add(self, inp: int, out: int) -> None:
-        self.total_input_tokens += inp
-        self.total_output_tokens += out
-        self.total_calls += 1
-
-    @property
-    def total_cost_usd(self) -> float:
-        return (self.total_input_tokens * self.INPUT_PER_M / 1e6
-                + self.total_output_tokens * self.OUTPUT_PER_M / 1e6)
-
-    def summary(self) -> str:
-        return f"${self.total_cost_usd:.4f} ({self.total_calls} captchas)"
-
-    def to_dict(self) -> dict:
-        return {"total_cost_usd": round(self.total_cost_usd, 6),
-                "total_calls": self.total_calls,
-                "total_input_tokens": self.total_input_tokens,
-                "total_output_tokens": self.total_output_tokens}
-
-
-_cost = CostTracker()
-
-
-# ---------------------------------------------------------------------------
-# Captcha
-# ---------------------------------------------------------------------------
-
-def _solve_captcha(image_bytes: bytes) -> str | None:
-    for attempt in range(3):
-        try:
-            import anthropic
-            client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-            b64 = base64.standard_b64encode(image_bytes).decode("utf-8")
-            resp = client.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=20,
-                messages=[{"role": "user", "content": [
-                    {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": b64}},
-                    {"type": "text", "text": "This is a CAPTCHA image. Read the exact characters shown. Reply with ONLY those characters, nothing else. Be precise."},
-                ]}],
-            )
-            _cost.add(resp.usage.input_tokens, resp.usage.output_tokens)
-            text = resp.content[0].text.strip().replace(" ", "")
-            # Filter out garbage responses
-            if len(text) >= 3 and len(text) <= 8 and not any(w in text.lower() for w in ["captcha", "image", "cannot", "can't", "sorry"]):
-                print(f"    [{_ts()}] CAPTCHA solved: {text} ({_cost.summary()})", flush=True)
-                return text
-            print(f"    [{_ts()}] CAPTCHA bad response: '{text[:30]}', retry...", flush=True)
-        except Exception as e:
-            print(f"    [{_ts()}] CAPTCHA error ({attempt+1}/3): {e}", flush=True)
-            time.sleep(2)
-    return None
-
-
-# ---------------------------------------------------------------------------
-# HTTP
-# ---------------------------------------------------------------------------
-
-async def _retry(client: httpx.AsyncClient, method: str, url: str, **kw) -> httpx.Response:
-    for attempt in range(MAX_RETRIES + 1):
-        try:
-            r = await client.request(method, url, **kw)
-            r.raise_for_status()
-            return r
-        except (httpx.TimeoutException, httpx.ConnectError, httpx.ReadError,
-                httpx.RemoteProtocolError, httpx.HTTPStatusError) as e:
-            if attempt == MAX_RETRIES:
-                raise
-            wait = RETRY_BACKOFF[min(attempt, len(RETRY_BACKOFF) - 1)]
-            print(f"    [{_ts()}] HTTP retry {attempt+1} in {wait}s -- {type(e).__name__}", flush=True)
-            await asyncio.sleep(wait)
-    raise RuntimeError("unreachable")
-
-
-def _new_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        timeout=120.0, follow_redirects=True,
+def _client() -> httpx.Client:
+    return httpx.Client(
+        timeout=120.0,
+        follow_redirects=True,
         headers={
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             "Accept": "text/html,application/xhtml+xml,*/*",
@@ -193,383 +104,330 @@ def _new_client() -> httpx.AsyncClient:
     )
 
 
-def _parse_results(html: str) -> list[dict]:
-    results = []
-    blocks = re.split(r'(?=href="[^"]*sentencia-)', html)
-    for block in blocks:
-        pdf_match = re.search(r'href="([^"]*sentencia-[^"]+\.pdf[^"]*)"', block)
-        if not pdf_match:
-            continue
-        pdf_url = pdf_match.group(1)
-        uuid_match = re.search(r'sentencia-(?:SGU-)?([a-f0-9-]+)\.pdf', pdf_url)
-        uuid = uuid_match.group(1) if uuid_match else ""
-        trib_match = re.search(r'Tribunal:\s*([^<\n]+)', block, re.IGNORECASE)
-        tribunal = re.sub(r"<[^>]+>", "", trib_match.group(1) if trib_match else "").strip()
-        exp_match = re.search(r'([A-Z]{2,5}\s+\d{4,}/\d{4}[^\s<]*)', block)
-        expediente = exp_match.group(1) if exp_match else ""
-        car_match = re.search(r'tula:\s*([^<\n]+)', block, re.IGNORECASE)
-        caratula = car_match.group(1).strip() if car_match else ""
-        fecha_match = re.search(r'sentencia:\s*(\d{2}/\d{2}/\d{4})', block, re.IGNORECASE)
-        fecha_raw = fecha_match.group(1) if fecha_match else ""
+def _get(client: httpx.Client, method: str, url: str, **kw) -> httpx.Response:
+    for attempt in range(HTTP_RETRIES + 1):
         try:
-            d, m, y = fecha_raw.split("/")
-            fecha = f"{y}-{m}-{d}"
-        except Exception:
-            fecha = fecha_raw
-        results.append({
-            "pdf_url": pdf_url if pdf_url.startswith("http") else f"{BASE}/{pdf_url.lstrip('/')}",
-            "uuid": uuid, "expediente": expediente, "tribunal": tribunal,
-            "caratula": caratula, "fecha": fecha,
-        })
-    return results
+            r = client.request(method, url, **kw)
+            r.raise_for_status()
+            return r
+        except (httpx.TransportError, httpx.HTTPStatusError) as e:
+            if attempt == HTTP_RETRIES:
+                raise
+            wait = HTTP_BACKOFF[min(attempt, len(HTTP_BACKOFF) - 1)]
+            log(f"  HTTP retry {attempt + 1} in {wait}s ({type(e).__name__})")
+            time.sleep(wait)
+    raise RuntimeError("unreachable")
 
 
-# ---------------------------------------------------------------------------
-# Date ranges
-# ---------------------------------------------------------------------------
+# -- Captcha ------------------------------------------------------------------------
 
-def _monthly_ranges(end: date) -> list[tuple[date, date]]:
-    """Newest first, down to 2013-08-21 (Ley 26.856)."""
-    start_limit = date(2013, 8, 21)
-    ranges = []
-    cur = date(end.year, end.month, 1)
-    while cur >= start_limit:
-        m_start = max(cur, start_limit)
-        m_end = (date(cur.year + (1 if cur.month == 12 else 0),
-                      (cur.month % 12) + 1, 1) - timedelta(days=1))
-        m_end = min(m_end, end)
-        ranges.append((m_start, m_end))
-        cur = date(cur.year, cur.month, 1) - timedelta(days=1)
-        cur = date(cur.year, cur.month, 1)
-    return ranges
+FATAL_API_ERRORS = ("AuthenticationError", "PermissionDeniedError", "BadRequestError")
 
 
-# ---------------------------------------------------------------------------
-# Scraper
-# ---------------------------------------------------------------------------
+def client_kwargs(api_key: str, workspace_id: str) -> dict:
+    """Keys not scoped to a workspace need the workspace id on every request."""
+    kwargs: dict = {"api_key": api_key}
+    if workspace_id:
+        kwargs["default_headers"] = {"anthropic-workspace-id": workspace_id}
+    return kwargs
+
+
+class CaptchaSolver:
+    INPUT_PER_M, OUTPUT_PER_M = 1.0, 5.0   # Haiku 4.5, USD per million tokens
+
+    def __init__(self):
+        import anthropic
+        self.client = anthropic.Anthropic(**client_kwargs(settings.anthropic_api_key, settings.anthropic_workspace_id))
+        self.calls = 0
+        self.cost = 0.0
+
+    def solve(self, image: bytes) -> str | None:
+        """Read the captcha. Configuration errors (auth, permission, bad request) propagate:
+        retrying cannot fix them."""
+        import anthropic
+        fatal = tuple(getattr(anthropic, name) for name in FATAL_API_ERRORS)
+        for _ in range(3):
+            try:
+                resp = self.client.messages.create(
+                    model="claude-haiku-4-5-20251001",
+                    max_tokens=20,
+                    messages=[{"role": "user", "content": [
+                        {"type": "image", "source": {"type": "base64", "media_type": "image/png",
+                                                     "data": base64.standard_b64encode(image).decode()}},
+                        {"type": "text", "text": "This is a CAPTCHA image. Read the exact characters shown. "
+                                                 "Reply with ONLY those characters, nothing else. Be precise."},
+                    ]}],
+                )
+                self.calls += 1
+                self.cost += (resp.usage.input_tokens * self.INPUT_PER_M
+                              + resp.usage.output_tokens * self.OUTPUT_PER_M) / 1e6
+                text = resp.content[0].text.strip().replace(" ", "")
+                if 3 <= len(text) <= 8 and text.isalnum():
+                    return text
+            except fatal:
+                raise
+            except Exception as e:
+                log(f"  captcha error: {e}")
+                time.sleep(2)
+        return None
+
+
+# -- Site ---------------------------------------------------------------------------
+
+class PJNSite:
+    def __init__(self, solver: CaptchaSolver):
+        self.solver = solver
+        self.searches = 0
+        self.fails = 0
+
+    def camaras(self, jurisdiccion: str) -> list[tuple[str, str]]:
+        with _client() as c:
+            r = _get(c, "GET", f"{BASE}/ajax/request_tribunales_fallos_new.php", params={"jurisdiccion": jurisdiccion})
+        return [(cid, name.strip()) for cid, name in re.findall(r'value="([^"]+)"[^>]*>([^<]+)', r.text) if cid]
+
+    def oficinas(self, camara: str, tipo_oficina: str = "") -> list[tuple[str, str]]:
+        """Offices (Salas, juzgados…) under a cámara, optionally of one tipo de oficina."""
+        params = {"tid": camara, **({"tipo_oficina_id": tipo_oficina} if tipo_oficina else {})}
+        with _client() as c:
+            r = _get(c, "GET", f"{BASE}/ajax/request_tribunales_fallos_new.php", params=params)
+        return parse_oficinas(r.text)
+
+    def search(self, jurisdiccion: str, camara: str, oficina: str, tipo: str,
+               start: date, end: date, tipo_oficina: str = "") -> tuple[int, list[dict]]:
+        """One search, every page the site allows. Returns (site total, up to CAP results).
+
+        The site filters by `tid` (a cámara such as C_7, or an office such as T_7_TS1);
+        `camara_id` alone is ignored. Next pages re-post the form with the returned token.
+        """
+        form = {
+            "acc": "searchFallos", "tipo": "fallo", "paginado": "1", "pagina": "0", "token": "",
+            "jurisdiccion": jurisdiccion, "camara_id": camara, "tribunal_id": oficina,
+            "tid": oficina or camara, "tipo_oficina_id": tipo_oficina, "tipofallo": tipo,
+            "fecha_fallo_desde": start.strftime("%y-%m-%d"), "fecha_fallo_desde_aux": start.strftime("%d/%m/%Y"),
+            "fecha_fallo_hasta": end.strftime("%y-%m-%d"), "fecha_fallo_hasta_aux": end.strftime("%d/%m/%Y"),
+            "caratula": "", "firmantes": "", "expediente": "",
+        }
+        empty_seen = 0
+        for attempt in range(SEARCH_ATTEMPTS):
+            time.sleep(SEARCH_COOLDOWN + 10 * self.fails + 10 * attempt)
+            with _client() as c:
+                try:
+                    _get(c, "GET", f"{BASE}/inicio.html")
+                    time.sleep(REQUEST_DELAY)
+                    image = _get(c, "GET", f"{BASE}/lib/securimage/securimage_show.php").content
+                    code = self.solver.solve(image)
+                    if not code:
+                        continue
+                    time.sleep(REQUEST_DELAY)
+                    page = _get(c, "POST", f"{BASE}/inicio.html", data={**form, "captcha_code": code}).text
+                    self.searches += 1
+
+                    total = parse_total(page)
+                    if total is None:          # form came back: captcha rejected
+                        self.fails += 1
+                        log(f"  captcha rejected (attempt {attempt + 1})")
+                        continue
+                    if total == 0:
+                        empty_seen += 1
+                        if empty_seen < 2:     # confirm once: an empty page can be a hiccup
+                            continue
+                        self.fails = 0
+                        return 0, []
+
+                    results = {r["uuid"] or r["expediente"]: r for r in parse_results(page)}
+                    wanted = min(total, CAP)
+                    for n in range(1, CAP // PAGE_SIZE):
+                        if len(results) >= wanted:
+                            break
+                        time.sleep(REQUEST_DELAY)
+                        page = _get(c, "POST", f"{BASE}/inicio.html", data={
+                            **form, "captcha_code": code, "pagina": str(n), "token": parse_token(page),
+                        }).text
+                        batch = parse_results(page)
+                        if not batch:
+                            break
+                        results.update({r["uuid"] or r["expediente"]: r for r in batch})
+                    if len(results) < wanted:
+                        log(f"  only {len(results)} of {wanted} expected results came back")
+                    self.fails = 0
+                    return total, list(results.values())
+                except (httpx.TransportError, httpx.HTTPStatusError) as e:
+                    self.fails += 1
+                    log(f"  search error (attempt {attempt + 1}): {type(e).__name__}")
+        raise RuntimeError(f"search failed {SEARCH_ATTEMPTS} times: {jurisdiccion} {oficina or camara} {start}..{end}")
+
+
+def extract_pdf_text(pdf: bytes) -> str:
+    import pymupdf
+    with pymupdf.open(stream=pdf, filetype="pdf") as doc:
+        return "\n".join(page.get_text() for page in doc).strip()
+
+
+# -- Scraper ------------------------------------------------------------------------
 
 class PJNScraper:
-    def __init__(self, limit: int = 1_000_000, jurisdiccion: str | None = None):
+    def __init__(self, catalog: Catalog, site: PJNSite, limit: int):
+        self.cat = catalog
+        self.site = site
         self.limit = limit
-        self.jur_filter = jurisdiccion
-        self.scraped = 0
+        self.new = 0
+        self.refreshed = 0
         self.errors = 0
-        self.skipped = 0
-        self.searches = 0
-        self.captcha_solves = 0
-        self.consecutive_fails = 0
-        self.scraped_ids: set[str] = set()
-        self.start_time = time.time()
-        self._load_checkpoint()
+        self.status: dict[str, int] = {}
+        self.pdf_client = _client()
 
-    def _load_checkpoint(self) -> None:
-        self.resume_key = ""
-        if OUTPUT.exists() and OUTPUT.stat().st_size > 0:
-            ids: set[str] = set()
-            with open(OUTPUT, "r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        sid = json.loads(line).get("source_id", "")
-                        if sid:
-                            ids.add(sid)
-                    except json.JSONDecodeError:
-                        continue
-            self.scraped_ids = ids
-            self.scraped = len(ids)
-            if CHECKPOINT.exists():
-                try:
-                    cp = json.loads(CHECKPOINT.read_text())
-                    self.resume_key = cp.get("resume_key", "")
-                    self.searches = cp.get("searches", 0)
-                except Exception:
-                    pass
-            if self.scraped > 0:
-                print(f"  [{_ts()}] Resuming: {self.scraped:,} already scraped", flush=True)
-
-    def _save_state(self, key: str = "") -> None:
-        elapsed = time.time() - self.start_time
-        rate = self.scraped / max(elapsed, 1)
-        state = {
-            "scraped": self.scraped, "errors": self.errors, "skipped": self.skipped,
-            "searches": self.searches, "captcha_solves": self.captcha_solves,
-            "api_cost": _cost.to_dict(), "resume_key": key,
-            "rate_per_sec": round(rate, 2), "elapsed_seconds": round(elapsed, 1),
-            "last_update": _ts(),
+    def _store(self, result: dict, jurisdiccion: str, tipo: str) -> None:
+        source_id = result["uuid"] or result["expediente"]
+        meta = {
+            "source": SOURCE, "source_id": source_id, "url": result["pdf_url"],
+            "tribunal": result["tribunal"], "expediente": result["expediente"],
+            "caratula": result["caratula"], "fecha": result["fecha"],
+            "jurisdiccion": JURISDICCIONES.get(jurisdiccion, jurisdiccion), "tipo_fallo": tipo,
         }
-        CHECKPOINT.write_text(json.dumps({k: v for k, v in state.items()
-                                          if k != "rate_per_sec" and k != "elapsed_seconds"}))
-        PROGRESS.write_text(json.dumps(state, indent=2))
-
-    # -- Core: one search = fresh session + captcha + 2 pages (40 results) ----
-
-    async def _do_one_search(
-        self, jurisdiccion: str, camara_id: str, fecha_ini: str, fecha_fin: str,
-    ) -> tuple[list[dict], httpx.AsyncClient | None]:
-        """One search: fresh session → captcha → POST page 0 → GET page 1.
-
-        Returns up to 40 results + the client (for PDF downloads).
-        Never crashes.
-        """
-        MAX_TRIES = 5
-
-        for attempt in range(MAX_TRIES):
-            client = None
-            try:
-                # Cooldown — longer after failures
-                wait = SEARCH_COOLDOWN + (10 * self.consecutive_fails)
-                if attempt > 0:
-                    wait += 10 * attempt
-                    print(f"    [{_ts()}] Cooldown {wait:.0f}s (attempt {attempt+1}/{MAX_TRIES})...", flush=True)
-                await asyncio.sleep(wait)
-
-                # Fresh session
-                client = _new_client()
-                await _retry(client, "GET", f"{BASE}/inicio.html")
-                await asyncio.sleep(REQUEST_DELAY)
-
-                # Captcha
-                cap_r = await _retry(client, "GET", f"{BASE}/lib/securimage/securimage_show.php")
-                captcha = _solve_captcha(cap_r.content)
-                if not captcha:
-                    await client.aclose()
-                    continue
-                self.captcha_solves += 1
-                await asyncio.sleep(REQUEST_DELAY)
-
-                # POST — page 0
-                r = await _retry(client, "POST", f"{BASE}/inicio.html", data={
-                    "acc": "searchFallos", "tipo": "fallo", "paginado": "1", "pagina": "0",
-                    "jurisdiccion": jurisdiccion, "camara_id": camara_id,
-                    "tipofallo": "", "fecha_fallo_desde": fecha_ini, "fecha_fallo_hasta": fecha_fin,
-                    "captcha_code": captcha, "tipo_oficina_id": "", "tribunal_id": "",
-                    "caratula": "", "palabras_clave": "", "firmantes": "", "expediente": "", "tid": "",
-                })
-                await asyncio.sleep(REQUEST_DELAY)
-                self.searches += 1
-
-                html0 = r.text
-                if "no ha arrojado" in html0:
-                    if attempt < MAX_TRIES - 1:
-                        print(f"    [{_ts()}] No results (attempt {attempt+1}/{MAX_TRIES})", flush=True)
-                        await client.aclose()
-                        self.consecutive_fails += 1
-                        continue
-                    await client.aclose()
-                    return [], None
-
-                results0 = _parse_results(html0)
-
-                # GET — page 1
-                await asyncio.sleep(REQUEST_DELAY)
-                r1 = await _retry(client, "GET", f"{BASE}/sentencias.html", params={
-                    "paginado": "1", "pagina": "1", "tipo": "fallo",
-                })
-                results1 = _parse_results(r1.text)
-
-                # Merge & dedup
-                seen = set()
-                all_results = []
-                for entry in results0 + results1:
-                    uid = entry["uuid"] or entry["expediente"]
-                    if uid and uid not in seen:
-                        seen.add(uid)
-                        all_results.append(entry)
-
-                m = re.search(r"(\d[\d.]*)\s*resultado", html0)
-                total_str = m.group(1) if m else "?"
-                print(f"    [{_ts()}] Search OK: {total_str} total, got {len(all_results)} unique (2 pages)", flush=True)
-
-                self.consecutive_fails = 0
-                return all_results, client
-
-            except Exception as e:
-                print(f"    [{_ts()}] Search error ({attempt+1}/{MAX_TRIES}): {e}", flush=True)
-                if client:
-                    try:
-                        await client.aclose()
-                    except Exception:
-                        pass
-                self.consecutive_fails += 1
-
-        return [], None
-
-    # -- Download PDFs --------------------------------------------------------
-
-    async def _download_batch(
-        self, client: httpx.AsyncClient, entries: list[dict], jurisdiccion: str, f_out,
-    ) -> int:
-        count = 0
-        for entry in entries:
-            if self.scraped >= self.limit:
-                break
-            source_id = entry["uuid"] or entry["expediente"]
-            if not source_id or source_id in self.scraped_ids:
-                self.skipped += 1
-                continue
-            try:
-                pdf_r = await _retry(client, "GET", entry["pdf_url"])
-                texto = _extract_pdf_text(pdf_r.content)
-                await asyncio.sleep(REQUEST_DELAY)
-            except Exception as e:
-                print(f"    [{_ts()}] PDF fail: {entry['expediente']} -- {type(e).__name__}: {e}", flush=True)
-                self.errors += 1
-                await asyncio.sleep(2)
-                continue
-            if not texto or len(texto) < 300:
-                self.skipped += 1
-                continue
-
-            doc = LitigiaDocument(
-                id=_gen_id(source_id), source="pjn_tribunales", source_id=source_id,
-                texto=texto, sumario="",
-                caratula=entry["caratula"] or entry["expediente"],
-                tipo_documento="fallo", tipo_fallo="sentencia",
-                tribunal=entry["tribunal"], tipo_tribunal="camara",
-                fecha=entry["fecha"],
-                jurisdiccion=JURISDICCIONES.get(jurisdiccion, jurisdiccion),
-            )
-            f_out.write(json.dumps(doc.to_dict(), ensure_ascii=False) + "\n")
-            f_out.flush()
-            self.scraped_ids.add(source_id)
-            self.scraped += 1
-            count += 1
-
-            if self.scraped % 10 == 0:
-                elapsed = time.time() - self.start_time
-                rate = self.scraped / max(elapsed, 1)
-                print(
-                    f"    [{_ts()}] {self.scraped:,} | {entry['tribunal'][:40]} | "
-                    f"{entry['fecha']} | {len(texto):,} chars | {rate:.1f}/s",
-                    flush=True,
-                )
-        return count
-
-    # -- Main loop ------------------------------------------------------------
-
-    async def run(self) -> None:
-        settings.ensure_dirs()
-        months = _monthly_ranges(date.today())
-
-        jurisdicciones = {self.jur_filter: JURISDICCIONES.get(self.jur_filter, "")} \
-            if self.jur_filter else JURISDICCIONES
-
-        print(f"\n{'='*60}")
-        print(f"  [{_ts()}] PJN Tribunales Scraper")
-        print(f"  Target: {self.limit:,} sentencias (most recent first)")
-        print(f"  Output: {OUTPUT}")
-        print(f"  {len(months)} months x {len(jurisdicciones)} jurisdicciones")
-        print(f"  40 sentencias/search, {SEARCH_COOLDOWN}s cooldown")
-        print(f"{'='*60}")
-
-        found_resume = not bool(self.resume_key)
-        meta_client = _new_client()
-        await _retry(meta_client, "GET", f"{BASE}/inicio.html")
-
+        if self.cat.has(SOURCE, source_id):
+            self.cat.upsert(meta)
+            self.refreshed += 1
+            return
         try:
-            mode = "a" if self.scraped > 0 else "w"
-            with open(OUTPUT, mode, encoding="utf-8") as f:
-                for jur_code, jur_name in jurisdicciones.items():
-                    if self.scraped >= self.limit:
+            raw = extract_pdf_text(_get(self.pdf_client, "GET", result["pdf_url"]).content)
+            time.sleep(REQUEST_DELAY)
+        except Exception as e:
+            self.errors += 1
+            log(f"  PDF failed {result['expediente']}: {type(e).__name__}: {str(e)[:80]}")
+            return
+        firmantes, fecha_firma = quality.extract_firmantes(raw)
+        status = self.cat.upsert({
+            **meta,
+            "texto": quality.clean_pjn_text(raw),
+            "firmantes": firmantes,
+            "fecha": meta["fecha"] or fecha_firma,
+        })
+        self.status[status] = self.status.get(status, 0) + 1
+        self.new += 1
+
+    def run(self, jurisdiccion: str, camara: str, tipo: str, start: date, end: date) -> None:
+        # Newest first, one year at a time; crawl splits by date when a range exceeds CAP.
+        for year in range(end.year, start.year - 1, -1):
+            y_start, y_end = max(start, date(year, 1, 1)), min(end, date(year, 12, 31))
+            for rec in self._crawl(jurisdiccion, camara, "", tipo, y_start, y_end):
+                if rec.truncated:
+                    self._split_by_oficina(jurisdiccion, camara, tipo, rec)
+                if self.new >= self.limit:
+                    return
+
+    def _split_by_oficina(self, jurisdiccion: str, camara: str, tipo: str, rec) -> None:
+        """A single day over CAP: one search per tipo de oficina (Salas, then juzgados, …).
+
+        Only a group that is itself over CAP is split office by office. Verified live on
+        2026-03-31: Salas 387 + juzgados 83 = 470, the cámara-level total. Stops as soon as
+        the groups cover the day; falls back to every oficina if they never do.
+        """
+        log(f"  {rec.start}: {rec.total} > {CAP}, splitting by tipo de oficina")
+        covered = 0
+        for tipo_oficina in OFICINA_TIPOS:
+            if covered >= rec.total or self.new >= self.limit:
+                break
+            covered += self._group(jurisdiccion, camara, tipo, tipo_oficina, rec.start, rec.end)
+        if covered < rec.total and self.new < self.limit:
+            log(f"  {rec.start}: tipos de oficina cover {covered} of {rec.total}, searching every oficina")
+            covered = 0
+            for oficina, _ in self.site.oficinas(camara):
+                if covered >= rec.total or self.new >= self.limit:
+                    break
+                for _ in self._crawl(jurisdiccion, camara, oficina, tipo, rec.start, rec.end):
+                    pass
+                covered += self.cat.search_total(SOURCE, self._key(jurisdiccion, camara, oficina, tipo,
+                                                                   rec.start, rec.end))
+        if covered < rec.total:
+            log(f"  {rec.start}: oficinas cover {covered} of {rec.total}")
+
+    def _group(self, jurisdiccion: str, camara: str, tipo: str, tipo_oficina: str, start: date, end: date) -> int:
+        """Search one tipo de oficina for the day; split it office by office only if it is over CAP."""
+        for rec in self._crawl(jurisdiccion, camara, "", tipo, start, end, tipo_oficina):
+            if rec.truncated:
+                for oficina, _ in self.site.oficinas(camara, tipo_oficina):
+                    if self.new >= self.limit:
                         break
+                    for _ in self._crawl(jurisdiccion, camara, oficina, tipo, rec.start, rec.end):
+                        pass
+        return self.cat.search_total(SOURCE, self._key(jurisdiccion, camara, "", tipo, start, end, tipo_oficina))
 
-                    camaras = []
-                    try:
-                        r = await _retry(meta_client, "GET",
-                                         f"{BASE}/ajax/request_tribunales_fallos_new.php",
-                                         params={"jurisdiccion": jur_code})
-                        camaras = re.findall(r'value="([^"]+)"[^>]*>([^<]+)', r.text)
-                    except Exception as e:
-                        print(f"  [{_ts()}] Camaras error {jur_name}: {e}", flush=True)
+    @staticmethod
+    def _key(jurisdiccion: str, camara: str, oficina: str, tipo: str, s: date, e: date, tipo_oficina: str = "") -> str:
+        where = oficina or (f"*{tipo_oficina}" if tipo_oficina else "*")
+        return f"{jurisdiccion}|{camara}|{where}|{tipo}|{s}|{e}"
 
-                    if not camaras:
-                        print(f"  [{_ts()}] No camaras for {jur_name}", flush=True)
-                        continue
-                    print(f"\n  [{_ts()}] {jur_name}: {len(camaras)} camaras", flush=True)
+    def _crawl(self, jurisdiccion: str, camara: str, oficina: str, tipo: str, start: date, end: date,
+               tipo_oficina: str = ""):
+        def key(s: date, e: date) -> str:
+            return self._key(jurisdiccion, camara, oficina, tipo, s, e, tipo_oficina)
 
-                    for cam_id, cam_name in camaras:
-                        if self.scraped >= self.limit:
-                            break
+        def search(s: date, e: date):
+            return self.site.search(jurisdiccion, camara, oficina, tipo, s, e, tipo_oficina=tipo_oficina)
 
-                        for m_start, m_end in months:
-                            if self.scraped >= self.limit:
-                                break
+        for rec in crawl(search, start, end, skip=lambda s, e: self.cat.search_done(SOURCE, key(s, e))):
+            if not rec.split:
+                for result in rec.results:
+                    if self.new >= self.limit:
+                        return
+                    self._store(result, jurisdiccion, tipo)
+            self.cat.record_search(SOURCE, key(rec.start, rec.end), total=rec.total,
+                                   fetched=0 if rec.split else len(rec.results),
+                                   split=rec.split, truncated=rec.truncated)
+            label = "split" if rec.split else f"{len(rec.results)} results" + (" TRUNCATED" if rec.truncated else "")
+            where = oficina or (f"{camara}/tipo {tipo_oficina}" if tipo_oficina else camara)
+            log(f"{where} {rec.start}..{rec.end}: site total {rec.total:,} -> {label} | "
+                f"new {self.new:,} refreshed {self.refreshed:,} err {self.errors} | "
+                f"{self.status} | captcha ${self.site.solver.cost:.4f}")
+            yield rec
 
-                            key = f"{jur_code}:{cam_id}:{m_start}"
-                            if not found_resume:
-                                if key == self.resume_key:
-                                    found_resume = True
-                                else:
-                                    continue
+def main() -> None:
+    parser = argparse.ArgumentParser(description="PJN sentencias → catalog")
+    parser.add_argument("--jurisdiccion", action="append", help="Code such as 5-5 (repeatable). Default: all")
+    parser.add_argument("--camara", action="append", help="Cámara id such as C_7 (repeatable). Default: all")
+    parser.add_argument("--tipo", default="D", choices=list(TIPOS), help="Default: D (definitivas)")
+    parser.add_argument("--desde", type=date.fromisoformat, default=FIRST_DATE)
+    parser.add_argument("--hasta", type=date.fromisoformat, default=date.today())
+    parser.add_argument("--limit", type=int, default=10_000_000, help="Max new documents")
+    parser.add_argument("--list-camaras", metavar="JURISDICCION")
+    args = parser.parse_args()
 
-                            try:
-                                results, client = await self._do_one_search(
-                                    jur_code, cam_id, _fmt(m_start), _fmt(m_end),
-                                )
-                                count = 0
-                                if results and client:
-                                    count = await self._download_batch(
-                                        client, results, jur_code, f,
-                                    )
-                                    await client.aclose()
-                            except Exception as e:
-                                print(f"  [{_ts()}] SKIP {cam_name} {m_start} -- {type(e).__name__}: {e}", flush=True)
-                                self.errors += 1
-                                count = 0
-                                await asyncio.sleep(10)
-
-                            elapsed = time.time() - self.start_time
-                            rate = self.scraped / max(elapsed, 1)
-                            eta_hours = (self.limit - self.scraped) / max(rate, 0.001) / 3600
-                            print(
-                                f"  [{_ts()}] {cam_name[:30]} {m_start} | "
-                                f"+{count} | total: {self.scraped:,} | "
-                                f"err: {self.errors} | {_cost.summary()} | "
-                                f"{rate:.1f}/s | ETA: {eta_hours:.1f}h",
-                                flush=True,
-                            )
-                            self._save_state(key)
-
-        finally:
-            await meta_client.aclose()
-
-        self._save_state()
-        elapsed = time.time() - self.start_time
-        print(f"\n{'='*60}")
-        print(f"  [{_ts()}] DONE")
-        print(f"  Sentencias: {self.scraped:,}")
-        print(f"  Searches: {self.searches:,}")
-        print(f"  Errors: {self.errors}")
-        print(f"  Time: {elapsed/3600:.1f} hours")
-        print(f"  API cost: {_cost.summary()}")
-        print(f"{'='*60}")
+    import anthropic
+    try:
+        _scrape(args)
+    except tuple(getattr(anthropic, name) for name in FATAL_API_ERRORS) as e:
+        sys.exit(f"Anthropic API rejected the request ({type(e).__name__}): {e}\n"
+                 "Check ANTHROPIC_API_KEY (and ANTHROPIC_WORKSPACE_ID if the key has no workspace) in backend/.env.")
 
 
-def show_status():
-    if PROGRESS.exists():
-        data = json.loads(PROGRESS.read_text())
-        for k, v in data.items():
-            if k == "api_cost" and isinstance(v, dict):
-                print(f"  api_cost: ${v.get('total_cost_usd', 0):.4f} ({v.get('total_calls', 0)} captchas)")
-            else:
-                print(f"  {k}: {v}")
-    if OUTPUT.exists():
-        size = OUTPUT.stat().st_size / (1024 * 1024)
-        lines = sum(1 for _ in open(OUTPUT, encoding="utf-8"))
-        print(f"  file_size: {size:.1f} MB")
-        print(f"  documents: {lines:,}")
+def _scrape(args: argparse.Namespace) -> None:
+    site = PJNSite(CaptchaSolver())
+    if args.list_camaras:
+        for cid, name in site.camaras(args.list_camaras):
+            print(f"{cid:<10} {name}")
+        return
+
+    cat = Catalog(settings.data_root / "catalog.db")
+    scraper = PJNScraper(cat, site, args.limit)
+    try:
+        for jur in args.jurisdiccion or list(JURISDICCIONES):
+            camaras = [(c, c) for c in args.camara] if args.camara else site.camaras(jur)
+            log(f"== {JURISDICCIONES.get(jur, jur)}: {len(camaras)} cámaras, tipo {TIPOS[args.tipo]}")
+            for cid, name in camaras:
+                if scraper.new >= args.limit:
+                    break
+                log(f"-- {name}")
+                try:
+                    scraper.run(jur, cid, args.tipo, args.desde, args.hasta)
+                except RuntimeError as e:
+                    scraper.errors += 1
+                    log(f"  SKIP {name}: {e}")
+    finally:
+        cat.close()
+        log(f"DONE new {scraper.new:,} refreshed {scraper.refreshed:,} errors {scraper.errors} "
+            f"searches {site.searches} captcha ${site.solver.cost:.4f} | {scraper.status}")
+        log("Next: python -m scripts.audit")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--limit", type=int, default=1_000_000)
-    parser.add_argument("--jurisdiccion", type=str, help="e.g. 5-5 for CABA")
-    parser.add_argument("--status", action="store_true")
-    args = parser.parse_args()
-
-    if args.status:
-        show_status()
-    else:
-        asyncio.run(PJNScraper(limit=args.limit, jurisdiccion=args.jurisdiccion).run())
+    main()

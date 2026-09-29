@@ -14,9 +14,14 @@ class Settings(BaseSettings):
 
     # Haiku solves the PJN captcha
     anthropic_api_key: str = ""
+    anthropic_workspace_id: str = ""   # only for keys not scoped to a workspace
 
     # Vultr — only for scrapers/deploy_parallel.py
     vultr_api_key: str = ""
+
+    # TypeSafe (Jev) — labeling. Pinned version: thresholds are tuned per model version.
+    typesafe_api_key: str = ""
+    typesafe_model: str = "jev-1.13.0"
 
     data_root: Path = Path(getenv("DATA_ROOT", "D:/litigia-data"))
 
@@ -35,6 +40,11 @@ class Settings(BaseSettings):
     @property
     def data_logs(self) -> Path:
         return self.data_root / "logs"
+
+    @classmethod
+    def settings_customise_sources(cls, settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings):
+        # backend/.env wins over OS environment variables: the project's keys are the source of truth
+        return init_settings, dotenv_settings, env_settings, file_secret_settings
 
     def ensure_dirs(self) -> None:
         """Create all data directories if they don't exist."""

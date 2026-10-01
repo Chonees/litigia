@@ -6,7 +6,7 @@ the keys read from backend/.env (never printed). Every VPS keeps its own catalog
 re-applies the data contract and enrichment.
 
 Usage (from backend/):
-    python -m scripts.scrapers.deploy_parallel deploy --camara C_7 --desde 2025-09-27 --hasta 2026-09-27 -n 10
+    python -m scripts.scrapers.deploy_parallel deploy --camara C_5=35635 --camara C_2=13088 --desde 2025-09-27 --hasta 2026-09-27 -n 20
     python -m scripts.scrapers.deploy_parallel status
     python -m scripts.scrapers.deploy_parallel update      # ship new code to running VPS, restart
     python -m scripts.scrapers.deploy_parallel collect     # download + merge (+ audit)
@@ -43,6 +43,9 @@ STATE = settings.data_logs / "parallel_state.json"
 REMOTE_DB_DIR = settings.data_root / "parallel"
 DEPS = "httpx pymupdf anthropic pydantic-settings"
 
+# Expected work per ruling relative to the rest: seguridad social splits heavy days by Sala and case year
+WORK_FACTOR = {"C_5": 1.5}
+
 DOC_FIELDS = ["url", "tribunal", "jurisdiccion", "fecha", "caratula", "expediente", "tipo_fallo", "texto"]
 
 
@@ -64,6 +67,19 @@ def split_range(start: date, end: date, n: int) -> list[tuple[date, date]]:
     return out
 
 
+def allocate(volumes: dict[str, int], n: int, factor: dict[str, float] | None = None) -> dict[str, int]:
+    """VPS per cámara, proportional to its expected work (volume × factor), at least one each."""
+    factor = factor or {}
+    work = {c: v * factor.get(c, 1.0) for c, v in volumes.items()}
+    total = sum(work.values()) or 1
+    spare = n - len(volumes)
+    shares = {c: spare * w / total for c, w in work.items()}
+    out = {c: 1 + int(s) for c, s in shares.items()}
+    for c in sorted(shares, key=lambda c: shares[c] - int(shares[c]), reverse=True)[: n - sum(out.values())]:
+        out[c] += 1                                             # largest remainders get the leftovers
+    return out
+
+
 def package_scripts() -> bytes:
     """scripts/ as tar.gz, without caches, secrets or local-only helpers."""
     buf = io.BytesIO()
@@ -76,20 +92,46 @@ def package_scripts() -> bytes:
     return buf.getvalue()
 
 
+MERGE_COMMIT_EVERY = 500      # short transactions: a scraper may be writing the same local catalog
+
+
 def merge_catalog(remote_db: Path, local: Catalog) -> dict:
-    """Upsert every document and search of a remote catalog into the local one (idempotent)."""
+    """Bring a remote catalog into the local one (idempotent; safe to repeat every few minutes).
+
+    Documents already stored with the same text are skipped, so repeated collects stay fast.
+    Listings and failures come too, so scripts/reconcile.py can account for every ruling;
+    a failure is dropped once the ruling is stored with text on either side.
+    """
     src = sqlite3.connect(f"file:{remote_db}?mode=ro", uri=True)
     src.row_factory = sqlite3.Row
-    stats = {"documents": 0, "new": 0, "searches": 0}
-    for row in src.execute("SELECT * FROM documents"):
-        d = {k: row[k] for k in DOC_FIELDS}
+    stats = {"documents": 0, "new": 0, "searches": 0, "listings": 0, "failures": 0}
+    known = dict(local.db.execute("SELECT source || '|' || source_id, text_hash FROM documents"))
+    for k, row in enumerate(src.execute("SELECT * FROM documents"), 1):
+        stats["documents"] += 1
+        if known.get(f"{row['source']}|{row['source_id']}", None) == row["text_hash"] and row["text_hash"]:
+            continue
+        d = {c: row[c] for c in DOC_FIELDS}
         d.update(source=row["source"], source_id=row["source_id"], firmantes=json.loads(row["firmantes"] or "[]"))
         stats["new"] += not local.has(d["source"], d["source_id"])
         local.upsert(d, commit=False)
-        stats["documents"] += 1
+        if k % MERGE_COMMIT_EVERY == 0:
+            local.db.commit()
     for s in src.execute("SELECT * FROM searches"):
         local.db.execute("INSERT OR REPLACE INTO searches VALUES (?, ?, ?, ?, ?, ?, ?)", tuple(s))
         stats["searches"] += 1
+    local.db.commit()
+    tables = {r[0] for r in src.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if "listings" in tables:
+        rows = [tuple(r) for r in src.execute("SELECT source, key, source_id FROM listings")]
+        local.db.executemany("INSERT OR IGNORE INTO listings VALUES (?, ?, ?)", rows)
+        stats["listings"] = len(rows)
+    if "failures" in tables:
+        rows = [tuple(r) for r in src.execute(
+            "SELECT source, source_id, url, key, reason, attempts, first_at, last_at FROM failures")]
+        local.db.executemany("INSERT OR REPLACE INTO failures VALUES (?, ?, ?, ?, ?, ?, ?, ?)", rows)
+        stats["failures"] = len(rows)
+    local.db.execute("DELETE FROM failures WHERE EXISTS (SELECT 1 FROM documents d WHERE d.source=failures.source "
+                     "AND d.source_id=failures.source_id AND d.chars>0)")
     local.db.commit()
     src.close()
     return stats
@@ -171,6 +213,10 @@ def _provision(inst: dict, package: bytes, env: bytes, jur: str, camara: str, ti
     return _start(inst, jur, camara, tipo)
 
 
+# "[p]" keeps pgrep from matching the remote shell whose own command line contains the pattern
+ALIVE = "pgrep -f '[p]jn_tribunales'"
+
+
 def _start(inst: dict, jur: str, camara: str, tipo: str) -> str:
     ip = inst["ip"]
     run = (f"cd /opt/litigia/app && DATA_ROOT=/data PYTHONIOENCODING=utf-8 setsid nohup "
@@ -181,7 +227,7 @@ def _start(inst: dict, jur: str, camara: str, tipo: str) -> str:
         ssh(ip, run, timeout=20)   # Git-for-Windows ssh can keep the channel open after `&`
     except subprocess.TimeoutExpired:
         pass
-    alive = ssh(ip, "pgrep -f pjn_tribunales", timeout=30).returncode == 0
+    alive = ssh(ip, ALIVE, timeout=30).returncode == 0
     return "running" if alive else "start failed"
 
 
@@ -197,12 +243,12 @@ def update(_args=None) -> None:
 
     def one(inst: dict) -> str:
         ip = inst["ip"]
-        if ssh(ip, "pgrep -f pjn_tribunales", timeout=30).returncode != 0:
+        if ssh(ip, ALIVE, timeout=30).returncode != 0:
             return "finished, left alone"
         ssh(ip, "pkill -f pjn_tribunales; sleep 2", timeout=60)
         if ssh(ip, "rm -rf /opt/litigia/app/scripts && tar -xz -C /opt/litigia/app", stdin=package).returncode:
             return "upload failed"
-        return _start(inst, state["jurisdiccion"], state["camara"], state["tipo"])
+        return _start(inst, state["jurisdiccion"], inst.get("camara", state["camara"]), state["tipo"])
 
     with ThreadPoolExecutor(max(1, len(live))) as pool:
         for inst, res in zip(live, pool.map(one, live)):
@@ -213,25 +259,30 @@ def deploy(args) -> None:
     state = _load_state()
     if [i for i in state["instances"] if not i.get("destroyed")]:
         raise SystemExit(f"There is a live deployment in {STATE}. Run destroy first.")
-    ranges = split_range(date.fromisoformat(args.desde), date.fromisoformat(args.hasta), args.n)
+    # --camara C_5=35635 (repeatable): VPS are shared out by each cámara's volume (the site's one-year total)
+    volumes = {c.split("=")[0]: int(c.split("=")[1]) if "=" in c else 1 for c in args.camara}
+    per_camara = allocate(volumes, args.n, factor=WORK_FACTOR)
+    plan = [(c, s, e) for c, k in per_camara.items()
+            for s, e in split_range(date.fromisoformat(args.desde), date.fromisoformat(args.hasta), k)]
+    log("VPS por cámara: " + ", ".join(f"{c} {k}" for c, k in per_camara.items()))
     package, env = package_scripts(), _env_file()
     with _api() as api:
         key_id = _ssh_key_id(api)
         instances = []
-        for k, (s, e) in enumerate(ranges):
+        for k, (camara, s, e) in enumerate(plan):
             region = REGIONS[k % len(REGIONS)]
-            label = f"litigia-pjn-{k}-{region}"
+            label = f"litigia-pjn-{k}-{camara}-{region}".lower().replace("_", "")
             r = api.post("/instances", json={"region": region, "plan": PLAN, "os_id": OS_ID, "label": label,
                                              "hostname": label, "sshkey_id": [key_id], "tags": [TAG],
                                              "backups": "disabled"})
             if r.status_code not in (200, 201, 202):
-                log(f"create {label} failed: {r.status_code} {r.text[:200]}")
+                log(f"create {label} failed: {r.status_code} {r.text[:200]} · {camara} {s}..{e} NOT COVERED")
                 continue
-            instances.append({"id": r.json()["instance"]["id"], "label": label, "region": region,
+            instances.append({"id": r.json()["instance"]["id"], "label": label, "region": region, "camara": camara,
                               "desde": s.isoformat(), "hasta": e.isoformat(), "ip": ""})
-            log(f"created {label} for {s}..{e}")
+            log(f"created {label} for {camara} {s}..{e}")
             time.sleep(1)
-        state = {"created_at": time.strftime("%Y-%m-%d %H:%M:%S"), "camara": args.camara,
+        state = {"created_at": time.strftime("%Y-%m-%d %H:%M:%S"), "camara": ",".join(volumes),
                  "jurisdiccion": args.jurisdiccion, "tipo": args.tipo, "instances": instances}
         _save_state(state)
         log("waiting for IPs…")
@@ -247,7 +298,7 @@ def deploy(args) -> None:
         _save_state(state)
     log("provisioning over SSH (install + upload + start)…")
     with ThreadPoolExecutor(len(instances)) as pool:
-        results = list(pool.map(lambda i: _provision(i, package, env, args.jurisdiccion, args.camara, args.tipo),
+        results = list(pool.map(lambda i: _provision(i, package, env, args.jurisdiccion, i["camara"], args.tipo),
                                 instances))
     for inst, res in zip(instances, results):
         inst["provision"] = res
@@ -275,7 +326,10 @@ print(json.dumps(out))
 
 
 def _status_one(inst: dict) -> dict:
-    r = ssh(inst["ip"], "/opt/litigia/venv/bin/python -", stdin=STATUS_PY.encode(), timeout=60)
+    try:
+        r = ssh(inst["ip"], "/opt/litigia/venv/bin/python -", stdin=STATUS_PY.encode(), timeout=60)
+    except subprocess.TimeoutExpired:
+        return {"error": "timeout"}           # busy VPS: unknown, not stopped
     try:
         return json.loads(r.stdout.decode())
     except Exception:
@@ -306,7 +360,7 @@ def collect(_args=None) -> dict:
     state = _load_state()
     live = [i for i in state["instances"] if not i.get("destroyed") and i.get("ip")]
     local = Catalog(settings.data_root / "catalog.db")
-    totals = {"documents": 0, "new": 0, "searches": 0}
+    totals = {"documents": 0, "new": 0, "searches": 0, "listings": 0, "failures": 0}
     for inst in live:
         try:
             r = ssh(inst["ip"], f"/opt/litigia/venv/bin/python -c \"{SNAPSHOT_PY}\"", timeout=300)
@@ -343,7 +397,7 @@ def main() -> None:
     sub = p.add_subparsers(dest="cmd", required=True)
     d = sub.add_parser("deploy")
     d.add_argument("--jurisdiccion", default="5-5")
-    d.add_argument("--camara", required=True)
+    d.add_argument("--camara", action="append", required=True, help="C_5=35635 (cámara=one-year volume), repeatable")
     d.add_argument("--tipo", default="D")
     d.add_argument("--desde", required=True)
     d.add_argument("--hasta", required=True)

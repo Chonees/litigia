@@ -27,7 +27,7 @@ class FakeSite:
             return [(t, t) for t in self.juzgados]
         return [(t, t) for t in list(self.salas) + list(self.juzgados)]
 
-    def search(self, jurisdiccion, camara, oficina, tipo, start, end, tipo_oficina=""):
+    def search(self, jurisdiccion, camara, oficina, tipo, start, end, tipo_oficina="", expediente=""):
         self.searched.append(oficina or f"{camara}/{tipo_oficina or '*'}")
         if oficina:
             n = {**self.salas, **self.juzgados}.get(oficina, 0)
@@ -57,7 +57,7 @@ NO_JUZGADOS = {f"T_7_T{n:02d}": 0 for n in range(1, 81)}
 @pytest.fixture
 def make(tmp_path, monkeypatch):
     stored: list[str] = []
-    monkeypatch.setattr(PJNScraper, "_store", lambda self, result, jur, tipo: stored.append(result["uuid"]))
+    monkeypatch.setattr(PJNScraper, "_store", lambda self, result, jur, tipo, key="": stored.append(result["uuid"]))
     cats = []
 
     def _make(salas, juzgados):
@@ -107,3 +107,98 @@ def test_an_interrupted_split_resumes_without_repeating_finished_groups(make):
     assert "T_7_TSA" in site.searched
     assert "T_7_TS3" not in site.searched     # already done
     assert "C_7/1" not in site.searched       # juzgados group already done
+
+
+def test_a_failed_pdf_still_waits_before_the_next_request(tmp_path, monkeypatch):
+    """An empty PDF must not turn the loop into back-to-back requests (2026-09-29: 10 in one second)."""
+    import scripts.scrapers.pjn_tribunales as pjn
+    waits: list[float] = []
+    monkeypatch.setattr(pjn.time, "sleep", waits.append)
+    monkeypatch.setattr(pjn, "_get", lambda client, method, url, **kw: type("R", (), {"content": b""})())
+    cat = Catalog(tmp_path / "catalog.db")
+    s = PJNScraper(cat, FakeSite({}, {}), limit=10)
+    s._store({"uuid": "u1", "expediente": "CIV 1/2022", "pdf_url": "https://x/1.pdf",
+              "tribunal": "", "caratula": "", "fecha": ""}, "5-5", "D", key="k")
+    failure = cat.db.execute("SELECT reason, key, url FROM failures WHERE source_id='u1'").fetchone()
+    cat.close()
+    assert s.errors == 1
+    assert waits == [pjn.REQUEST_DELAY]
+    assert tuple(failure) == ("EmptyFileError", "k", "https://x/1.pdf")
+
+
+def test_a_pdf_that_downloads_later_clears_its_failure(tmp_path, monkeypatch):
+    import scripts.scrapers.pjn_tribunales as pjn
+    from tests.test_catalog import LONG
+    monkeypatch.setattr(pjn.time, "sleep", lambda s: None)
+    monkeypatch.setattr(pjn, "_get", lambda client, method, url, **kw: type("R", (), {"content": b"%PDF"})())
+    monkeypatch.setattr(pjn, "extract_pdf_text", lambda content: LONG)
+    cat = Catalog(tmp_path / "catalog.db")
+    cat.record_failure("pjn", "u1", url="https://x/1.pdf", key="k", reason="EmptyFileError")
+    s = PJNScraper(cat, FakeSite({}, {}), limit=10)
+    s._store({"uuid": "u1", "expediente": "CIV 1/2022", "pdf_url": "https://x/1.pdf",
+              "tribunal": "CAMARA CIVIL - SALA C", "caratula": "A c/ B s/ daños", "fecha": "2026-08-03"}, "5-5", "D", key="k")
+    left = cat.db.execute("SELECT COUNT(*) FROM failures").fetchone()[0]
+    cat.close()
+    assert (s.new, left) == (1, 0)
+
+
+def test_every_listed_result_is_recorded_under_its_search(make):
+    s, site, cat, _ = make({"T_7_TS1": 30}, {"T_7_T01": 12})
+    s.run("5-5", "C_7", "D", DAY, DAY)
+    listed = cat.db.execute("SELECT key, COUNT(*) FROM listings GROUP BY key").fetchall()
+    assert dict(listed) == {f"5-5|C_7|*|D|{DAY}|{DAY}": 42}
+
+
+def test_office_by_office_stops_once_the_group_total_is_covered(make):
+    # 2026-08-03, seguridad social: Salas 117 > CAP; Sala 1 (76) + Sala 3 (41) already cover it
+    salas = {"T_5_GS1": 76, "T_5_GS2": 0, "T_5_GS3": 41, "T_5_GS3_HON": 0, "T_5_GS4": 0}
+    s, site, _, _ = make(salas, {"T_5_J1": 20})
+    s.run("5-5", "C_5", "D", DAY, DAY)
+    assert {"T_5_GS1", "T_5_GS3"} <= set(site.searched)
+    assert "T_5_GS3_HON" not in site.searched and "T_5_GS4" not in site.searched
+
+
+class YearSite:
+    """Seguridad social, 2026-08-04: Sala 1 alone has 147 rulings that day, over the site's CAP.
+
+    Its search accepts part of a case number, so "/2021" returns only the 2021 cases.
+    """
+
+    def __init__(self, years: dict):
+        self.years = years                      # {year: rulings} in T_5_GS1 that day
+        self.searched: list[str] = []
+        self.solver = type("Solver", (), {"cost": 0.0})()
+
+    def oficinas(self, camara, tipo_oficina=""):
+        return [("T_5_GS1", "Sala 1")]
+
+    def search(self, jurisdiccion, camara, oficina, tipo, start, end, tipo_oficina="", expediente=""):
+        self.searched.append((oficina or f"{camara}/{tipo_oficina or '*'}") + expediente)
+        docs = [{"uuid": f"{y}-{i}", "expediente": f"CSS {i:06d}/{y}/CA001"} for y, n in self.years.items() for i in range(n)]
+        if expediente:
+            docs = [d for d in docs if expediente in d["expediente"]]
+        return len(docs), docs[:CAP]
+
+
+def test_one_office_over_the_cap_in_one_day_is_split_by_case_year(tmp_path, monkeypatch):
+    stored: list[str] = []
+    monkeypatch.setattr(PJNScraper, "_store", lambda self, result, jur, tipo, key="": stored.append(result["uuid"]))
+    cat = Catalog(tmp_path / "catalog.db")
+    site = YearSite({DAY.year: 60, 2021: 50, 2014: 37})              # a case can't be newer than its ruling
+    PJNScraper(cat, site, limit=10_000).run("5-5", "C_5", "D", DAY, DAY)
+    cat.close()
+    assert len(set(stored)) == 147                                  # nothing lost to the 100 cap
+    assert "T_5_GS1/2014" in site.searched
+    assert "T_5_GS1/2013" not in site.searched                      # stops once the 147 are covered
+
+
+def test_case_years_seen_in_the_first_results_are_searched_first(tmp_path, monkeypatch):
+    # The first 100 results already show which case years are common; the rest are rare old years.
+    monkeypatch.setattr(PJNScraper, "_store", lambda self, result, jur, tipo, key="": None)
+    cat = Catalog(tmp_path / "catalog.db")
+    site = YearSite({2021: 60, 2016: 45, 2009: 1})                 # first 100 results: 2021 ×60, 2016 ×40
+    PJNScraper(cat, site, limit=10_000).run("5-5", "C_5", "D", DAY, DAY)
+    cat.close()
+    years = [s.split("/")[1] for s in site.searched if s.startswith("T_5_GS1/")]
+    assert years[:2] == ["2021", "2016"]                            # the common years first, most frequent first
+    assert "2009" in years                                          # then the unseen years, until the total is covered

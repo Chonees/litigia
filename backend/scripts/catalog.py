@@ -5,6 +5,8 @@
 - Each row carries the quality verdict (status + reasons) from scripts.quality
   and the enrichment fields from scripts.enrich.
 - `searches` records what the site reported, so the audit can measure completeness.
+- `listings` records which rulings each search listed, and `failures` which PDFs could not be read
+  (with the reason), so every ruling the site reported can be accounted for (scripts/reconcile.py).
 - WAL mode: readers (audit) never block writers (scrapers).
 - `disable()` hides rows without deleting them; a fresh scrape of the same fallo re-enables it.
 """
@@ -76,6 +78,23 @@ CREATE TABLE IF NOT EXISTS searches (
     at         TEXT,
     PRIMARY KEY (source, key)
 );
+CREATE TABLE IF NOT EXISTS listings (
+    source     TEXT NOT NULL,
+    key        TEXT NOT NULL,
+    source_id  TEXT NOT NULL,
+    PRIMARY KEY (source, key, source_id)
+);
+CREATE TABLE IF NOT EXISTS failures (
+    source     TEXT NOT NULL,
+    source_id  TEXT NOT NULL,
+    url        TEXT,
+    key        TEXT,
+    reason     TEXT,
+    attempts   INTEGER DEFAULT 1,
+    first_at   TEXT,
+    last_at    TEXT,
+    PRIMARY KEY (source, source_id)
+);
 """
 
 INDEXES = """
@@ -95,7 +114,9 @@ def _now() -> str:
 
 
 class Catalog:
-    def __init__(self, path: Path, busy_timeout: float = 30.0):
+    def __init__(self, path: Path, busy_timeout: float = 120.0):
+        # 120 s: a batch reassess holds the write lock while it re-runs the rules on long rulings; a scraper
+        # writing at the same time waited only 30 s and died with "database is locked" (2026-09-30).
         path.parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(path, timeout=busy_timeout)
         # WAL: the audit can read the whole catalog while a scraper keeps writing.
@@ -266,6 +287,26 @@ class Catalog:
         return self.db.execute(
             "SELECT 1 FROM searches WHERE source=? AND key=? AND split=0 AND truncated=0", (source, key)
         ).fetchone() is not None
+
+    # -- accounting ---------------------------------------------------------
+
+    def record_listing(self, source: str, key: str, source_ids: list[str]) -> None:
+        """The rulings one search listed (idempotent: a re-run lists them again)."""
+        self.db.executemany("INSERT OR IGNORE INTO listings VALUES (?, ?, ?)", [(source, key, i) for i in source_ids])
+        self.db.commit()
+
+    def record_failure(self, source: str, source_id: str, *, url: str, key: str, reason: str) -> None:
+        now = _now()
+        self.db.execute(
+            "INSERT INTO failures VALUES (?, ?, ?, ?, ?, 1, ?, ?) ON CONFLICT(source, source_id) DO UPDATE SET "
+            "attempts=attempts+1, reason=excluded.reason, url=excluded.url, key=excluded.key, last_at=excluded.last_at",
+            (source, source_id, url, key, reason, now, now),
+        )
+        self.db.commit()
+
+    def clear_failure(self, source: str, source_id: str) -> None:
+        self.db.execute("DELETE FROM failures WHERE source=? AND source_id=?", (source, source_id))
+        self.db.commit()
 
     def search_total(self, source: str, key: str) -> int:
         """What the site reported for a search already made; 0 if never searched."""

@@ -195,3 +195,21 @@ def test_merge_is_idempotent(tmp_path):
 def test_sala_de_feria_is_recognized(cat):
     cat.upsert(doc("f1", tribunal="CÁMARA NACIONAL DE APELACIONES DEL TRABAJO - SALA FERIA"))
     assert cat.get("pjn", "f1")["sala"] == "FERIA"
+
+
+# -- accounting: what each search listed and which PDFs failed ------------------------------
+
+def test_listings_are_recorded_once_per_search(cat):
+    cat.record_listing("pjn", "5-5|C_1|*|D|2026-08-01|2026-08-04", ["a", "b"])
+    cat.record_listing("pjn", "5-5|C_1|*|D|2026-08-01|2026-08-04", ["b", "c"])     # a re-run lists again
+    rows = cat.db.execute("SELECT source_id FROM listings ORDER BY source_id").fetchall()
+    assert [r[0] for r in rows] == ["a", "b", "c"]
+
+
+def test_a_failure_counts_attempts_and_is_cleared_by_a_later_success(cat):
+    for _ in range(2):
+        cat.record_failure("pjn", "x1", url="https://x/1.pdf", key="k", reason="EmptyFileError")
+    row = cat.db.execute("SELECT * FROM failures WHERE source_id='x1'").fetchone()
+    assert (row["attempts"], row["reason"], row["key"], row["url"]) == (2, "EmptyFileError", "k", "https://x/1.pdf")
+    cat.clear_failure("pjn", "x1")
+    assert cat.db.execute("SELECT COUNT(*) FROM failures").fetchone()[0] == 0

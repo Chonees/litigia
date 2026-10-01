@@ -28,6 +28,7 @@ import base64
 import re
 import sys
 import time
+from collections import Counter
 from datetime import date
 from pathlib import Path
 
@@ -52,8 +53,19 @@ HTTP_BACKOFF = [10, 30, 60, 120]
 
 # Tipos de oficina in the site's form: Sala, Juzgado, Secretaría Especial, Tribunal Oral, Oficina Judicial
 OFICINA_TIPOS = ("3", "1", "8", "9", "167")
+EXPEDIENTE_FIRST_YEAR = 1990     # oldest case year tried when one oficina's day is split by case year
 
 TIPOS = {"D": "Definitiva", "I": "Interlocutoria", "P": "Plenario", "V": "Veredicto"}
+
+# Cámaras collected so far (CABA) and the `fuero` that quality.detect_fuero gives their rulings,
+# so audits can select one cámara's documents (Sala and juzgado alike) by that column.
+CAMARA_FUERO = {
+    "C_7": "laboral",
+    "C_1": "civil",
+    "C_10": "comercial",
+    "C_5": "seguridad social",
+    "C_2": "contencioso administrativo federal",
+}
 
 JURISDICCIONES = {
     "5-5": "Ciudad de Buenos Aires",
@@ -193,11 +205,12 @@ class PJNSite:
         return parse_oficinas(r.text)
 
     def search(self, jurisdiccion: str, camara: str, oficina: str, tipo: str,
-               start: date, end: date, tipo_oficina: str = "") -> tuple[int, list[dict]]:
+               start: date, end: date, tipo_oficina: str = "", expediente: str = "") -> tuple[int, list[dict]]:
         """One search, every page the site allows. Returns (site total, up to CAP results).
 
         The site filters by `tid` (a cámara such as C_7, or an office such as T_7_TS1);
         `camara_id` alone is ignored. Next pages re-post the form with the returned token.
+        `expediente` matches part of the case number: "/2021" returns only the 2021 cases (verified live).
         """
         form = {
             "acc": "searchFallos", "tipo": "fallo", "paginado": "1", "pagina": "0", "token": "",
@@ -205,7 +218,7 @@ class PJNSite:
             "tid": oficina or camara, "tipo_oficina_id": tipo_oficina, "tipofallo": tipo,
             "fecha_fallo_desde": start.strftime("%y-%m-%d"), "fecha_fallo_desde_aux": start.strftime("%d/%m/%Y"),
             "fecha_fallo_hasta": end.strftime("%y-%m-%d"), "fecha_fallo_hasta_aux": end.strftime("%d/%m/%Y"),
-            "caratula": "", "firmantes": "", "expediente": "",
+            "caratula": "", "firmantes": "", "expediente": expediente,
         }
         empty_seen = 0
         for attempt in range(SEARCH_ATTEMPTS):
@@ -276,7 +289,7 @@ class PJNScraper:
         self.status: dict[str, int] = {}
         self.pdf_client = _client()
 
-    def _store(self, result: dict, jurisdiccion: str, tipo: str) -> None:
+    def _store(self, result: dict, jurisdiccion: str, tipo: str, key: str = "") -> None:
         source_id = result["uuid"] or result["expediente"]
         meta = {
             "source": SOURCE, "source_id": source_id, "url": result["pdf_url"],
@@ -286,15 +299,18 @@ class PJNScraper:
         }
         if self.cat.has(SOURCE, source_id):
             self.cat.upsert(meta)
+            self.cat.clear_failure(SOURCE, source_id)
             self.refreshed += 1
             return
         try:
             raw = extract_pdf_text(_get(self.pdf_client, "GET", result["pdf_url"]).content)
-            time.sleep(REQUEST_DELAY)
         except Exception as e:
             self.errors += 1
+            self.cat.record_failure(SOURCE, source_id, url=result["pdf_url"], key=key, reason=type(e).__name__)
             log(f"  PDF failed {result['expediente']}: {type(e).__name__}: {str(e)[:80]}")
             return
+        finally:
+            time.sleep(REQUEST_DELAY)     # also after a failure: empty PDFs come in bursts
         firmantes, fecha_firma = quality.extract_firmantes(raw)
         status = self.cat.upsert({
             **meta,
@@ -302,6 +318,7 @@ class PJNScraper:
             "firmantes": firmantes,
             "fecha": meta["fecha"] or fecha_firma,
         })
+        self.cat.clear_failure(SOURCE, source_id)
         self.status[status] = self.status.get(status, 0) + 1
         self.new += 1
 
@@ -334,10 +351,7 @@ class PJNScraper:
             for oficina, _ in self.site.oficinas(camara):
                 if covered >= rec.total or self.new >= self.limit:
                     break
-                for _ in self._crawl(jurisdiccion, camara, oficina, tipo, rec.start, rec.end):
-                    pass
-                covered += self.cat.search_total(SOURCE, self._key(jurisdiccion, camara, oficina, tipo,
-                                                                   rec.start, rec.end))
+                covered += self._office_day(jurisdiccion, camara, tipo, oficina, rec.start, rec.end)
         if covered < rec.total:
             log(f"  {rec.start}: oficinas cover {covered} of {rec.total}")
 
@@ -345,32 +359,81 @@ class PJNScraper:
         """Search one tipo de oficina for the day; split it office by office only if it is over CAP."""
         for rec in self._crawl(jurisdiccion, camara, "", tipo, start, end, tipo_oficina):
             if rec.truncated:
+                # Stop as soon as the offices searched add up to the group total: each extra office is a
+                # captcha and a search (2026-08-03, seguridad social: 2 of 5 Salas held all 117).
+                covered = 0
                 for oficina, _ in self.site.oficinas(camara, tipo_oficina):
-                    if self.new >= self.limit:
+                    if covered >= rec.total or self.new >= self.limit:
                         break
-                    for _ in self._crawl(jurisdiccion, camara, oficina, tipo, rec.start, rec.end):
-                        pass
+                    done = self._key(jurisdiccion, camara, oficina, tipo, rec.start, rec.end)
+                    if self.cat.search_done(SOURCE, done):          # resumed run: count it, don't repeat it
+                        covered += self.cat.search_total(SOURCE, done)
+                        continue
+                    covered += self._office_day(jurisdiccion, camara, tipo, oficina, rec.start, rec.end)
         return self.cat.search_total(SOURCE, self._key(jurisdiccion, camara, "", tipo, start, end, tipo_oficina))
 
+    def _office_day(self, jurisdiccion: str, camara: str, tipo: str, oficina: str, start: date, end: date) -> int:
+        """One oficina for one day; if even that is over CAP, split it by the year in the case number.
+
+        Returns what the site reported for that oficina and day.
+        """
+        for rec in self._crawl(jurisdiccion, camara, oficina, tipo, start, end):
+            if rec.truncated and rec.start == rec.end:
+                self._split_by_year(jurisdiccion, camara, tipo, oficina, rec)
+        return self.cat.search_total(SOURCE, self._key(jurisdiccion, camara, oficina, tipo, start, end))
+
+    def _split_by_year(self, jurisdiccion: str, camara: str, tipo: str, oficina: str, rec) -> None:
+        """An oficina with more than CAP rulings in a single day (seguridad social, Sala 1: 147 on 2026-08-04).
+
+        The site's expediente field matches part of the case number, so "/2021" returns only the 2021
+        cases: one search per year, newest first, until the years add up to the day's total.
+        """
+        log(f"  {oficina} {rec.start}: {rec.total} > {CAP}, splitting by expediente year")
+        # The first CAP results already show which case years are common: search those first (most frequent
+        # first), then the unseen years newest first. The few rulings left out are almost always in a seen
+        # year, so the total is covered in a handful of searches instead of walking back year by year
+        # (2025-09-29, Sala 1: 19 searches to cover 106 rulings).
+        seen = Counter(int(m.group(1)) for r in rec.results for m in [re.search(r"/(\d{4})\b", r["expediente"] or "")] if m)
+        order = [y for y, _ in seen.most_common()]
+        order += [y for y in range(rec.end.year, EXPEDIENTE_FIRST_YEAR - 1, -1) if y not in seen]
+        covered = 0
+        for year in order:
+            if covered >= rec.total or self.new >= self.limit:
+                break
+            expediente = f"/{year}"
+            done = self._key(jurisdiccion, camara, oficina, tipo, rec.start, rec.end, expediente=expediente)
+            if self.cat.search_done(SOURCE, done):
+                covered += self.cat.search_total(SOURCE, done)
+                continue
+            for leaf in self._crawl(jurisdiccion, camara, oficina, tipo, rec.start, rec.end, expediente=expediente):
+                if not leaf.split:
+                    covered += leaf.total
+        if covered < rec.total:
+            log(f"  {oficina} {rec.start}: expediente years cover {covered} of {rec.total}")
+
     @staticmethod
-    def _key(jurisdiccion: str, camara: str, oficina: str, tipo: str, s: date, e: date, tipo_oficina: str = "") -> str:
-        where = oficina or (f"*{tipo_oficina}" if tipo_oficina else "*")
+    def _key(jurisdiccion: str, camara: str, oficina: str, tipo: str, s: date, e: date, tipo_oficina: str = "",
+             expediente: str = "") -> str:
+        where = (oficina or (f"*{tipo_oficina}" if tipo_oficina else "*")) + expediente
         return f"{jurisdiccion}|{camara}|{where}|{tipo}|{s}|{e}"
 
     def _crawl(self, jurisdiccion: str, camara: str, oficina: str, tipo: str, start: date, end: date,
-               tipo_oficina: str = ""):
+               tipo_oficina: str = "", expediente: str = ""):
         def key(s: date, e: date) -> str:
-            return self._key(jurisdiccion, camara, oficina, tipo, s, e, tipo_oficina)
+            return self._key(jurisdiccion, camara, oficina, tipo, s, e, tipo_oficina, expediente)
 
         def search(s: date, e: date):
-            return self.site.search(jurisdiccion, camara, oficina, tipo, s, e, tipo_oficina=tipo_oficina)
+            return self.site.search(jurisdiccion, camara, oficina, tipo, s, e, tipo_oficina=tipo_oficina,
+                                    expediente=expediente)
 
         for rec in crawl(search, start, end, skip=lambda s, e: self.cat.search_done(SOURCE, key(s, e))):
             if not rec.split:
+                leaf = key(rec.start, rec.end)
+                self.cat.record_listing(SOURCE, leaf, [r["uuid"] or r["expediente"] for r in rec.results])
                 for result in rec.results:
                     if self.new >= self.limit:
                         return
-                    self._store(result, jurisdiccion, tipo)
+                    self._store(result, jurisdiccion, tipo, key=leaf)
             self.cat.record_search(SOURCE, key(rec.start, rec.end), total=rec.total,
                                    fetched=0 if rec.split else len(rec.results),
                                    split=rec.split, truncated=rec.truncated)
@@ -380,6 +443,31 @@ class PJNScraper:
                 f"new {self.new:,} refreshed {self.refreshed:,} err {self.errors} | "
                 f"{self.status} | captcha ${self.site.solver.cost:.4f}")
             yield rec
+
+def site_total(solver: "CaptchaSolver", camara: str, tipo: str, start: date, end: date,
+               jurisdiccion: str = "5-5") -> int | None:
+    """What the site reports for a whole range, from the first page of one search (no PDFs, no paging)."""
+    form = {
+        "acc": "searchFallos", "tipo": "fallo", "paginado": "1", "pagina": "0", "token": "",
+        "jurisdiccion": jurisdiccion, "camara_id": camara, "tribunal_id": "", "tid": camara, "tipo_oficina_id": "",
+        "tipofallo": tipo,
+        "fecha_fallo_desde": start.strftime("%y-%m-%d"), "fecha_fallo_desde_aux": start.strftime("%d/%m/%Y"),
+        "fecha_fallo_hasta": end.strftime("%y-%m-%d"), "fecha_fallo_hasta_aux": end.strftime("%d/%m/%Y"),
+        "caratula": "", "firmantes": "", "expediente": "",
+    }
+    for attempt in range(3):
+        time.sleep(SEARCH_COOLDOWN * attempt)
+        with _client() as c:
+            _get(c, "GET", f"{BASE}/inicio.html")
+            time.sleep(REQUEST_DELAY)
+            code = solver.solve(_get(c, "GET", f"{BASE}/lib/securimage/securimage_show.php").content)
+            time.sleep(REQUEST_DELAY)
+            if code:
+                total = parse_total(_get(c, "POST", f"{BASE}/inicio.html", data={**form, "captcha_code": code}).text)
+                if total is not None:
+                    return total
+    return None
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="PJN sentencias → catalog")

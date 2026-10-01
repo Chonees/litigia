@@ -9,7 +9,9 @@ Este documento tiene dos partes:
 1. **El criterio del abogado:** qué hace valioso a un fallo y cómo LITIGIA le saca el jugo.
 2. **La arquitectura:** del scraper a la búsqueda, qué decidimos, por qué, y qué medimos.
 
-Estado a 2026-09-27: la capa de datos está construida y probada (scrapers, contrato de calidad, catálogo, enriquecimiento, auditoría; 71 tests). El etiquetado por tipo de caso está diseñado, no construido. La búsqueda está validada con un benchmark, pero todavía no está construida como servicio.
+**El MVP es un conector MCP:** el abogado usa LITIGIA desde su propio asistente de IA (Claude, ChatGPT, Grok o Gemini). Su asistente entiende el relato y redacta; LITIGIA pone las balas. La app propia queda para después. Plan completo en [docs/PLAN_MVP.md](docs/PLAN_MVP.md).
+
+Estado a 2026-09-29: la capa de datos está construida y probada (scraper del PJN con contabilidad fallo por fallo, contrato de calidad, catálogo, enriquecimiento, auditoría y conciliación; 139 tests). Hay un año de la Cámara Nacional del Trabajo (22.470 fallos) y se está bajando el año de seguridad social, contencioso administrativo federal, civil y comercial (~56.500). Jev está probado en castellano jurídico. El etiquetado por tipo de caso, la búsqueda y el conector están diseñados, no construidos.
 
 ---
 
@@ -28,7 +30,7 @@ Un abogado no busca "fallos parecidos": busca **munición para un escrito concre
 | 5 | ¿Cómo lo cito? | Tribunal, Sala, fecha, carátula, expediente, N° de sentencia, link al PDF oficial | ✅ (N° de sentencia solo cuando el fallo lo trae: 15%) |
 | 6 | ¿Dónde está exactamente lo que resolvió sobre mi punto? | El **párrafo** que ganó la búsqueda, literal | Validado en el benchmark |
 
-> ⚠️ Esta lista está armada con conocimiento general del litigio en Argentina. Un abogado litigante tiene que validarla antes de construir la interfaz.
+> ⚠️ Esta lista está armada con conocimiento general del litigio en Argentina, más una investigación con fuentes sobre 7 fueros. Un abogado litigante tiene que validarla con el piloto del conector.
 
 ### Qué hace valioso a un fallo (en orden de peso)
 
@@ -55,15 +57,18 @@ Confirma · Votos: Pinto Varela, Guisado · Normas: ley 24.557, ley 27.348
 
 Todo lo que aparece en la ficha sale de datos que ya existen: metadatos, campos extraídos con regex, decisiones del juez y un párrafo literal. **No se genera texto**, así que no hay nada que se pueda inventar. Si ningún fallo supera el umbral de certeza, se muestra "no hay fallos con precisión suficiente", no resultados dudosos.
 
-### El formulario (5 campos)
+### Cómo se consulta: el conector
 
-| Campo | Para qué |
+El abogado agrega LITIGIA como conector MCP en su asistente de IA y cuenta el caso con sus palabras. Su asistente llama a las herramientas de LITIGIA con los datos del caso:
+
+| Herramienta | Qué devuelve |
 |---|---|
-| Fuero | Filtro duro, a costo $0 |
-| Jurisdicción | Pone primero lo local |
-| Represento a (actor / demandado) | Define qué es "a favor" |
-| **Cuestión jurídica**, con la plantilla *"¿Procede [qué] cuando [hecho determinante], según [norma]?"* | El texto que se compara con los párrafos |
-| Hechos clave (máximo 3) | Separan lo análogo de lo que solo se parece |
+| `buscar_fallos` | Fichas (desde v1, separadas en a favor y en contra) con el párrafo literal y el link al PDF |
+| `ver_fallo` / `citar` | La ficha completa y la cita lista para el escrito |
+| `preguntas_del_caso` | Los datos que faltan para afinar la búsqueda, según el mapa de preguntas (v1) |
+| `tendencia_sala` | Cómo resuelve cada Sala ese punto, con cantidad de fallos (v2) |
+
+LITIGIA no genera texto jurídico: devuelve datos y párrafos literales. El asistente del abogado redacta, y el abogado verifica las citas en la fuente.
 
 ---
 
@@ -99,15 +104,15 @@ flowchart LR
     P --> V[bge-m3 · vector por párrafo]
     P --> G[Agrupar párrafos repetidos]
   end
-  subgraph Consulta["Consulta (por pedido)"]
-    F[Formulario 5 campos] --> FL[Filtros por etiquetas<br/>fuero · tipo · resultado · Sala]
+  subgraph Consulta["Consulta (por pedido, vía conector MCP)"]
+    F[Asistente del abogado<br/>Claude · ChatGPT · Grok] --> FL[Filtros por etiquetas<br/>fuero · tipo · resultado · Sala]
     LAB --> FL
     FL --> H[Híbrido RRF<br/>BM25 + vectores]
     BM --> H
     V --> H
     H --> R[Reranker local<br/>bge-reranker-v2-m3]
-    R --> J[Jev: misma cuestión,<br/>favorable, párrafo]
-    J --> FI[Fichas A FAVOR / EN CONTRA]
+    R --> J[Etiquetas precalculadas:<br/>favorable, párrafo de la mayoría<br/>sin LLM por consulta]
+    J --> FI[Fichas A FAVOR / EN CONTRA<br/>al asistente del abogado]
   end
 ```
 
@@ -274,12 +279,20 @@ Qué decidimos a partir de esto:
 
 Solo cuenta lo **activo**. Lo que juntaron los scrapers viejos quedó **deshabilitado**, no borrado: el texto sigue en el catálogo y se reactiva solo cuando el scraper nuevo vuelve a traer ese fallo.
 
-| Fuente | Activos | Indexables | Deshabilitados | Nota |
-|---|---|---|---|---|
-| PJN (scraper nuevo) | 946 | 932 (98,5%) | — | 847 de la CNAT, marzo 2024; metadatos y enriquecimiento completos |
-| PJN (scraper viejo) | — | — | 38.232 | Sin carátula ni expediente. Vuelven al volver a listarlos con el scraper nuevo (sin bajar los PDFs) |
-| CSJN | — | — | 99.999 | El enriquecimiento todavía no está adaptado al formato de la Corte |
-| SAIJ | — | — | — | Todavía no importado. Son sumarios, no fallos completos |
+Sentencias definitivas de la justicia nacional de CABA, del 27/09/2025 al 27/09/2026:
+
+| Fuero (cámara) | Informa el sitio | Estado | Nota |
+|---|---|---|---|
+| Laboral (C_7) | 22.653 | ✅ 22.551 (99,5%) | |
+| Seguridad social (C_5) | 35.635 | ✅ 35.582 (99,9%) | Una Sala puede dictar más de 100 fallos en un día: se parte por año del expediente |
+| Contencioso administrativo federal (C_2) | 13.088 | ✅ 13.088 (100%) | ~15% son de honorarios o de trámite |
+| Civil (C_1) | 6.788 | ✅ 6.764 (99,6%) | La Cámara Civil dicta sobre todo interlocutorias (26.038 en el año) |
+| Comercial (C_10) | 948 | ✅ 948 (100%) | Publica muy pocas definitivas |
+| **Total** | **79.112** | **✅ 78.933 (99,8%) · 77.524 aptos para búsqueda** | Test de calidad en 3 capas de los 5 fueros: [CALIDAD_DATOS.md](docs/CALIDAD_DATOS.md) |
+
+Cuánto informó el sitio, qué se guardó y qué falló, fallo por fallo: `python -m scripts.reconcile --camara C_5 --desde 2025-09-27 --hasta 2026-09-27`.
+
+Otras fuentes, deshabilitadas: 38.232 fallos del PJN del scraper viejo (sin carátula ni expediente; vuelven al volver a listarlos) y 99.999 de la CSJN (el enriquecimiento todavía no está adaptado al formato de la Corte). SAIJ no está importado: son sumarios.
 
 ```python
 # Deshabilitar / reactivar (scripts/catalog.py)
@@ -289,33 +302,24 @@ cat.enable("disabled_reason = ?", ("scraper_viejo",))
 
 ---
 
-## Hoja de ruta, paso a paso
+## Hoja de ruta: el MVP es el conector
 
-Un fuero a la vez, empezando por la Cámara Nacional del Trabajo. **No se pasa al paso siguiente hasta cumplir la condición del actual.**
+El plan detallado (qué entra en el MVP, herramientas del conector, subpasos, criterios de salida, costos y qué hace falta) está en [docs/PLAN_MVP.md](docs/PLAN_MVP.md). **No se pasa a la fase siguiente hasta cumplir el criterio de la actual.**
 
-**El plan detallado hasta el MVP** (definición del MVP, experiencia de usuario, subpasos, verificación, criterios de salida, imprevistos, costos y cronograma) está en [docs/PLAN_MVP.md](docs/PLAN_MVP.md). Allí el orden se ajustó para atacar primero el riesgo mayor: **probar Jev en castellano jurídico es la Fase 1.**
-
-| Paso | Qué | Listo cuando |
+| Fase | Qué | Estado |
 |---|---|---|
-| **0** ✅ | Scraper PJN + contrato de calidad + catálogo + enriquecimiento regex + auditoría | Hecho: 100% de completitud, 0 errores, 71 tests |
-| **1** | **Mapa de la Cámara del Trabajo:** agrupar sus objetos en familias; el código cuenta los agravios; Claude redacta las preguntas cerradas; el código mide la cobertura | Mapa v1 con preguntas universales y específicas para las familias que cubren ~95% de los fallos |
-| **2** | **Set de verdad:** ~100 fallos etiquetados a mano (preetiquetados por el sistema, corregidos por una persona) | Existe y está revisado |
-| **3** | **Etiquetador:** interfaz intercambiable (Jev, Haiku), versión fijada, medido pregunta por pregunta contra el set | Cada pregunta supera el umbral de **precisión** y de **consistencia** (3 corridas, misma respuesta). **Las que no, no se publican.** |
-| **4** | Scrapear y etiquetar la Cámara del Trabajo 2024 completa | La auditoría muestra la cobertura de cada etiqueta y el % en "otro" |
-| **5** | Índice por párrafo + búsqueda filtrada por etiquetas, probada con casos reales | P@5 medido con consultas reales |
-| **6** | **Job diario:** scrapear lo nuevo → contrato → enriquecer → etiquetar solo lo nuevo → auditar (incluida la deriva de etiquetas) → avisar si algo se rompe | Corre solo una semana sin intervención y sin reetiquetar nada ya etiquetado |
-| **7** | Siguiente cámara o fuente: repetir los pasos 1 a 6 | — |
+| **0** | Datos confiables: scraper con contabilidad, contrato, catálogo, enriquecimiento, auditoría | ✅ |
+| **1** | Jev en castellano jurídico | ✅ ([reporte](docs/FASE1_JEV_REPORT.md)) |
+| **2** | Cerrar el año de los 5 fueros: conciliación, reglas nuevas, test de calidad, copia de seguridad | ✅ ([calidad](docs/CALIDAD_DATOS.md)) |
+| **3** | Motor de búsqueda por párrafo y API | |
+| **4** | **Conector MCP v0** y piloto con 2 o 3 abogados en Claude | |
+| **5** | Mapa de preguntas por fuero, alimentado por las consultas del piloto | |
+| **6** | Etiquetado medido con Jev → **conector v1** (a favor / en contra, mayoría, hecho clave) | |
+| **7** | Tendencia por Sala → **conector v2** | |
+| **8** | Carga diaria automática | |
+| **9** | Cuentas, login y cobro | |
 
-Pendientes técnicos que se resuelven dentro de esos pasos:
-
-| Qué | Por qué | Costo |
-|---|---|---|
-| Agrupar párrafos repetidos | "Criterio reiterado en N fallos" | $0 |
-| Cadena procesal PJN ↔ CSJN por expediente | "¿Sigue firme?" | $0 |
-| Completitud en la auditoría: no contar dos veces un día ya completado por Sala | Hoy marca 97,3% cuando en realidad es 100% | $0 |
-| Volver a listar los 38K fallos viejos del PJN | Recuperan identidad sin bajar los PDFs | Captchas |
-| Adaptar el enriquecimiento al formato de la CSJN | Hoy el resultado sale en el 6% y los votos en 0% | $0 |
-| Actualizar `deploy_parallel.py` | **Está desactualizado:** copia un solo archivo y el scraper ahora usa varios módulos. No usar. | — |
+Después del MVP: app web y de celular (Capacitor) sobre la misma API, subir la sentencia o la demanda, Corte Suprema, provincias, interlocutorias.
 
 ---
 

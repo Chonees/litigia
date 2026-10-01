@@ -1,332 +1,231 @@
-# LITIGIA — Plan hasta el MVP
+# LITIGIA — Plan hasta el MVP: el conector
 
-Plan de ejecución, en pasos chicos y en orden de prioridad. Cada paso dice qué se hace, cómo sabemos que vamos bien, cuándo está terminado y qué hacemos si algo sale mal.
+Plan de ejecución en pasos chicos y en orden. Cada paso dice qué se hace, cuándo está terminado y qué hacemos si algo sale mal. El diseño general está en el [README](../README.md).
 
-El diseño del sistema está en el [README](../README.md). Este documento es el **orden de construcción**.
+**Decisión (2026-09-29): el MVP es un conector MCP y nada más.** El abogado usa LITIGIA desde su propio asistente de IA (Claude, ChatGPT, Grok o Gemini). La app web, la app de celular y cualquier interfaz propia quedan para después del MVP.
 
-Estado de partida (2026-09-27): capa de datos construida y probada. Scraper PJN al 100% de completitud, contrato de calidad, catálogo, enriquecimiento por regex, auditoría y 71 tests. 932 fallos indexables activos, casi todos de la Cámara Nacional del Trabajo (CNAT), marzo 2024.
+Estado de partida (2026-09-29):
+- **Datos:** 22.470 sentencias definitivas de la Cámara Nacional del Trabajo (un año, 99,3% de lo que informa el sitio). Los otros cuatro fueros nacionales de CABA se están bajando: seguridad social, contencioso administrativo federal, civil y comercial (~56.500 fallos).
+- **Scraper con contabilidad:** sabemos qué informó el sitio, qué se guardó y qué falló, fallo por fallo.
+- **Jev probado** en castellano jurídico (Fase 1, [reporte](FASE1_JEV_REPORT.md)).
+- 139 tests.
 
 ---
 
 ## 1. Qué es el MVP
 
-**Una sola frase:** un abogado laboralista de CABA describe su caso en 5 campos y en menos de 10 segundos recibe los fallos de la Cámara Nacional del Trabajo que resolvieron su misma cuestión, separados en a favor y en contra, cada uno con el párrafo literal para citar.
+**En una frase:** un abogado litigante agrega LITIGIA como conector en su asistente de IA, le cuenta su caso con sus palabras, y recibe los fallos que resolvieron su misma cuestión: separados en a favor y en contra, con cómo resuelve su Sala ese punto y el párrafo literal para citar.
+
+> **"Tu asistente redacta; LITIGIA pone las balas."**
 
 | Entra en el MVP | Queda afuera (después del MVP) |
 |---|---|
-| Fuero laboral, **Cámara Nacional del Trabajo** (CABA) | Otras cámaras, la CSJN, las justicias provinciales |
-| Sentencias definitivas de **2022 a hoy** (~50.000 a 60.000 fallos, estimado) | Años anteriores e interlocutorias |
-| Etiquetado por tipo de caso con Jev, más regex | Etiquetas por tipo de caso fuera de laboral |
-| Búsqueda híbrida por párrafo, filtrada por etiquetas | Alertas, historial y carpetas por cliente |
-| Fichas a favor / en contra, con cita copiable y link al PDF oficial | Texto generado (resúmenes, escritos) |
-| Job diario que mantiene la base al día | Cuentas, pagos, multiusuario |
-| **Piloto con 2 o 3 laboralistas reales** | Lanzamiento público |
+| **Conector MCP remoto** para Claude (primero), ChatGPT, Grok y Gemini | App web, app de celular (Capacitor), cualquier pantalla propia |
+| Justicia nacional de CABA, 5 fueros: laboral, seguridad social, contencioso administrativo federal, civil y comercial | Provincias, Corte Suprema, interlocutorias, legislación |
+| Sentencias definitivas del último año, más la carga diaria de lo nuevo | Años anteriores |
+| Búsqueda por párrafo y filtros; después etiquetas y tendencia por Sala | Redactar escritos: lo hace el asistente del abogado |
+| Acceso por usuario con límites de uso | Cobro automático y planes (se abre después del piloto) |
+| **Piloto con 2 o 3 abogados reales** | Lanzamiento público |
 
-**Por qué este recorte:**
-- **El scraper del PJN ya funciona** para esta cámara (100% de completitud, 0 errores). Es la base más sólida que tenemos.
-- **Es un fuero de alto volumen y muy repetitivo:** 4 tipos de caso cubren el 92% de los fallos, y las Salas reiteran votos modelo. Eso permite llegar a precisión alta rápido.
-- **Hay muchos laboralistas,** y buscan jurisprudencia todo el tiempo (tasa, RIPTE, multas, incapacidad).
-- **2022 en adelante** deja fuera el derecho viejo (antes de la Ley 27.348 y de las actas de tasa recientes), que confunde más de lo que ayuda.
+**Qué pone cada uno:**
 
----
-
-## 2. La experiencia de usuario del MVP
-
-### El recorrido del abogado
-
-1. **Entra** y ve un formulario de 5 campos: fuero (fijo en laboral), jurisdicción (fija en CABA), represento a (actor / demandado), cuestión jurídica, hechos clave (hasta 3).
-2. **Escribe la cuestión con la plantilla** *"¿Procede [qué] cuando [hecho determinante], según [norma]?"*. Si no la sigue, el campo se marca y muestra un ejemplo.
-3. **Toca Buscar.** En menos de 10 segundos ve dos columnas: **A FAVOR** y **EN CONTRA**.
-4. **Cada ficha** muestra: certeza · Sala · fecha · carátula · N° de sentencia · resultado · etiquetas del caso (por ejemplo: *despido · apeló la demandada · multa art. 80: procede*) · el **párrafo literal** que responde su cuestión · "criterio reiterado en N fallos" cuando aplica.
-5. **Primero aparece lo de su misma Sala**, si la indicó.
-6. **Acciones:** Ver PDF oficial · Copiar cita (formato listo para pegar en el escrito) · **¿Sirvió? sí / no**.
-7. **Si no hay nada con certeza suficiente**, no se muestra ruido: *"No hay fallos con precisión suficiente"*, con sugerencias (quitar un hecho, reformular la cuestión).
-
-### Reglas de la experiencia
-
-| Regla | Por qué |
+| El asistente del abogado (su infraestructura, su suscripción) | LITIGIA (nuestra API) |
 |---|---|
-| Nada de texto generado | El abogado cita; un resumen inventado le puede costar el caso |
-| Toda afirmación con su fuente (párrafo + PDF) | Tiene que poder verificarlo en 10 segundos |
-| Pocos resultados buenos antes que muchos regulares | Su tiempo es lo más caro |
-| El caso del cliente no se guarda más allá de la sesión | Secreto profesional |
-| "¿Sirvió?" en cada ficha | Cada clic alimenta el set de evaluación |
+| Conversación, voz y app de celular | ~79.000 fallos completos y contabilizados |
+| Leer la sentencia o la demanda que el abogado adjunta al chat | Búsqueda por párrafo, etiquetas y tendencia por Sala |
+| Redactar, resumir, corregir y comparar escritos, citando lo que devuelve LITIGIA | El párrafo literal que decidió la mayoría, con el link al PDF oficial |
 
-Maqueta visual de las pantallas: [Flujo LITIGIA v2](https://claude.ai/artifact/W1W1wUnQc8TEuAiBtGXRc8).
+Así, funciones que otras herramientas construyeron a mano (redactar, voz, celular, subir documentos) le llegan al abogado hechas, y el foco del MVP queda en lo que nadie más tiene. Después de la v1, el conector puede sumar **plantillas de pedidos** del estándar MCP (por ejemplo, "Armar agravios con jurisprudencia de mi Sala"). Lo esencial tiene que funcionar solo con herramientas, porque cada asistente soporta el estándar de forma distinta.
+
+**Por qué el conector primero:**
+- **No hay que construir interfaz.** La pone el asistente, que además entiende el relato del abogado y redacta el escrito con nuestras citas.
+- **Llegamos adonde el abogado ya trabaja.** Muchos ya usan ChatGPT o Claude todos los días.
+- **No pagamos la IA de conversación:** la paga la suscripción del abogado. Nosotros ponemos lo único que su asistente no tiene: los fallos completos, etiquetados y contabilizados.
+- **Es el camino más corto** a tener abogados usándolo y midiendo si las balas sirven.
 
 ---
 
-## 3. Por dónde empezar, y por qué
+## 2. Cómo lo usa el abogado
 
-**Primero se ataca el riesgo más grande, no la parte más fácil.**
+1. **Agrega el conector una sola vez.** En Claude: Personalizar → Conectores → "+", pega la URL de LITIGIA e inicia sesión. Funciona también en la app de celular de Claude, pero el conector se agrega desde la web.
+2. **Cuenta su caso en el chat:**
+   > *"Represento a una jubilada. Ganó el reajuste, ANSES apeló los topes del art. 9 de la ley 24.463 y las costas. Nos tocó la Sala 1. Buscame fallos a favor y en contra, y cómo resuelve la Sala."*
+3. **Su asistente llama a las herramientas de LITIGIA** con los datos del caso.
+4. **LITIGIA devuelve fichas:** fallo, Sala, fecha, qué resolvió en ese punto, el párrafo literal y el link al PDF oficial. Con la v2, además, cómo resuelve ese punto cada Sala y con cuántos fallos.
+5. **Si el abogado lo pide, su asistente redacta** el agravio o el escrito usando esas citas.
 
-| Riesgo | Tamaño | Qué pasa si falla | Cuándo lo probamos |
+---
+
+## 3. Las herramientas del conector
+
+| Herramienta | Qué recibe | Qué devuelve | Versión |
 |---|---|---|---|
-| **Jev no rinde en castellano jurídico.** La documentación dice que el inglés es su idioma principal y que otros idiomas "funcionan, pero no igual de bien". | 🔴 Máximo: todo el etiquetado depende de esto | Cambiar de etiquetador (Haiku, un modelo local) y recalcular costos | **Fase 1, primero que nada** |
-| Las preguntas del mapa no se pueden contestar con los fallos | 🟠 Alto | Etiquetas vacías o poco útiles | Fase 2 |
-| La búsqueda no encuentra el fallo correcto con casos reales | 🟠 Alto | El producto no sirve aunque los datos estén bien | Fase 5 |
-| El sitio del PJN cambia o nos bloquea | 🟡 Medio | Se frena el volumen | Fase 4, con monitoreo |
-| Los abogados no lo usan | 🟡 Medio | Producto sin mercado | Fase 6 (piloto) |
+| `buscar_fallos` | Fuero, cuestión en texto, hechos clave, a quién representa; opcionales: Sala, fechas | Hasta 10 fichas, con Sala, fecha, carátula, expediente, resultado, párrafo literal y link al PDF. Desde v1, separadas en a favor y en contra | v0 |
+| `ver_fallo` | Id del fallo | Ficha completa: metadatos, votos, normas citadas y párrafos numerados | v0 |
+| `citar` | Id del fallo y párrafo | La cita lista para pegar en un escrito, con el formato del fuero | v0 |
+| `preguntas_del_caso` | Fuero y tipo de caso | Los datos que hacen falta para afinar la búsqueda, con una línea de por qué importa cada uno. Sale del mapa de preguntas | v1 |
+| `tendencia_sala` | Fuero, punto en discusión y Sala (opcional) | Cómo resuelve cada Sala ese punto, con cantidad de fallos y un ejemplo citable de cada criterio | v2 |
 
-Por eso el orden: **probar Jev (1) → mapa (2) → medir el etiquetador (3) → volumen (4) → búsqueda (5) → piloto (6) → job diario (7).** Construir el volumen o la interfaz antes de saber si el etiquetado funciona sería construir la casa antes de probar el suelo.
+**Reglas de las respuestas:**
+- **JSON estructurado:** cada herramienta declara su `outputSchema` y responde con `structuredContent` (estándar MCP 2025-06-18), repitiendo el mismo JSON como texto para los asistentes que no leen el campo estructurado. Cada ficha trae el rol del párrafo, la certeza, la cita lista y el link al PDF oficial. La v1 agrega campos a la v0 sin cambiar los existentes.
+- **LITIGIA nunca genera texto jurídico.** Devuelve datos del fallo y párrafos literales, siempre con el link al PDF oficial.
+- **Cada herramienta avisa en su descripción** que las citas se reproducen tal cual y que el abogado debe verificarlas en la fuente. El asistente externo redacta; nosotros no controlamos ese texto, y el abogado tiene que saberlo.
+- **Si no hay fallos con certeza suficiente, se dice.** No se rellena con resultados dudosos.
+- **Solo lo que decidió la mayoría.** Nunca se devuelve como decisión un párrafo que es una queja de parte, una cita del juez anterior o un voto en minoría (desde v1).
 
 ---
 
-## 4. Principios que aplican a todas las fases
+## 4. Principios
 
-1. **Un paso a la vez.** No se arranca el siguiente hasta cumplir el criterio de salida del actual.
-2. **Todo se mide contra datos,** nunca contra lo que dice un proveedor o nuestra intuición.
-3. **Todo es reversible:** deshabilitar en vez de borrar, versionar el mapa y el etiquetador, reetiquetar sin volver a scrapear.
+1. **Un paso a la vez**, y no se arranca el siguiente sin cumplir el criterio del actual.
+2. **Todo se mide contra datos:** contabilidad del scraper, auditorías y consultas reales.
+3. **Reversible:** nada se borra (se deshabilita), las etiquetas tienen versión y se pueden rehacer sin volver a scrapear.
 4. **TDD** en todo el código, con fallos reales como fixtures.
 5. **Costos visibles:** cada corrida registra tokens y dólares.
-6. **Las etiquetas no fluctúan:** mapa congelado, etiquetado una sola vez, umbral de certeza, modelo con versión fijada (ver README, "Estabilidad").
+6. **Respeto por el sitio del PJN:** como máximo 1 o 2 pedidos por segundo por IP. El bloqueo del 28/09 fue por ir a 40.
 
 ---
 
-## 5. Fases, pasos y subpasos
+## 5. Fases
 
-### Fase 0 — Base de datos confiable ✅ HECHA
+### Fase 0 — Datos confiables ✅
+Scraper del PJN con partición por fecha, por tipo de oficina, por oficina y por año del expediente; contrato de calidad; catálogo; enriquecimiento por reglas; contabilidad fallo por fallo (`scripts/reconcile.py`); deploy en VPS paralelas con collect automático.
 
-Scraper PJN (filtro `tid`, paginación con token, crawl adaptativo, partición por Sala), contrato de calidad, catálogo SQLite en modo WAL con deshabilitado, enriquecimiento por regex (objeto, resultado, normas, votos, N° de sentencia) y auditoría con delta. 71 tests.
+### Fase 1 — Jev en castellano jurídico ✅
+Cumple el criterio en las 6 preguntas del fallo y en el rol de cada párrafo, con consenso de 3 corridas y la estructura de votos calculada en código. ~US$71 cada 60.000 fallos laborales. Falta la revisión humana del set de 30.
 
----
+### Fase 2 — Cerrar el año de los 5 fueros ✅ HECHA (2026-09-30)
 
-### Fase 1 — Probar Jev en castellano jurídico (riesgo #1) ✅ HECHA (2026-09-27)
-
-**Resultado:** Jev cumple el criterio de salida en las 6 preguntas del fallo y en el rol de cada párrafo, con tres ajustes: preguntas más literales, **estructura de votos calculada en código** (sin el voto en minoría en el `state`) y **consenso de 3 corridas**. Es mejor y 27 veces más barato que Haiku. El costo queda en ~$71 por 60.000 fallos (la meta era $50). Detalle completo: [FASE1_JEV_REPORT.md](FASE1_JEV_REPORT.md). **Pendiente:** revisión humana del set de verdad de 30 fallos (~1 hora).
+**Resultado:** 78.933 de 79.112 sentencias que informa el sitio (99,8%), 77.524 aptas para búsqueda. Test de calidad en 3 capas en los 5 fueros: chequeos cruzados ≥ 97%, 250/250 PDFs idénticos al texto guardado, y extracción a ciegas con instancia, Sala, primer voto y número al 100%. Detalle: [CALIDAD_DATOS.md](CALIDAD_DATOS.md). Quedan como pendientes 102 fallos del laboral (reintento cortado), 53 que el sitio nunca lista y 24 PDFs vacíos.
 
 Plan original de la fase (referencia):
-
-**Objetivo:** saber, con números, si Jev sirve para etiquetar nuestros fallos. Es un spike: código descartable, conclusión que no se descarta.
-
-| # | Subpaso | Detalle |
-|---|---|---|
-| 1.1 | Cuenta y acceso | Crear la cuenta, generar la API key en `console.typesafe.ai/keys`, guardarla como `TYPESAFE_API_KEY` en `backend/.env`. `pip install typesafe-sdk`. Probar `GET /v1/models`. |
-| 1.2 | Fijar la versión | Usar `jev-1.13.0`, no el alias `jev-latest`, y registrar el campo `model` de cada respuesta. |
-| 1.3 | Primer contacto en el Playground | Pegar 3 fallos reales y hacer las preguntas universales a mano. Mirar si las respuestas tienen sentido antes de escribir código. |
-| 1.4 | Mini set de verdad: 30 fallos | Muestra estratificada: 10 despido, 10 accidente ley especial, 7 recurso Ley 27.348, 3 de otros tipos. Yo los preetiqueto; vos (o un abogado) revisás. Preguntas: tipo de caso · quién apeló · a favor de quién resultó · costas · párrafo del holding. |
-| 1.5 | Adaptador mínimo | Script que arma el `state` (metadatos + párrafos numerados) y manda **todas las preguntas universales en una sola llamada** (la documentación indica que es ~12 veces más barato). |
-| 1.6 | Precisión por pregunta | % de aciertos contra el mini set, pregunta por pregunta. |
-| 1.7 | Calibración | Agrupar las respuestas por nivel de confianza y comparar: ¿las de 0,9 aciertan ~90%? |
-| 1.8 | Consistencia | 5 corridas del mismo fallo con un campo `uid` nuevo en cada una (como el cookbook de TypeSafe). % de respuestas que no cambian, con y sin umbral. |
-| 1.9 | Variantes que conviene comparar | a) instrucciones en castellano vs. en inglés (el fallo siempre en castellano); b) fallo completo vs. solo los párrafos relevantes (la documentación advierte que el texto irrelevante le baja la precisión). |
-| 1.10 | Comparación | Mismas preguntas con Haiku 4.5 con salida estructurada, sobre los mismos 30 fallos. |
-| 1.11 | Costo y latencia | Tokens por fallo, $ por fallo, segundos por llamada, proyectado a 60.000 fallos. |
-| 1.12 | Análisis de errores | Clasificar cada error: falta de evidencia en el texto / pregunta mal formulada / error del modelo / error de código / falla del servicio. |
-
-**Cómo sabemos que vamos bien:** después de 1.3 las respuestas del Playground tienen sentido; después de 1.6 tenemos números por pregunta.
-
-**Criterio de salida (metas iniciales, ajustables):**
-- Tipo de caso, quién apeló y resultado: **≥ 90% de aciertos** en las respuestas por encima del umbral, **y ≥ 70%** de los fallos por encima del umbral.
-- Consistencia con umbral: **≥ 98%**.
-- Costo proyectado para 60.000 fallos: **< $50**.
-
-**Imprevistos:**
-
-| Si pasa esto | Hacemos esto |
+| # | Subpaso |
 |---|---|
-| No conseguimos acceso a la API | Arrancamos la Fase 2 (no depende de Jev) y usamos Haiku como etiquetador provisorio |
-| Jev falla en castellano en alguna pregunta | Probamos instrucciones en inglés, criterios más detallados y dividir la pregunta en dos más literales |
-| Jev falla en general | **Plan B:** Haiku o Sonnet con salida estructurada detrás de la misma interfaz (~$25–30 por pasada completa). **Plan C:** modelo local (Qwen) en tu GPU. |
-| Aciertos buenos pero consistencia baja | Subir el umbral y aceptar más "sin determinar" |
-| Fallos más largos que el contexto (32K tokens) | Mandar solo los párrafos relevantes, preseleccionados con regex o búsqueda |
+| 2.1 | Terminar las 20 VPS, traer todo y **apagarlas** |
+| 2.2 | Reaplicar las reglas nuevas a todo el catálogo: resultado, votos, normas del CCyC y el CPCCN, rechazos formales corregidos |
+| 2.3 | Conciliación de cada fuero; reintentar los días incompletos y los PDFs fallidos, despacio |
+| 2.4 | Test de calidad en 3 capas por fuero, como el del laboral ([CALIDAD_DATOS.md](CALIDAD_DATOS.md)) |
+| 2.5 | Arreglar la extracción de votos que junta dos jueces en un nombre |
+| 2.6 | **Copia de seguridad del catálogo** fuera del disco D |
+| 2.7 | Commit y push |
+
+**Criterio de salida:** cada fuero con ≥ 98% de lo que informa el sitio guardado (o la diferencia explicada fallo por fallo), sin días sin cubrir, y con su test de calidad publicado.
+
+### Fase 3 — Motor de búsqueda y API
+| # | Subpaso |
+|---|---|
+| 3.1 | Índice por párrafo de los fallos activos: BM25 (SQLite FTS5) más vectores. Decidir entre **bge-m3 local (con GPU) o una API de embeddings**, midiendo costo y tiempo sobre ~3 millones de párrafos |
+| 3.2 | Filtros con lo que ya existe: fuero, instancia, Sala, fechas, resultado, normas, tipo de caso (objeto) |
+| 3.3 | Recuperación híbrida (RRF) y reranker local; devolver el mejor párrafo de cada fallo |
+| 3.4 | Agrupar párrafos repetidos: "criterio reiterado en N fallos" |
+| 3.5 | API interna con `buscar_fallos`, `ver_fallo` y `citar` |
+| 3.6 | **Set de 30 consultas** escritas como las escribe un abogado, 6 por fuero, con los fallos correctos marcados |
+| 3.7 | **¿Hace falta un juez por consulta?** Medir sobre el set: A = búsqueda + reordenador local; B = A + Jev sobre los 10 primeros. Si B no mejora P@5 de forma clara, el juez queda apagado: en MCP, el asistente del abogado ya lee y elige entre los resultados. Lo que más importa es que el fallo correcto entre en los 10 primeros |
+
+**Requisito de costo: la consulta no llama a un LLM por defecto.** Lo caro se hace una vez por fallo, al etiquetar. En la consulta: filtros, búsqueda y reordenamiento en nuestro servidor; lo ambiguo lo decide el asistente del abogado, que lee los resultados. Jev en la consulta queda como opción para preguntas que no encajan con el mapa o para resultados dudosos, siempre con pocos candidatos (≤ 10), una sola pasada y caché. Así el costo por consulta es casi solo servidor, y el margen se sostiene aun con usuarios muy intensivos.
+
+**Criterio de salida:** P@5 ≥ 0,6 en v0 (sin etiquetas) sobre el set de consultas, y menos de 3 segundos por búsqueda.
+
+### Fase 4 — Conector MCP v0 y piloto
+| # | Subpaso |
+|---|---|
+| 4.1 | Servidor MCP remoto (HTTPS) sobre la API de la Fase 3, en una VPS chica con dominio propio |
+| 4.2 | Acceso por usuario: para el piloto, una credencial por abogado (el login completo con OAuth va en la Fase 9) |
+| 4.3 | Límites: consultas por minuto y por día por usuario, máximo 10 resultados por consulta, alertas de uso anormal |
+| 4.4 | Registro anonimizado de las consultas: qué preguntan y qué fichas abren. Alimenta el mapa de preguntas y el set de evaluación |
+| 4.5 | Probarlo en Claude web y celular, ChatGPT (modo desarrollador) y Grok |
+| 4.6 | Guía de instalación en 2 pasos para abogados no técnicos |
+| 4.7 | **Piloto: 2 o 3 abogados, 2 semanas, en Claude.** Una charla corta al empezar y otra al terminar |
+
+**Criterio de salida:** los abogados lo usan en casos reales y marcan que las fichas les sirven en al menos la mitad de las consultas. Sabemos qué preguntan y en qué falla.
+
+### Fase 5 — Mapa de preguntas por fuero
+Arranca en paralelo con el piloto y se alimenta de sus consultas reales.
+
+| # | Subpaso |
+|---|---|
+| 5.1 | Familias de caso por fuero, a partir del objeto de juicio (el 94% del laboral está en 4 tipos) |
+| 5.2 | Extraer y contar los agravios por familia |
+| 5.3 | Sumar lo que preguntaron los abogados en el piloto y lo que salió de la investigación por fuero |
+| 5.4 | Redactar las preguntas cerradas (Claude + código): condición literal, opciones con definición y "no aplica" |
+| 5.5 | Congelar con versión y tests: `labels/<fuero>_v1.yaml` |
+
+Orden de fueros: **laboral y seguridad social primero** (los de más volumen), después contencioso, civil y comercial.
+
+**Criterio de salida:** preguntas para las familias que cubren ≥ 95% de los fallos de cada fuero.
+
+### Fase 6 — Etiquetado medido y conector v1
+| # | Subpaso |
+|---|---|
+| 6.1 | Set de verdad por fuero (~100 fallos), revisado por un abogado del fuero |
+| 6.2 | Etiquetar con Jev: consenso de 3 corridas, votos por código, umbral por pregunta |
+| 6.3 | Medir precisión y consistencia pregunta por pregunta; las que no pasan no se publican |
+| 6.4 | Etiquetar todos los fallos, de forma idempotente y registrando el costo |
+| 6.5 | **Conector v1:** a favor y en contra, quién ganó cada punto, el hecho clave, solo el párrafo de la mayoría, y la herramienta `preguntas_del_caso` |
+
+**Criterio de salida:** cada pregunta publicada con ≥ 90% de acierto por encima de su umbral y ≥ 98% de consistencia. P@5 ≥ 0,8 en el set de consultas.
+
+### Fase 7 — Tendencia por Sala y conector v2
+Contar, por Sala, cómo se resolvió cada pregunta del mapa, con un mínimo de fallos para mostrar una tendencia y un ejemplo citable de cada criterio. Herramienta `tendencia_sala`.
+
+**Criterio de salida:** tendencias verificadas a mano en 10 puntos contra los fallos que las respaldan.
+
+### Fase 8 — Carga diaria
+Scrapear los últimos 7 días (se publican con demora), aplicar el contrato, enriquecer, etiquetar solo lo nuevo, indexar y conciliar. Alertas solo cuando algo falla. A 1 o 2 pedidos por segundo.
+
+**Criterio de salida:** 7 días seguidos sin intervención manual.
+
+### Fase 9 — Cuentas y cobro
+Login OAuth en el conector, planes, pago en nuestra web (sin comisión de las plataformas) y una sola suscripción que después sirva también para la app. Controles contra cuentas compartidas y contra copia masiva de la base.
 
 ---
 
-### Fase 2 — Mapa de preguntas de la Cámara del Trabajo
+## 6. Metas y cómo se miden
 
-**Objetivo:** el archivo `labels/cnat_v1.yaml` con los tipos de caso y las preguntas cerradas de cada uno.
-
-| # | Subpaso | Detalle |
-|---|---|---|
-| 2.1 | Familias de caso | Agrupar los objetos de juicio de la CNAT (25 en la muestra) en familias. Ampliar la muestra para ver objetos raros (ver 4.1). |
-| 2.2 | Extraer agravios | Código que detecta los párrafos de agravio (*"se agravia la demandada porque…"*) y los guarda por familia. |
-| 2.3 | Contar temas de agravio | Agrupar y contar: *"despido: 60% discute la justa causa, 35% la multa del art. 80…"*. |
-| 2.4 | Investigar fuentes | Leyes comentadas, doctrina, criterios y actas de la CNAT, publicaciones de colegios de abogados: qué se discute en cada familia. Con registro de fuentes. |
-| 2.5a | Incorporar lo aprendido en la Fase 1 | Reglas pedidas por los etiquetadores: intereses, recursos desiertos, tipo según lo que resuelve la Cámara, costas mixtas, roles nuevos (`propuesta_voto`, `concurrencia`, `voto_con_reservas`). Ver la sección 7 del reporte de la Fase 1. |
-| 2.5 | Redactar las preguntas (Claude) | Preguntas universales + específicas por familia. Cada una con: tipo (Choice / Noul / Score), instrucción literal, opciones con definición y una opción "no tratado / no aplica". Aplicando las reglas de Jev: condición exacta, casos límite en los criterios, sin números ni fechas. |
-| 2.6 | Medir cobertura | ¿En qué % de los fallos de la familia aparece el tema? Si es muy bajo, la pregunta se descarta. |
-| 2.7 | Congelar | `cnat_v1.yaml` versionado en git, con tests que validan su estructura (≤ 255 opciones, opción de salida presente, ids únicos). |
-
-**Cómo sabemos que vamos bien:** en 2.3 los temas más frecuentes coinciden con lo que un laboralista reconocería (tasa, RIPTE, incapacidad, multas, costas).
-
-**Criterio de salida:** preguntas universales + específicas para las familias que cubren **≥ 95%** de los fallos de la CNAT.
-
-**Imprevistos:**
-
-| Si pasa esto | Hacemos esto |
+| Meta | Cómo se mide |
 |---|---|
-| Los agravios no se detectan bien con regex | Detectarlos con una pregunta de Jev ("¿este párrafo es un agravio?"), que además ya es una etiqueta que necesitamos |
-| Una familia tiene muy pocos fallos | Queda como "otro", solo con preguntas universales |
-| Preguntas demasiado abstractas para Jev | Dividirlas en dos más literales y combinarlas en código |
+| Datos completos | Conciliación contra el sitio: ≥ 98% guardado por fuero |
+| Búsqueda precisa | P@5 sobre el set de consultas reales: ≥ 0,6 en v0, ≥ 0,8 en v1 |
+| Etiquetas confiables | ≥ 90% de acierto y ≥ 98% de consistencia por pregunta |
+| Rápido | < 3 s por búsqueda en v0; < 10 s con el juez de Jev en v1 |
+| Barato | < US$0,001 por consulta en LLM (sin juez por defecto); el resto es servidor |
+| Útil | ≥ 50% de consultas útiles en el piloto v0; ≥ 70% en v1 |
 
 ---
 
-### Fase 3 — Set de verdad y etiquetador medido
+## 7. Costos estimados
 
-**Objetivo:** un etiquetador en producción cuyas etiquetas sabemos que son correctas, pregunta por pregunta.
-
-| # | Subpaso | Detalle |
-|---|---|---|
-| 3.1 | Set de verdad: 100 fallos | 25 por familia principal. Preetiquetados por el sistema, corregidos a mano. Incluye los 30 de la Fase 1. |
-| 3.2 | Interfaz de etiquetador | `Labeler` con backends intercambiables (Jev, Haiku). TDD con respuestas simuladas. |
-| 3.3 | Tabla de etiquetas | En el catálogo: fallo · pregunta · respuesta · probabilidad · párrafo de respaldo · versión del mapa · versión del etiquetador · modelo que respondió. |
-| 3.4 | Dos pasadas | Pasada 1 (tipo + universales) → el código elige el set → pasada 2 (específicas). Según la Fase 1: **estructura de votos en código** (`scripts/labeling/votes.py`), preguntas del fallo **sin el voto en minoría**, **consenso de 3 corridas**, y roles de párrafo en una llamada aparte. |
-| 3.5 | Medición por pregunta | Precisión, calibración y consistencia (3 corridas) contra el set. Reporte automático. |
-| 3.6 | Umbral por pregunta | Elegido con los datos: el más bajo que mantiene la precisión objetivo. |
-| 3.7 | Cruce con regex | Donde hay dos fuentes (por ejemplo, el resultado), marcar las discrepancias para revisión. |
-| 3.8 | Publicar solo lo que pasa | Las preguntas que no alcanzan el criterio quedan desactivadas en el mapa. |
-
-**Criterio de salida:** cada pregunta publicada tiene **≥ 90% de aciertos** por encima de su umbral y **≥ 98% de consistencia**. Se publica el reporte.
-
-**Imprevistos:**
-
-| Si pasa esto | Hacemos esto |
+| Rubro | Estimado |
 |---|---|
-| Una pregunta clave no pasa (por ejemplo, "a favor de quién") | Reformularla; dividirla ("¿apeló el actor?" + "¿se admitió su agravio?") y combinar en código |
-| El set de verdad tiene errores | Doble revisión en los casos donde el etiquetador y el set discrepan |
-| TypeSafe publica una versión nueva | Corre en sombra sobre el set; se cambia solo si mide igual o mejor |
+| Scraping del año de los 5 fueros | < US$3 (VPS y captchas) |
+| Servidor del conector | US$5 a 10 por mes |
+| Etiquetado con Jev de ~79.000 fallos | ~US$95 a 150 (los fallos civiles son 2,5 veces más largos que los laborales) |
+| Vectores para la búsqueda | $0 con GPU local, o a medir con API |
+| Consultas del piloto | < US$5 |
 
 ---
-
-### Fase 4 — Volumen: la Cámara del Trabajo 2022 a hoy
-
-**Objetivo:** ~50.000 a 60.000 fallos scrapeados, con contrato, enriquecidos y etiquetados.
-
-| # | Subpaso | Detalle |
-|---|---|---|
-| 4.1 | Prueba de un mes completo | Scrapear un mes y auditarlo (completitud, % indexable, errores) antes de escalar. |
-| 4.2 | Arreglar la auditoría | No contar dos veces un día completado por Sala (hoy marca 97,3% cuando es 100%). |
-| 4.3 | Actualizar `deploy_parallel.py` | Que despliegue el paquete completo, no un solo archivo. Probarlo con 1 VPS antes de usar 10. |
-| 4.4 | Scrapear en paralelo | 2022 a hoy, una IP por rango de fechas. Monitoreo en vivo. |
-| 4.5 | Reactivar los viejos | Volver a listar los 38.000 fallos viejos del PJN que caen en el rango; se reactivan solos sin bajar los PDFs de nuevo. |
-| 4.6 | Etiquetar todo | Proceso por lotes, idempotente (no reetiqueta lo ya hecho), con registro de costos. |
-| 4.7 | Auditoría final | Completitud por mes, % indexable, cobertura de cada etiqueta, % en "otro", alarmas de deriva. |
-
-**Criterio de salida:** completitud ≥ 99% contra el sitio en todo el rango, **0 fallos sin etiquetar**, costo dentro de lo proyectado.
-
-**Imprevistos:**
-
-| Si pasa esto | Hacemos esto |
-|---|---|
-| El sitio cambia el HTML o el captcha | Los tests con fixtures fallan enseguida. Actualizar el parser con una página nueva guardada como fixture. |
-| Nos bloquean una IP | Bajar la velocidad, rotar IPs, espaciar las búsquedas |
-| Suben los errores de PDF | Pausar, investigar una muestra, reintentar con backoff |
-| Se dispara el costo de etiquetado | Cortar el lote (idempotente, se retoma después) y revisar el tamaño del `state` |
-
----
-
-### Fase 5 — Búsqueda
-
-**Objetivo:** dada la consulta del formulario, devolver las fichas correctas. Primero como CLI o API, sin interfaz.
-
-| # | Subpaso | Detalle |
-|---|---|---|
-| 5.1 | Índice por párrafo | Solo párrafos de fallos activos. BM25 (FTS5) + vectores bge-m3. Incremental, para que el job diario solo agregue lo nuevo. |
-| 5.2 | Agrupar párrafos repetidos | "Criterio reiterado en N fallos": se muestra uno, con el contador. |
-| 5.3 | Filtros por etiqueta | Fuero, tipo de caso, resultado, Sala, y excluir los párrafos que son agravio de parte. |
-| 5.4 | Recuperación | Híbrido RRF + reranker local → top 30. |
-| 5.5 | Juez final | Jev por par (consulta, candidato): ¿misma cuestión? ¿favorable a mi parte? ¿qué párrafo? Es el patrón del cookbook de reranking legal de TypeSafe. |
-| 5.6 | Armar las fichas | Solo con datos existentes: metadatos, etiquetas, el párrafo literal. |
-| 5.7 | Set de consultas reales | 30 consultas escritas como las escribe un abogado, con los fallos correctos marcados. |
-| 5.8 | Medir | P@5, cobertura de los 30 primeros, latencia (< 10 s) y costo por consulta. |
-
-**Criterio de salida:** **P@5 ≥ 0,8** en las consultas reales, **< 10 s** de latencia, **< $0,05** por consulta.
-
-**Imprevistos:**
-
-| Si pasa esto | Hacemos esto |
-|---|---|
-| El fallo correcto no entra en los 30 primeros | El problema es la recuperación, no el juez: revisar filtros, BM25 y vectores |
-| Entra pero queda abajo | Ajustar las preguntas del juez; más contexto del caso en el `state` |
-| Latencia alta | Paralelizar las llamadas al juez; reducir de 30 a 20 candidatos |
-
----
-
-### Fase 6 — Interfaz y piloto con abogados
-
-**Objetivo:** 2 o 3 laboralistas usándolo en causas reales durante 2 semanas.
-
-| # | Subpaso | Detalle |
-|---|---|---|
-| 6.1 | Interfaz web mínima | Las dos pantallas de la maqueta. Sin cuentas complejas: acceso por invitación. |
-| 6.2 | Privacidad | El caso del cliente no se guarda. Antes de mandarlo al juez se quitan los nombres propios. Revisar los términos de TypeSafe (la retención cero es solo para planes enterprise). |
-| 6.3 | Registro | Consultas (anonimizadas), resultados mostrados, clics en "¿Sirvió?". |
-| 6.4 | Piloto | 2 o 3 laboralistas, 2 semanas. Una charla corta al empezar y otra al terminar. |
-| 6.5 | Iterar | Ajustar según el feedback: campos del formulario, orden de los resultados, etiquetas visibles. |
-
-**Criterio de salida:** **≥ 70% de "sirvió"** en las fichas que abren, y los abogados lo quieren seguir usando.
-
-**Imprevistos:**
-
-| Si pasa esto | Hacemos esto |
-|---|---|
-| Buscan cosas que el formulario no permite | Registrar esos casos y evaluar un campo nuevo |
-| "No encuentro lo que sé que existe" | Esa consulta entra al set de evaluación y se investiga como en la Fase 5 |
-| No les sirven las etiquetas que mostramos | Mostrar menos; priorizar las que usan |
-
----
-
-### Fase 7 — Job diario
-
-**Objetivo:** que la base se mantenga al día sola.
-
-| # | Subpaso | Detalle |
-|---|---|---|
-| 7.1 | Pipeline incremental | Scrapear los últimos 7 días (con solapamiento, porque los fallos se publican con demora) → contrato → enriquecer → etiquetar lo nuevo → indexar. |
-| 7.2 | Programación | Tarea programada en el VPS (cron) o en Windows (Programador de tareas). |
-| 7.3 | Auditoría diaria | Snapshot + delta + alarmas: completitud < 99%, errores > umbral, deriva de etiquetas, cero fallos nuevos en un día hábil. |
-| 7.4 | Aviso | Mensaje (mail o Telegram) solo cuando algo falla. |
-| 7.5 | Runbook | Qué hacer ante cada alarma. |
-
-**Criterio de salida:** **7 días seguidos** sin intervención manual.
-
-**Imprevistos:**
-
-| Si pasa esto | Hacemos esto |
-|---|---|
-| El sitio no responde un día | El job reintenta al día siguiente con una ventana más amplia (el solapamiento lo cubre) |
-| Falla el etiquetador | Los fallos quedan pendientes de etiquetar y se procesan en la próxima corrida; no se publican sin etiquetas |
-| Alarma de deriva | Revisar una muestra antes de publicar ese lote |
-
----
-
-## 6. Cronograma estimado
-
-Estimaciones, no compromisos. Dependen sobre todo del acceso a Jev y de la disponibilidad de los abogados.
-
-| Fase | Duración estimada | Puede solaparse con |
-|---|---|---|
-| 1 · Probar Jev | 1 semana | 2 |
-| 2 · Mapa CNAT | 1 semana | 1 |
-| 3 · Set de verdad + etiquetador | 1–2 semanas | 4.1 a 4.3 |
-| 4 · Volumen | 1 semana | 3 |
-| 5 · Búsqueda | 1–2 semanas | — |
-| 6 · Interfaz + piloto | 3 semanas | 7 |
-| 7 · Job diario | 1 semana | 6 |
-| **Total hasta el MVP** | **~8 a 10 semanas** | |
-
-## 7. Costos estimados hasta el MVP
-
-| Rubro | Estimado | Base |
-|---|---|---|
-| Captchas (scraping) | < $1 | $0,006 cada 721 fallos |
-| VPS en paralelo | ~$5 | Corrida anterior: $0,50 por 48.000 fallos en 10 VPS |
-| Etiquetado con Jev (60.000 fallos) | **~$71** | **Medido en la Fase 1:** ~28.000 tokens por fallo (preguntas del fallo ×3 por consenso + rol de cada párrafo) a $0,042 por millón |
-| ~~Plan B con Haiku~~ | ~~$355 por pasada~~ | No hace falta: Jev pasó la Fase 1 |
-| Consultas del piloto | < $5 | ~$0,04 por consulta |
-| **Total** | **~$85** (sigue por debajo de $100) | Sin contar horas de trabajo |
 
 ## 8. Qué necesito de vos
 
-| Qué | Para qué fase | Bloquea |
-|---|---|---|
-| API key de TypeSafe (`console.typesafe.ai/keys`) | 1 | Fase 1 (sin esto seguimos con la 2 y Haiku) |
-| Revisar el mini set de verdad (30 fallos, ~1 hora) | 1 | Criterio de salida de la Fase 1 |
-| Revisar el set de verdad completo (100 fallos, ~3 horas) | 3 | Fase 3 |
-| Presupuesto para VPS (~$5) y la API key de Vultr rotada | 4 | Fase 4 |
-| 2 o 3 laboralistas para el piloto | 6 | Fase 6 (conviene buscarlos desde ya) |
+| Qué | Para qué fase |
+|---|---|
+| **Dominio** para el conector (por ejemplo, un subdominio `mcp.` del dominio de LITIGIA) | 4 |
+| **2 o 3 abogados** para el piloto, idealmente laboral y previsional. **Es lo que más demora: conviene buscarlos ya** | 4 |
+| Que esos abogados escriban **6 consultas reales** cada uno | 3 y 4 |
+| Revisión de los sets de verdad por un abogado de cada fuero | 6 |
+| Pagar el saldo de Vultr y rotar la key | Ya |
 
-## 9. Próximo paso concreto
+---
 
-La Fase 1 está hecha. Sigue la **Fase 2**: familias de caso y conteo de agravios (2.1–2.3), y la revisión humana del set de verdad de la Fase 1.
+## 9. Después del MVP
+
+- **App web y app de celular con Capacitor**, con la misma API y la misma suscripción.
+- **Subir la sentencia de primera instancia o la demanda:** el sistema la lee con el mapa de preguntas y busca fallos para cada agravio.
+- **Más cobertura:** Corte Suprema, provincias (empezando por Buenos Aires), interlocutorias, años anteriores.
+- **Avisar si un fallo quedó superado** (revocado, plenario o ley nueva).
+
+---
+
+## 10. Próximo paso concreto
+
+Terminar la Fase 2: cuando las VPS terminen, traer todo, apagarlas, reaplicar las reglas y cerrar la conciliación de cada fuero. Después, la Fase 3 (motor de búsqueda y API).

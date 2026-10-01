@@ -1,7 +1,7 @@
 """Real data quality: cross-check each stored field against the ruling's own text (all rulings in range).
 
 Coverage says a field exists; these checks say whether it is consistent with the source.
-Usage (from backend/): python -m spikes.quality_check --desde 2025-09-27 --hasta 2026-09-27
+Usage (from backend/): python -m spikes.quality_check --desde 2025-09-27 --hasta 2026-09-27 [--camara C_7]
 """
 
 import argparse
@@ -13,6 +13,7 @@ from collections import Counter, defaultdict
 from datetime import date
 
 from scripts.config import settings
+from scripts.scrapers.pjn_tribunales import CAMARA_FUERO
 
 ENDINGS = re.compile(r"notif[ií]quese|reg[ií]strese|devu[ée]lvase|arch[ií]vese|c[oó]piese|hágase saber|oportunamente|"
                      r"JUEZ|JUEZA|SECRETARI|Ante m[ií]|cúmplase|vuelvan", re.IGNORECASE)
@@ -37,10 +38,14 @@ def expediente_contradicted(exp: str, text: str) -> bool:
     if not m:
         return False
     head = re.sub(r"[.\s]", "", text[:800])
+    num, year = str(int(m.group(1))), m.group(2)
+    # The stored number anywhere in the heading settles it: other numbers there are agency files
+    # ("DNM - EXPTE 2151497/06" inside a CNACAF carátula) or related cases.
+    if re.search(rf"(?<!\d)0*{num}/(?:{year}|{year[2:]})(?!\d)", head):
+        return False
     found = re.findall(r"(?:EXPEDIENTE|EXPTE|CAUSA|CNT)[^0-9]{0,20}(\d{2,7})/(\d{2,4})", head, re.IGNORECASE)
     if not found:
         return False
-    num, year = str(int(m.group(1))), m.group(2)
     return not any(str(int(n)) == num and (y == year or y == year[2:]) for n, y in found)
 
 
@@ -55,16 +60,45 @@ def surname(name: str) -> str:
     return fold(parts[-1]) if parts else ""
 
 
+ROMAN = {"I": 1, "V": 5, "X": 10}
+
+
+def sala_key(sala: str) -> str:
+    """One key per Sala whatever the numeral: "2", "II" and "ii" are the same; letters (CNCiv A-M) stay."""
+    s = fold(sala).strip()
+    if s.isdigit():
+        return str(int(s))
+    if s and set(s) <= set(ROMAN):
+        values = [ROMAN[c] for c in s]
+        return str(sum(-v if i + 1 < len(values) and v < values[i + 1] else v for i, v in enumerate(values)))
+    return s
+
+
+def salas_named(text: str) -> set[str]:
+    """Salas a heading names: "SALA IX", "Sala 3", "SALA C" ("Sala de Acuerdos" is not one, and neither is a
+    Sala of the Tribunal Fiscal, which the CNACAF reviews: "la Sala E del Tribunal Fiscal")."""
+    return {sala_key(m) for m in re.findall(r"SALA\s+[\"“]?([IVX]+|\d+|[A-M])\b(?![\"”]?\s+DEL\s+TRIBUNAL\s+FISCAL)",
+                                            fold(text))}
+
+
+def judges_sign(votos: list[str], firmantes: list[str]) -> bool:
+    """Every judge who votes signs; surnames compared against every word of the signers' names
+    ("Juan Alberto Fantini" votes, "JUAN A FANTINI ALBARENQUE" signs)."""
+    words = {w for f in firmantes for w in fold(f).split() if len(w) > 2}
+    return all(surname(v) in words for v in votos)
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--desde", required=True)
     p.add_argument("--hasta", required=True)
+    p.add_argument("--camara", default="C_7", choices=list(CAMARA_FUERO))
     a = p.parse_args()
     db = sqlite3.connect(f"file:{settings.data_root / 'catalog.db'}?mode=ro", uri=True)
     db.row_factory = sqlite3.Row
     rows = [dict(r) for r in db.execute(
-        "SELECT * FROM documents WHERE source='pjn' AND active=1 AND tribunal LIKE '%TRABAJO%' "
-        "AND fecha BETWEEN ? AND ? AND status<>'duplicate'", (a.desde, a.hasta))]
+        "SELECT * FROM documents WHERE source='pjn' AND active=1 AND fuero=? "
+        "AND fecha BETWEEN ? AND ? AND status<>'duplicate'", (CAMARA_FUERO[a.camara], a.desde, a.hasta))]
     fails: dict[str, list] = defaultdict(list)
     checks = Counter()
     by_inst = Counter()
@@ -92,13 +126,14 @@ def main() -> None:
         check("texto legible (sin basura de extracción)", garbage < 0.01, r)
         if inst == "camara":
             # the ruling names its own Sala in the heading ("SALA IX", "Sala VIII"); "Sala de Acuerdos" is not one
-            own = re.findall(r"SALA\s+[\"“]?([IVX]+)\b", fold(t[:1500]))
-            check("[cámara] Sala: el texto no la contradice", bool(r["sala"]) and (not own or r["sala"] in own), r)
-            check("[cámara] Sala: confirmada en el texto (informativo)", r["sala"] in own, r)
+            own = salas_named(t[:1500])
+            mine = sala_key(r["sala"] or "")
+            check("[cámara] Sala: el texto no la contradice", bool(r["sala"]) and (not own or mine in own), r)
+            check("[cámara] Sala: confirmada en el texto (informativo)", mine in own, r)
             votos = json.loads(r["votos"])
-            firm = {surname(f) for f in json.loads(r["firmantes"])}
-            if votos and firm:
-                check("[cámara] cada juez que vota también firma", all(surname(v) in firm for v in votos), r)
+            firmantes = json.loads(r["firmantes"])
+            if votos and firmantes:
+                check("[cámara] cada juez que vota también firma", judges_sign(votos, firmantes), r)
             check("[cámara] el texto se identifica como Cámara", "CAMARA" in head or "SALA" in head, r)
         elif inst == "primera":
             first = ("JUZGADO" in head or "JUEZ" in fold(t[-2000:])

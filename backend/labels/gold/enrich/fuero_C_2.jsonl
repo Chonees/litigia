@@ -1,0 +1,16 @@
+{"id": "f9d9fc52e34ca054", "instancia": "camara", "sala": "", "resultado": "abstracto", "votos": [], "numero": "", "solo_honorarios": false, "evidencia": "p13", "dudoso": false, "nota": ""}
+{"id": "780c85fe5682ad26", "instancia": "camara", "sala": "IV", "resultado": "rechaza", "votos": [], "numero": "", "solo_honorarios": false, "evidencia": "p9", "dudoso": false, "nota": ""}
+{"id": "40b9f56adf461093", "instancia": "camara", "sala": "", "resultado": "confirma", "votos": [], "numero": "", "solo_honorarios": false, "evidencia": "p7", "dudoso": true, "nota": "Confirma la declaración de incompetencia del juez de grado; podría clasificarse como competencia."}
+{"id": "0d4ca827c7331106", "instancia": "camara", "sala": "", "resultado": "competencia", "votos": [], "numero": "", "solo_honorarios": false, "evidencia": "p12", "dudoso": false, "nota": ""}
+{"id": "b2a6ff9cfa5ac574", "instancia": "camara", "sala": "", "resultado": "confirma", "votos": [], "numero": "", "solo_honorarios": false, "evidencia": "p56", "dudoso": false, "nota": ""}
+{"id": "198e068d8b0b8474", "instancia": "camara", "sala": "IV", "resultado": "", "votos": [], "numero": "", "solo_honorarios": true, "evidencia": "p2", "dudoso": false, "nota": ""}
+{"id": "2b17ed1404fc3260", "instancia": "camara", "sala": "V", "resultado": "", "votos": [], "numero": "", "solo_honorarios": true, "evidencia": "p5", "dudoso": false, "nota": ""}
+{"id": "14ba005e2d6fc846", "instancia": "camara", "sala": "V", "resultado": "rechaza", "votos": ["Treacy", "Gallegos Fedriani"], "numero": "", "solo_honorarios": false, "evidencia": "p16", "dudoso": true, "nota": "Gallegos Fedriani solo adhiere al voto precedente; se lo incluyó como voto."}
+{"id": "ed8577c8c2cff341", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "", "solo_honorarios": false, "evidencia": "p19", "dudoso": false, "nota": ""}
+{"id": "fcd340dfbfb1bfbe", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "", "solo_honorarios": false, "evidencia": "p18", "dudoso": false, "nota": ""}
+{"id": "ae2444393afa99ff", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "", "solo_honorarios": false, "evidencia": "p9", "dudoso": false, "nota": ""}
+{"id": "5716064afaedd045", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "", "solo_honorarios": false, "evidencia": "p20", "dudoso": false, "nota": ""}
+{"id": "f5eabe3b5b594823", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "", "solo_honorarios": false, "evidencia": "p54", "dudoso": true, "nota": "El primer verbo es rechazar las excepciones, pero en el mismo punto hace lugar a la demanda ejecutiva."}
+{"id": "a16aa2b860d2a4ab", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "", "solo_honorarios": false, "evidencia": "p9", "dudoso": false, "nota": ""}
+{"id": "34af7a39b4c46a6c", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "", "solo_honorarios": false, "evidencia": "p15", "dudoso": false, "nota": ""}
+{"id": "bab648b13cafa80e", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "", "solo_honorarios": false, "evidencia": "p21", "dudoso": false, "nota": ""}

@@ -1,0 +1,16 @@
+{"id": "0afaed0898601ea4", "instancia": "camara", "sala": "2", "resultado": "revoca", "votos": ["Carnota", "Fantini Albarenque", "Dorado"], "numero": "", "evidencia": "p37", "dudoso": true, "nota": "Fantini Albarenque y Dorado adhieren en un encabezado conjunto (DIJERON); la Sala figura como 'Segunda' y se normalizó a '2'."}
+{"id": "906f15b1b9a7aa53", "instancia": "camara", "sala": "II", "resultado": "revoca", "votos": ["Dorado", "Fantini", "Carnota"], "numero": "", "evidencia": "p27", "dudoso": false, "nota": ""}
+{"id": "1564ccb1135f820b", "instancia": "camara", "sala": "", "resultado": "confirma", "votos": [], "numero": "", "evidencia": "p12", "dudoso": false, "nota": ""}
+{"id": "ae76f27e5413df01", "instancia": "camara", "sala": "", "resultado": "revoca", "votos": [], "numero": "", "evidencia": "p10", "dudoso": false, "nota": ""}
+{"id": "72120b309d8ad076", "instancia": "camara", "sala": "3", "resultado": "confirma", "votos": [], "numero": "", "evidencia": "p7", "dudoso": false, "nota": ""}
+{"id": "3b4dbe31a874c5e2", "instancia": "camara", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "", "evidencia": "p43", "dudoso": true, "nota": "El punto 1 dice 'hacer lugar a los recursos' pero su contenido es diferir la PBU y confirmar costas; en sustancia podría leerse como revocación parcial."}
+{"id": "7096b7dae90e3a76", "instancia": "camara", "sala": "", "resultado": "revoca", "votos": [], "numero": "", "evidencia": "p14", "dudoso": true, "nota": "El primer punto solo difiere a ejecución los topes que el a quo había declarado inconstitucionales (revocación parcial implícita); el punto 2 confirma en lo demás."}
+{"id": "0d4bee288ba88def", "instancia": "camara", "sala": "II", "resultado": "revoca", "votos": ["Fantini", "Dorado", "Carnota"], "numero": "", "evidencia": "p31", "dudoso": false, "nota": ""}
+{"id": "b0c22c251d80e62b", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "", "evidencia": "p25", "dudoso": false, "nota": ""}
+{"id": "b70ba4e9e7290f2b", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "", "evidencia": "p32", "dudoso": false, "nota": ""}
+{"id": "72cf0e8a1b7c8798", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "", "evidencia": "p25", "dudoso": false, "nota": ""}
+{"id": "9ede3e0b786483db", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "", "evidencia": "p54", "dudoso": false, "nota": ""}
+{"id": "f690489e30603cce", "instancia": "primera", "sala": "", "resultado": "rechaza", "votos": [], "numero": "", "evidencia": "p41", "dudoso": true, "nota": "El punto I rechaza el recálculo del haber inicial (PC y PAP), pero el punto II hace lugar parcialmente a la demanda; se siguió la regla del primer punto."}
+{"id": "a507da81fb8b7871", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "", "evidencia": "p19", "dudoso": false, "nota": ""}
+{"id": "f98d8bdf7ed509e5", "instancia": "primera", "sala": "", "resultado": "hace lugar", "votos": [], "numero": "", "evidencia": "p48", "dudoso": false, "nota": ""}
+{"id": "54728310302e27a1", "instancia": "primera", "sala": "", "resultado": "rechaza", "votos": [], "numero": "", "evidencia": "p15", "dudoso": false, "nota": ""}

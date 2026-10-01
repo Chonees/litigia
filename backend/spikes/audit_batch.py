@@ -1,6 +1,6 @@
-"""Audit a batch of freshly scraped CNAT rulings against the current standards.
+"""Audit a batch of freshly scraped rulings of one cámara against the current standards.
 
-Usage (from backend/): python -m spikes.audit_batch --desde 2025-09-27 --hasta 2026-09-27
+Usage (from backend/): python -m spikes.audit_batch --desde 2025-09-27 --hasta 2026-09-27 [--camara C_7]
 Checks, on documents whose fecha falls in the range:
   - data contract: status and reasons, warnings
   - metadata completeness (fecha, tribunal, sala, carátula, expediente, firmantes)
@@ -17,6 +17,7 @@ import statistics
 from collections import Counter
 
 from scripts.config import settings
+from scripts.scrapers.pjn_tribunales import CAMARA_FUERO
 
 NOISE = {"sello de página": r"#\d+#\d+#\d+", "Fecha de firma": r"Fecha de firma:", "Firmado por": r"Firmado por:",
          # page-number sized only: longer numeric lines are table rows (amounts, dates), kept on purpose
@@ -27,12 +28,13 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--desde", required=True)
     p.add_argument("--hasta", required=True)
+    p.add_argument("--camara", default="C_7", choices=list(CAMARA_FUERO))
     a = p.parse_args()
     db = sqlite3.connect(f"file:{settings.data_root / 'catalog.db'}?mode=ro", uri=True)
     db.row_factory = sqlite3.Row
     rows = [dict(r) for r in db.execute(
         "SELECT * FROM documents WHERE source='pjn' AND active=1 AND fecha BETWEEN ? AND ? "
-        "AND tribunal LIKE '%TRABAJO%'", (a.desde, a.hasta))]
+        "AND fuero=?", (a.desde, a.hasta, CAMARA_FUERO[a.camara]))]
     if not rows:
         print("sin documentos en el rango todavía")
         return
@@ -40,7 +42,7 @@ def main() -> None:
     groups = {}
     for r in rows:
         groups.setdefault(detect_instancia(r["tribunal"]) or "?", []).append(r)
-    print(f"== {len(rows)} fallos CNAT {a.desde}..{a.hasta} · por instancia: "
+    print(f"== {len(rows)} fallos {a.camara} ({CAMARA_FUERO[a.camara]}) {a.desde}..{a.hasta} · por instancia: "
           + ", ".join(f"{k} {len(v)}" for k, v in groups.items()))
     for inst, group in sorted(groups.items()):
         report(db, inst, group, a)
@@ -87,13 +89,13 @@ def completeness(db, rows: list, a) -> None:
     # Completeness per finished cámara-level search: what the site reported vs. what the catalog holds
     # for those dates. A truncated day stays "en curso" until its oficina split covers the total.
     leaves = db.execute(
-        "SELECT key, total, truncated FROM searches WHERE source='pjn' AND split=0 AND key LIKE '5-5|C_7|*|%' "
-        "AND substr(key, -21, 10) >= ? AND substr(key, -10) <= ?", (a.desde, a.hasta)).fetchall()
+        "SELECT key, total, truncated FROM searches WHERE source='pjn' AND split=0 AND key LIKE ? "
+        "AND substr(key, -21, 10) >= ? AND substr(key, -10) <= ?", (f"5-5|{a.camara}|*|%", a.desde, a.hasta)).fetchall()
     site = have = complete = in_progress = lost = 0
     for key, total, truncated in leaves:
         s, e = key.split("|")[-2:]
-        n_docs = db.execute("SELECT COUNT(*) FROM documents WHERE source='pjn' AND tribunal LIKE '%TRABAJO%' "
-                            "AND fecha BETWEEN ? AND ?", (s, e)).fetchone()[0]
+        n_docs = db.execute("SELECT COUNT(*) FROM documents WHERE source='pjn' AND fuero=? "
+                            "AND fecha BETWEEN ? AND ?", (CAMARA_FUERO[a.camara], s, e)).fetchone()[0]
         site += total
         have += min(n_docs, total)
         if n_docs >= total:

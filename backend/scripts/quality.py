@@ -37,14 +37,32 @@ FORMAL = re.compile(
     r"|es\s+inadmisible"
     r"|abstracta\s+la\s+cuesti[óo]n|cuesti[óo]n\s+abstracta"
     r"|desiert[oa]\s+el\s+recurso|declarar\s+desiert"
-    # pure procedure: fees, orders to inform, late appeals, deposits, withdrawals
-    r"|se\s+regulan\s+los\s+honorarios"
-    r"|medida\s+para\s+mejor\s+proveer"
+    # pure procedure: late appeals, deposits, withdrawals
     r"|interpuest[oa]\s+extempor[áa]neamente"
     r"|dep[óo]sito\s+previsto\s+en\s+el\s+art(?:\.|[íi]culo)\s*286"
     r"|t[ée]ngase(?:lo|la)?\s+por\s+desistid",
     re.IGNORECASE,
 )
+
+# Fees and orders to inform are formal only when they ARE the decision: rulings on the merits often narrate
+# them ("el Tribunal dispuso como medida para mejor proveer…", CFSS retiro por invalidez). Looked for in the
+# resolutive part when there is one, in the whole text otherwise (short decrees have no marker).
+FORMAL_IF_DECIDED = re.compile(r"se\s+regulan\s+los\s+honorarios|medida\s+para\s+mejor\s+proveer", re.IGNORECASE)
+
+
+# Rulings whose only object is a fee appeal, published as "definitivas" (CNACAF: ~6% of the fuero). They open
+# with a fixed template, so only the opening is read: a ruling on the merits may use the phrase near its end.
+FEES_ONLY = re.compile(r"mediante\s+la\s+regulaci[óo]n\s+de\s+honorarios\s+se\s+busca\s+compensar", re.IGNORECASE)
+FEES_ONLY_OPENING = 1500
+
+
+def is_formal(texto: str) -> bool:
+    if FORMAL.search(texto):
+        return True
+    from scripts.enrich import _resolutive
+    section, start = _resolutive(texto)
+    return bool(FORMAL_IF_DECIDED.search(section if start >= 0 else texto))
+
 
 TIPO_INTERLOCUTORIA = re.compile(r"SENT(?:ENCIA)?\.?\s*INT(?:ERLOCUTORIA)?\b", re.IGNORECASE)
 TIPO_DEFINITIVA = re.compile(r"SENT(?:ENCIA)?\.?\s*DEF(?:INITIVA)?\b", re.IGNORECASE)
@@ -196,6 +214,7 @@ FUEROS = [
     ("SEGURIDAD SOCIAL", "seguridad social"),
     ("CIVIL Y COMERCIAL FEDERAL", "civil y comercial federal"),
     ("CONTENCIOSO ADMINISTRATIVO", "contencioso administrativo federal"),
+    ("EJECUCIONES FISCALES", "contencioso administrativo federal"),   # juzgados under the CNACAF
     ("PENAL ECONOMICO", "penal economico"),
     ("CASACION PENAL", "penal"),
     ("CRIMINAL", "penal"),
@@ -261,8 +280,10 @@ def assess(doc: dict) -> Assessment:
         reject.append("texto_corto")
     elif _letter_ratio(texto) < MIN_LETTER_RATIO:
         pending.append("necesita_ocr")
-    if len(texto) < FORMAL_MAX_CHARS and FORMAL.search(texto):
+    if len(texto) < FORMAL_MAX_CHARS and is_formal(texto):
         reject.append("resolucion_formal")
+    if FEES_ONLY.search(texto[:FEES_ONLY_OPENING]):
+        reject.append("solo_honorarios")
 
     tribunal = doc.get("tribunal") or ""
     caratula = doc.get("caratula") or ""

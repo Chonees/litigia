@@ -286,3 +286,53 @@ def test_numeric_tables_are_not_noise():
     assert split_paragraphs(strip_noise_paragraphs(texto)) == [
         "I) Ingreso base mensual:", row, total, "II) Costas a la demandada.",
     ]
+
+
+# CFSS Sala 2, retiro por invalidez (2026-03/04): a short ruling on the merits that only NARRATES an earlier
+# "medida para mejor proveer". It was rejected as formal; the phrase only counts in the resolutive part.
+RETIRO_INVALIDEZ = "\n\n".join([
+    "VISTO: Las presentes actuaciones llegan a conocimiento del Tribunal en virtud del recurso interpuesto por el "
+    "actor contra la resolución de la Comisión Médica Central que le denegó el retiro por invalidez.",
+    "La Comisión Médica Central determinó que el peticionante presenta un porcentaje de incapacidad inferior al "
+    "exigido por el artículo 48, inciso a) de la ley 24.241, por lo cual denegó el beneficio pretendido.",
+    "En efecto, conforme surge de autos, el Tribunal dispuso como medida para mejor proveer la remisión de las "
+    "actuaciones al Cuerpo Médico Forense. Del informe médico producido se desprende que presenta una incapacidad "
+    "física que supera el 66% de la total obrera, extremo que habilita el beneficio.",
+    "Por ello, el Tribunal RESUELVE: 1º) Revocar la resolución de la Comisión Médica Central. 2º) Ordenar a la "
+    "ANSeS que otorgue al actor el retiro por invalidez. 3º) Remitir las presentes actuaciones al organismo de "
+    "origen a sus efectos. Regístrese, publíquese, notifíquese y oportunamente devuélvase.",
+] * 2)
+
+
+def test_a_narrated_medida_para_mejor_proveer_does_not_make_a_ruling_formal():
+    assert assess(good_doc(texto=RETIRO_INVALIDEZ)).status != "rejected"
+
+
+def test_a_ruling_that_orders_a_medida_para_mejor_proveer_is_formal():
+    texto = "\n\n".join(["VISTO: Las actuaciones llegan al Tribunal por el recurso del actor contra la Comisión Médica."] * 8
+                        + ["Por ello, el Tribunal RESUELVE: Disponer como medida para mejor proveer la remisión de las "
+                           "actuaciones al Cuerpo Médico Forense. Notifíquese."])
+    assert assess(good_doc(texto=texto)).status == "rejected"
+
+
+def test_tax_enforcement_courts_belong_to_the_contencioso_fuero():
+    # they hang from the Cámara Contencioso Administrativo Federal (C_2); 127 rulings in 2025-2026
+    assert detect_fuero("JUZGADO FEDERAL DE EJECUCIONES FISCALES TRIBUTARIAS Nº 5 - SECRETARIA Nº 18") == \
+        "contencioso administrativo federal"
+
+
+def test_fee_only_rulings_are_rejected_whatever_their_length():
+    # CNACAF publishes as "definitivas" rulings that only decide fee appeals; they open with this template
+    texto = "\n\n".join(["AUTOS Y VISTOS: Que, a fin de tratar el recurso interpuesto, cabe señalar que, mediante la "
+                         "regulación de honorarios se busca compensar de modo adecuado la tarea desplegada por los "
+                         "profesionales, conforme la ley 27.423."] + ["Se fijan los honorarios de la dirección letrada. " * 20] * 8)
+    result = assess(good_doc(texto=texto))
+    assert len(texto) > 4000
+    assert result.status == "rejected"
+    assert "solo_honorarios" in result.reasons
+
+
+def test_a_ruling_on_the_merits_that_later_regulates_fees_is_kept():
+    doc = good_doc()
+    doc["texto"] += "\n\nMediante la regulación de honorarios se busca compensar la labor profesional."   # at the end, not the opening
+    assert assess(doc).status == "indexable"

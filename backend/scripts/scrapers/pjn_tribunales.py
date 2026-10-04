@@ -205,7 +205,8 @@ class PJNSite:
         return parse_oficinas(r.text)
 
     def search(self, jurisdiccion: str, camara: str, oficina: str, tipo: str,
-               start: date, end: date, tipo_oficina: str = "", expediente: str = "") -> tuple[int, list[dict]]:
+               start: date, end: date, tipo_oficina: str = "", expediente: str = "",
+               caratula: str = "") -> tuple[int, list[dict]]:
         """One search, every page the site allows. Returns (site total, up to CAP results).
 
         The site filters by `tid` (a cámara such as C_7, or an office such as T_7_TS1);
@@ -218,7 +219,7 @@ class PJNSite:
             "tid": oficina or camara, "tipo_oficina_id": tipo_oficina, "tipofallo": tipo,
             "fecha_fallo_desde": start.strftime("%y-%m-%d"), "fecha_fallo_desde_aux": start.strftime("%d/%m/%Y"),
             "fecha_fallo_hasta": end.strftime("%y-%m-%d"), "fecha_fallo_hasta_aux": end.strftime("%d/%m/%Y"),
-            "caratula": "", "firmantes": "", "expediente": expediente,
+            "caratula": caratula, "firmantes": "", "expediente": expediente,
         }
         empty_seen = 0
         for attempt in range(SEARCH_ATTEMPTS):

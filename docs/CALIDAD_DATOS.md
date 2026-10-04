@@ -1,24 +1,28 @@
 # Calidad real de los datos — 5 fueros nacionales de CABA, 12 meses
 
-Fecha: 2026-09-30 · Alcance: sentencias definitivas del 27/09/2025 al 27/09/2026 de las cámaras nacionales del Trabajo, de la Seguridad Social, en lo Contencioso Administrativo Federal, en lo Civil y en lo Comercial, con sus juzgados de primera instancia. Fuente: el sitio público de fallos del PJN.
+Fecha: 2026-09-30, actualizado el 2026-10-01 · Alcance: sentencias definitivas del 27/09/2025 al 27/09/2026 de las cámaras nacionales del Trabajo, de la Seguridad Social, en lo Contencioso Administrativo Federal, en lo Civil y en lo Comercial, con sus juzgados de primera instancia. Fuente: el sitio público de fallos del PJN.
 
-La auditoría común mide **cobertura** (si un campo existe). Este test mide además **completitud** contra el sitio y **exactitud** (si el valor es correcto), en tres capas.
+La auditoría común mide **cobertura** (si un campo existe). Este test mide además **completitud** contra el sitio y **exactitud** (si el valor es correcto), en cuatro capas. La cuarta compara con lo que escribieron **personas**.
 
 ## Resumen
 
 | Fuero | Informa el sitio | Guardados | Aptos para búsqueda | Chequeos cruzados | Texto contra PDF | Resultado a ciegas |
 |---|---|---|---|---|---|---|
 | Laboral | 22.653 | 22.551 (**99,5%**) | 22.431 | ≥ 99% | 50/50 idénticos | 100% (30 fallos) |
-| Seguridad social | 35.635 | 35.582 (**99,9%**) | 35.426 | ≥ 97% | 50/50 | 88% (16)¹ |
-| Contencioso adm. federal | 13.088 | 13.088 (**100%**) | 12.083 | ≥ 98%² | 50/50 | 88% (16)¹ |
-| Civil | 6.788 | 6.764 (**99,6%**) | 6.639 | ≥ 99% | 50/50 | 94% (16)¹ |
-| Comercial | 948 | 948 (**100%**) | 945 | ≥ 99% | 50/50 | 69% (16)¹ |
-| **Total** | **79.112** | **78.933 (99,8%)** | **77.524** | | **250/250** | |
+| Seguridad social | 35.635 | 35.582 (**99,9%**) | 35.438 | ≥ 97% | 50/50 | 88% (16)¹ |
+| Contencioso adm. federal | 13.088 | 13.088 (**100%**) | 12.086 | ≥ 98%² | 50/50 | 88% (16)¹ |
+| Civil | 6.788 | 6.764 (**99,6%**) | 6.644 | ≥ 99% | 50/50 | 94% (16)¹ |
+| Comercial | 948 | 948 (**100%**) | 945 | ≥ 99% | 50/50 | 75% (16)¹ |
+| **Total** | **79.112** | **78.933 (99,8%)** | **77.546** | | **250/250** | |
 
 ¹ Casi todos los desacuerdos son **zonas grises** que el propio lector ciego marcó como dudosas (ver Capa 3).
 ² Salvo dos chequeos informativos por el estilo del fuero: muchos fallos no nombran a la Cámara ni repiten las partes (93% y 95%).
 
 **Instancia, Sala (cuando el texto la nombra), primer voto y número de sentencia dieron 100% a ciegas en los cinco fueros.**
+
+**Contra 311 notas escritas por personas** (Capa 4):
+- Sala 99%, instancia 100%, jueces 99%.
+- Normas 90% (antes 76%) y mayoría 96% (antes 87%), después de las correcciones que salieron de esa comparación.
 
 ## Completitud: cada fallo del sitio, contabilizado
 
@@ -64,7 +68,7 @@ Seis agentes independientes leyeron **64 fallos nuevos** (16 por fuero nuevo, 8 
 | Campo | Seg. social | Contencioso | Civil | Comercial | Laboral (30) |
 |---|---|---|---|---|---|
 | Instancia | 100% | 100% | 100% | 100% | 100% |
-| Resultado | 88% | 88% | 94% | 69% | 100% |
+| Resultado | 88% | 88% | 94% | 75% | 100% |
 | Primer voto | 100% | 100% | 100% | 100% | 100% |
 | Número de sentencia | 100% | 100% | 100% | 100% | 100% |
 | Sala (cuando el texto la nombra) | 100% | 100% | 100% | 100% | 100% |
@@ -74,7 +78,11 @@ Seis agentes independientes leyeron **64 fallos nuevos** (16 por fuero nuevo, 8 
 - Seguridad social: el primer punto **difiere los topes a la etapa de ejecución**. ¿Confirma o revoca?
 - Comercial: el resolutivo tiene **un punto por cada apelación** (rechaza la del actor, admite en parte la del demandado).
 
-El campo "resultado" registra el primer punto del resolutivo. **Quién ganó cada punto lo responde el etiquetado con Jev** (agravios por parte), no esta regla.
+El campo "resultado" registra **lo que cambió en la sentencia**. Desde el 01/10, cuando un recurso se rechaza y otro se admite para revocar o modificar, cuenta la revocación o la modificación, no el "rechaza" del primer punto.
+
+El gold se armó con la convención anterior, la del primer punto. Por eso en comercial un caso que el lector marcó como dudoso ("el resultado global es modificación parcial") figura como "rechaza" en el gold y como "modifica" en la base. El gold no se cambió.
+
+**Quién ganó cada punto lo responde el etiquetado con Jev** (agravios por parte), no esta regla.
 
 Sobre los votos: en civil y comercial, los lectores contaron también a los jueces que **adhieren** sin voto propio ("la Dra. Iturbide vota en el mismo sentido"). El campo `votos` registra a quienes escriben su voto; los demás están en `firmantes` (100%). Por eso en esos fueros se mide el **primer voto**, que es el que fija el criterio.
 
@@ -87,6 +95,44 @@ Sobre los votos: en civil y comercial, los lectores contaron también a los juec
 | Civil | "el Tribunal **decide:**"; "**Elevar / Reducir** la suma reconocida" es modificar; la fórmula sin "FALLO" que deja el PDF ("Por todo lo expuesto, :"); "el Juez de Cámara Doctor X dijo:"; artículos del CCyC y del CPCCN como normas citadas |
 | Comercial | "los señores Jueces de Cámara **acuerdan:**"; "Juez de Cámara**,** doctor X dijo:"; "sentencio este juicio de trance y remate" |
 | Todos | El expediente que se lee del encabezado prefiere el número del PJN (CAF, CNT, CIV…) al de un expediente administrativo |
+
+## Capa 4 — Contra notas escritas por personas
+
+`python -m spikes.compare_with_notes` · Detalle en [BENCHMARK.md](BENCHMARK.md#uso-secundario-validar-nuestros-datos-contra-lo-que-escribieron-personas)
+
+311 fallos del año tienen una nota publicada por un tercero: Microjuris, Diario Judicial, boletines de la CNACAF, SADL y otros. Un agente leyó **solo la nota** y anotó qué dice sobre:
+- el resultado;
+- las normas aplicadas;
+- los jueces;
+- si hubo disidencia.
+
+La comparación con nuestros datos mostró errores que las capas anteriores no veían:
+- **Normas:** se perdían las citas en lista ("arts. 1463 y 1467 del CCyCN", "arts. 330 inc. 2 y 377 del C.P.C.C.N.") y el código procesal con otros nombres ("Cód. Procesal", "código ritual", "ordenamiento adjetivo"). Arreglarlo sumó unas 104 mil normas y sacó unas 2 mil. En las muestras revisadas a mano, las que se fueron eran atribuciones falsas, como "ley 27.423 (art. 30)" leído como artículo del CPCCN.
+- **Mayoría:** no se leía la disidencia parcial en las firmas ("(en disidencia parcial)"), ni el tercer juez que define ("en lo que es / resulta materia de disidencia", "zanjar tal disidencia"), ni "el voto de la mayoría". Ahora 7.806 fallos del año figuran por mayoría.
+- **Resultado:**
+  - "Decretar la deserción" es desierto;
+  - "admitir el recurso y revocar" es revoca;
+  - "aumentar la suma" es modifica;
+  - se arreglaron los verbos que el PDF parte ("r evocar").
+
+Las correcciones se hicieron con la tanda 1 (112 notas) y se probaron con la tanda 2 (199 notas que no se miraron al corregir):
+- **Normas generalizó:** 90% en las dos tandas.
+- **Mayoría no generalizó del todo:** 86% en la tanda 2, que trajo formas nuevas. Se corrigieron con tests y quedó en 94%.
+
+**Un hueco que la conciliación no veía:**
+- **Cómo apareció:** al buscar en el sitio los fallos que citó la prensa y no teníamos, salió una definitiva publicada que faltaba (González Haydee Alicia c/ ANSES, Sala 3).
+- **La causa:** el scraper viejo había guardado su PDF sin tribunal ni carátula, y esa copia estaba desactivada. La fusión de los catálogos de las VPS **salteaba los fallos con el mismo texto**, así que nunca la completó ni la reactivó.
+- **El alcance:** **22 fallos** (12 de seguridad social, 6 civiles y 4 de contencioso). La conciliación los contaba como "guardados".
+- **La corrección:**
+  - La fusión ya no saltea copias desactivadas o incompletas.
+  - La conciliación tiene una columna **"desactivados"**, que hoy da 0 en los cinco fueros.
+  - Los 22 se completaron.
+  - Ahora los fallos activos del año son 78.933, exactamente los guardados.
+
+Antes de cada recálculo de la base se verificó en solo lectura sobre los 78.911 fallos:
+- los estados no cambian;
+- ningún set del gold ciego empeora;
+- se revisó a mano una muestra de los cambios.
 
 ## Fallos que no son "de fondo"
 

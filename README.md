@@ -249,6 +249,8 @@ Es la herramienta para decidir qué mejorar.
 
 Benchmark sobre 847 fallos de la CNAT (21.108 párrafos), con 8 preguntas redactadas como las escribiría un abogado. Relevancia aproximada: algún párrafo del fallo discute el tema.
 
+> Esta medición es una **señal**: son 8 consultas nuestras y el criterio es flojo. El benchmark que vale para el MVP es [docs/BENCHMARK.md](docs/BENCHMARK.md): **112 fallos conocidos** que citaron terceros y **100 consultas de doctrina**, en los 5 fueros. Las de doctrina se juzgan a ciegas, y todo se mide contra una búsqueda por palabras.
+
 | Método | P@5 | P@10 |
 |---|---|---|
 | Palabras (BM25, FTS5) | 0,68 | 0,66 |
@@ -288,7 +290,7 @@ Sentencias definitivas de la justicia nacional de CABA, del 27/09/2025 al 27/09/
 | Contencioso administrativo federal (C_2) | 13.088 | ✅ 13.088 (100%) | ~15% son de honorarios o de trámite |
 | Civil (C_1) | 6.788 | ✅ 6.764 (99,6%) | La Cámara Civil dicta sobre todo interlocutorias (26.038 en el año) |
 | Comercial (C_10) | 948 | ✅ 948 (100%) | Publica muy pocas definitivas |
-| **Total** | **79.112** | **✅ 78.933 (99,8%) · 77.524 aptos para búsqueda** | Test de calidad en 3 capas de los 5 fueros: [CALIDAD_DATOS.md](docs/CALIDAD_DATOS.md) |
+| **Total** | **79.112** | **✅ 78.933 (99,8%) · 77.546 aptos para búsqueda** | Test de calidad en 4 capas de los 5 fueros: [CALIDAD_DATOS.md](docs/CALIDAD_DATOS.md) |
 
 Cuánto informó el sitio, qué se guardó y qué falló, fallo por fallo: `python -m scripts.reconcile --camara C_5 --desde 2025-09-27 --hasta 2026-09-27`.
 

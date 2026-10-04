@@ -10,6 +10,12 @@ Estado de partida (2026-09-29):
 - **Jev probado** en castellano jurídico (Fase 1, [reporte](FASE1_JEV_REPORT.md)).
 - 139 tests.
 
+Estado al 2026-10-04:
+- **Datos cerrados (Fases 0 a 2):** 78.933 sentencias de los 5 fueros, 77.546 aptas, auditadas en 4 capas. La última capa compara con 311 notas escritas por personas.
+- **El examen del buscador está listo (3.6):** 311 fallos conocidos y 100 consultas de doctrina ([BENCHMARK.md](BENCHMARK.md)).
+- 200 tests.
+- **Sigue:** construir el buscador (3.1 a 3.5).
+
 ---
 
 ## 1. Qué es el MVP
@@ -25,7 +31,7 @@ Estado de partida (2026-09-29):
 | Sentencias definitivas del último año, más la carga diaria de lo nuevo | Años anteriores |
 | Búsqueda por párrafo y filtros; después etiquetas y tendencia por Sala | Redactar escritos: lo hace el asistente del abogado |
 | Acceso por usuario con límites de uso | Cobro automático y planes (se abre después del piloto) |
-| **Piloto con 2 o 3 abogados reales** | Lanzamiento público |
+| Prueba de punta a punta con las consultas del benchmark | **Piloto con abogados reales** y lanzamiento público |
 
 **Qué pone cada uno:**
 
@@ -61,8 +67,9 @@ Así, funciones que otras herramientas construyeron a mano (redactar, voz, celul
 | Herramienta | Qué recibe | Qué devuelve | Versión |
 |---|---|---|---|
 | `buscar_fallos` | Fuero, cuestión en texto, hechos clave, a quién representa; opcionales: Sala, fechas | Hasta 10 fichas, con Sala, fecha, carátula, expediente, resultado, párrafo literal y link al PDF. Desde v1, separadas en a favor y en contra | v0 |
-| `ver_fallo` | Id del fallo | Ficha completa: metadatos, votos, normas citadas y párrafos numerados | v0 |
+| `ver_fallo` | Id del fallo | El fallo completo para que el asistente del abogado lo lea y responda repreguntas: metadatos, votos, normas citadas y el texto limpio en párrafos numerados (verificado contra el PDF), más el enlace al PDF oficial como recurso MCP | v0 |
 | `citar` | Id del fallo y párrafo | La cita lista para pegar en un escrito, con el formato del fuero | v0 |
+| `buscar_en_fallo` | Id del fallo y una pregunta en texto ("¿qué tasa aplicó?") | Los 3 o 4 párrafos de ese fallo que la responden, numerados y con su rol. Para las repreguntas del abogado sobre un resultado, sin mandarle el fallo entero a su asistente | v0 |
 | `preguntas_del_caso` | Fuero y tipo de caso | Los datos que hacen falta para afinar la búsqueda, con una línea de por qué importa cada uno. Sale del mapa de preguntas | v1 |
 | `tendencia_sala` | Fuero, punto en discusión y Sala (opcional) | Cómo resuelve cada Sala ese punto, con cantidad de fallos y un ejemplo citable de cada criterio | v2 |
 
@@ -71,6 +78,9 @@ Así, funciones que otras herramientas construyeron a mano (redactar, voz, celul
 - **LITIGIA nunca genera texto jurídico.** Devuelve datos del fallo y párrafos literales, siempre con el link al PDF oficial.
 - **Cada herramienta avisa en su descripción** que las citas se reproducen tal cual y que el abogado debe verificarlas en la fuente. El asistente externo redacta; nosotros no controlamos ese texto, y el abogado tiene que saberlo.
 - **Si no hay fallos con certeza suficiente, se dice.** No se rellena con resultados dudosos.
+- **Cada búsqueda dice cuánto respaldo tiene:** `precedentes_disponibles` para ese tipo de caso. Hay tipos con muy pocos fallos definitivos publicados (familia: ~115 por año; concursos: ~35; sociedades: ~1), y el abogado tiene que saberlo.
+- **Lo que no sabemos, también se dice:** cada ficha trae `"vigencia": "no verificada"` mientras no tengamos los fallos de la Corte ni la cadena de recursos, para que el asistente no afirme que un fallo quedó firme.
+- **Preguntas sobre muchos fallos** ("¿en cuántos casos…?", "¿cuánto se otorga por…?") solo se responden con herramientas que cuentan sobre la base etiquetada (`tendencia_sala`, y más adelante montos otorgados como etiqueta del mapa). El asistente no puede leer miles de fallos por su cuenta.
 - **Solo lo que decidió la mayoría.** Nunca se devuelve como decisión un párrafo que es una queja de parte, una cita del juez anterior o un voto en minoría (desde v1).
 
 ---
@@ -92,11 +102,15 @@ Así, funciones que otras herramientas construyeron a mano (redactar, voz, celul
 Scraper del PJN con partición por fecha, por tipo de oficina, por oficina y por año del expediente; contrato de calidad; catálogo; enriquecimiento por reglas; contabilidad fallo por fallo (`scripts/reconcile.py`); deploy en VPS paralelas con collect automático.
 
 ### Fase 1 — Jev en castellano jurídico ✅
-Cumple el criterio en las 6 preguntas del fallo y en el rol de cada párrafo, con consenso de 3 corridas y la estructura de votos calculada en código. ~US$71 cada 60.000 fallos laborales. Falta la revisión humana del set de 30.
+Cumple el criterio en las 6 preguntas del fallo y en el rol de cada párrafo, con consenso de 3 corridas y la estructura de votos calculada en código. ~US$71 cada 60.000 fallos laborales.
+
+**Falta validarlo contra personas.** El set de 30 lo etiquetó Claude. Las 311 notas del benchmark dicen qué decidió el tribunal y quién ganó, así que sirven de ancla humana para el resultado principal de Jev, sin costo extra y en los 5 fueros:
+- **Primera prueba:** los 96 fallos laborales con nota (≈ US$0,15).
+- **Lo que las notas no cubren**, el rol de cada párrafo, lo revisa una persona sobre una muestra chica (≈ 1 hora).
 
 ### Fase 2 — Cerrar el año de los 5 fueros ✅ HECHA (2026-09-30)
 
-**Resultado:** 78.933 de 79.112 sentencias que informa el sitio (99,8%), 77.524 aptas para búsqueda. Test de calidad en 3 capas en los 5 fueros: chequeos cruzados ≥ 97%, 250/250 PDFs idénticos al texto guardado, y extracción a ciegas con instancia, Sala, primer voto y número al 100%. Detalle: [CALIDAD_DATOS.md](CALIDAD_DATOS.md). Quedan como pendientes 102 fallos del laboral (reintento cortado), 53 que el sitio nunca lista y 24 PDFs vacíos.
+**Resultado:** 78.933 de 79.112 sentencias que informa el sitio (99,8%), 77.546 aptas para búsqueda. La prueba de cobertura con la prensa encontró 22 fallos guardados pero escondidos: una copia vieja desactivada que la fusión de las VPS no completaba. Se corrigió y la conciliación ahora los cuenta aparte. Test de calidad en 4 capas en los 5 fueros, la última contra 311 notas escritas por personas: chequeos cruzados ≥ 97%, 250/250 PDFs idénticos al texto guardado, y extracción a ciegas con instancia, Sala, primer voto y número al 100%. Detalle: [CALIDAD_DATOS.md](CALIDAD_DATOS.md). Quedan como pendientes 102 fallos del laboral (reintento cortado), 53 que el sitio nunca lista y 24 PDFs vacíos.
 
 Plan original de la fase (referencia):
 | # | Subpaso |
@@ -119,34 +133,35 @@ Plan original de la fase (referencia):
 | 3.3 | Recuperación híbrida (RRF) y reranker local; devolver el mejor párrafo de cada fallo |
 | 3.4 | Agrupar párrafos repetidos: "criterio reiterado en N fallos" |
 | 3.5 | API interna con `buscar_fallos`, `ver_fallo` y `citar` |
-| 3.6 | **Set de 30 consultas** escritas como las escribe un abogado, 6 por fuero, con los fallos correctos marcados |
+| 3.6 ✅ | **Benchmark de búsqueda desde fuentes públicas, sin depender de abogados** ([BENCHMARK.md](BENCHMARK.md)). **Hecho:** 311 fallos conocidos y 100 consultas de doctrina, dev 30% y test 70% congelados. Las partes: (a) **fallos conocidos**: notas, boletines y comentarios publicados por terceros que describen un caso y citan el fallo que lo resolvió; la consulta sale de esa descripción y la respuesta correcta la puso el autor, no nosotros; (b) **consultas de doctrina**: las cuestiones que discuten los manuales y la doctrina por tipo de caso, con una regla de relevancia escrita antes de ver resultados. P@5 y recall se miden **por tipo de caso** |
+| 3.6b ✅ | **Reglas para que no se pueda "arreglar":** quien escribe la consulta no ve nuestra base; la consulta queda congelada antes de buscar el fallo; los resultados se juzgan a ciegas, mezclando los nuestros con los de una búsqueda simple por palabras; set de desarrollo y set de prueba congelado; siempre contra esa base de comparación; se informa el tamaño de cada muestra y cada error. El benchmark viejo del README (8 consultas nuestras, criterio flojo) es solo una señal. Las pruebas con abogados (casos propios y fallos que citaron) van después del MVP |
 | 3.7 | **¿Hace falta un juez por consulta?** Medir sobre el set: A = búsqueda + reordenador local; B = A + Jev sobre los 10 primeros. Si B no mejora P@5 de forma clara, el juez queda apagado: en MCP, el asistente del abogado ya lee y elige entre los resultados. Lo que más importa es que el fallo correcto entre en los 10 primeros |
 
 **Requisito de costo: la consulta no llama a un LLM por defecto.** Lo caro se hace una vez por fallo, al etiquetar. En la consulta: filtros, búsqueda y reordenamiento en nuestro servidor; lo ambiguo lo decide el asistente del abogado, que lee los resultados. Jev en la consulta queda como opción para preguntas que no encajan con el mapa o para resultados dudosos, siempre con pocos candidatos (≤ 10), una sola pasada y caché. Así el costo por consulta es casi solo servidor, y el margen se sostiene aun con usuarios muy intensivos.
 
 **Criterio de salida:** P@5 ≥ 0,6 en v0 (sin etiquetas) sobre el set de consultas, y menos de 3 segundos por búsqueda.
 
-### Fase 4 — Conector MCP v0 y piloto
+### Fase 4 — Conector MCP v0
 | # | Subpaso |
 |---|---|
 | 4.1 | Servidor MCP remoto (HTTPS) sobre la API de la Fase 3, en una VPS chica con dominio propio |
-| 4.2 | Acceso por usuario: para el piloto, una credencial por abogado (el login completo con OAuth va en la Fase 9) |
+| 4.2 | Acceso por usuario: una credencial por persona (el login completo con OAuth va en la Fase 9) |
 | 4.3 | Límites: consultas por minuto y por día por usuario, máximo 10 resultados por consulta, alertas de uso anormal |
 | 4.4 | Registro anonimizado de las consultas: qué preguntan y qué fichas abren. Alimenta el mapa de preguntas y el set de evaluación |
 | 4.5 | Probarlo en Claude web y celular, ChatGPT (modo desarrollador) y Grok |
 | 4.6 | Guía de instalación en 2 pasos para abogados no técnicos |
-| 4.7 | **Piloto: 2 o 3 abogados, 2 semanas, en Claude.** Una charla corta al empezar y otra al terminar |
+| 4.7 | Prueba de punta a punta en Claude con las consultas del benchmark, como las haría un abogado |
 
-**Criterio de salida:** los abogados lo usan en casos reales y marcan que las fichas les sirven en al menos la mitad de las consultas. Sabemos qué preguntan y en qué falla.
+**Criterio de salida:** el conector responde las consultas del benchmark en Claude, ChatGPT y Grok con el mismo P@5 que la API, y el asistente cita los párrafos sin alterarlos. **El piloto con abogados reales va después del MVP.**
 
 ### Fase 5 — Mapa de preguntas por fuero
-Arranca en paralelo con el piloto y se alimenta de sus consultas reales.
+Se alimenta de lo que preguntan los usuarios del conector (registro anonimizado, 4.4), de la investigación por fuero y de las 100 consultas de doctrina del benchmark.
 
 | # | Subpaso |
 |---|---|
 | 5.1 | Familias de caso por fuero, a partir del objeto de juicio (el 94% del laboral está en 4 tipos) |
 | 5.2 | Extraer y contar los agravios por familia |
-| 5.3 | Sumar lo que preguntaron los abogados en el piloto y lo que salió de la investigación por fuero |
+| 5.3 | Sumar lo que preguntan los usuarios del conector y lo que salió de la investigación por fuero y del benchmark |
 | 5.4 | Redactar las preguntas cerradas (Claude + código): condición literal, opciones con definición y "no aplica" |
 | 5.5 | Congelar con versión y tests: `labels/<fuero>_v1.yaml` |
 
@@ -157,7 +172,7 @@ Orden de fueros: **laboral y seguridad social primero** (los de más volumen), d
 ### Fase 6 — Etiquetado medido y conector v1
 | # | Subpaso |
 |---|---|
-| 6.1 | Set de verdad por fuero (~100 fallos), revisado por un abogado del fuero |
+| 6.1 | Set de verdad por fuero (~100 fallos), anclado en las notas de terceros (qué decidió y quién ganó) y revisado por una persona |
 | 6.2 | Etiquetar con Jev: consenso de 3 corridas, votos por código, umbral por pregunta |
 | 6.3 | Medir precisión y consistencia pregunta por pregunta; las que no pasan no se publican |
 | 6.4 | Etiquetar todos los fallos, de forma idempotente y registrando el costo |
@@ -185,11 +200,11 @@ Login OAuth en el conector, planes, pago en nuestra web (sin comisión de las pl
 | Meta | Cómo se mide |
 |---|---|
 | Datos completos | Conciliación contra el sitio: ≥ 98% guardado por fuero |
-| Búsqueda precisa | P@5 sobre el set de consultas reales: ≥ 0,6 en v0, ≥ 0,8 en v1 |
+| Búsqueda precisa | Sobre el benchmark: fallos conocidos en los 10 primeros y P@5 de doctrina ≥ 0,6 en v0 y ≥ 0,8 en v1, siempre contra la búsqueda por palabras |
 | Etiquetas confiables | ≥ 90% de acierto y ≥ 98% de consistencia por pregunta |
 | Rápido | < 3 s por búsqueda en v0; < 10 s con el juez de Jev en v1 |
 | Barato | < US$0,001 por consulta en LLM (sin juez por defecto); el resto es servidor |
-| Útil | ≥ 50% de consultas útiles en el piloto v0; ≥ 70% en v1 |
+| Útil | En el piloto con abogados, después del MVP: ≥ 50% de consultas útiles en v0 y ≥ 70% en v1 |
 
 ---
 
@@ -210,9 +225,8 @@ Login OAuth en el conector, planes, pago en nuestra web (sin comisión de las pl
 | Qué | Para qué fase |
 |---|---|
 | **Dominio** para el conector (por ejemplo, un subdominio `mcp.` del dominio de LITIGIA) | 4 |
-| **2 o 3 abogados** para el piloto, idealmente laboral y previsional. **Es lo que más demora: conviene buscarlos ya** | 4 |
-| Que esos abogados escriban **6 consultas reales** cada uno | 3 y 4 |
-| Revisión de los sets de verdad por un abogado de cada fuero | 6 |
+| Revisar a mano una muestra de los juicios de agentes (gold ciego, roles de párrafo) | 1 y 6 |
+| **2 o 3 abogados** para el piloto, idealmente laboral y previsional | Después del MVP |
 | Pagar el saldo de Vultr y rotar la key | Ya |
 
 ---
@@ -228,4 +242,7 @@ Login OAuth en el conector, planes, pago en nuestra web (sin comisión de las pl
 
 ## 10. Próximo paso concreto
 
-Terminar la Fase 2: cuando las VPS terminen, traer todo, apagarlas, reaplicar las reglas y cerrar la conciliación de cada fuero. Después, la Fase 3 (motor de búsqueda y API).
+**Fase 3.1:** el índice por párrafo de los fallos activos:
+- BM25 con SQLite FTS5, más vectores.
+- Primero se mide sobre una muestra cuánto cuesta y cuánto tarda vectorizar ~3 millones de párrafos, con bge-m3 en la GPU local o con una API de embeddings.
+- Con el índice armado, se corre el benchmark en dev contra la búsqueda por palabras.

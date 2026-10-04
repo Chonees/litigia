@@ -238,16 +238,25 @@ class Catalog:
         ).fetchone()
         return row["id"] if row else None
 
-    def reassess(self, source: str | None = None) -> dict:
-        """Apply the current contract to everything already stored."""
-        where, params = ("WHERE source=?", (source,)) if source else ("", ())
+    def reassess(self, source: str | None = None, commit_every: int = 500, active_only: bool = True) -> dict:
+        """Apply the current contract to what is stored: the active documents, or all with active_only=False.
+
+        Disabled documents (the old scraper's) are not searched, so their fields are not recomputed; one that
+        is enabled again is active by the next run. Commits in batches: readers (agents, audits) keep a
+        consistent view meanwhile, and an interrupted run keeps what it finished.
+        """
+        conditions = (["source=?"] if source else []) + (["active=1"] if active_only else [])
+        where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+        params = (source,) if source else ()
         ids = [r["id"] for r in self.db.execute(f"SELECT id FROM documents {where} ORDER BY first_seen, id", params)]
         counts: Counter = Counter()
-        for id_ in ids:
+        for n, id_ in enumerate(ids, 1):
             row = dict(self.db.execute("SELECT * FROM documents WHERE id=?", (id_,)).fetchone())
             row["firmantes"] = json.loads(row["firmantes"] or "[]")
             self._save(row)
             counts[row["status"]] += 1
+            if n % commit_every == 0:
+                self.db.commit()
         self.db.commit()
         return dict(counts)
 

@@ -3,7 +3,9 @@
 For each finished cámara-level search (a leaf of the date split):
   sitio        rulings the site reported for those dates
   listados     distinct rulings it actually listed (every page, every office split of those dates)
-  guardados    listed rulings stored with text
+  guardados    listed rulings stored with text and active
+  desactivados listed rulings stored with text but disabled: invisible to search (e.g. an old copy whose
+               merge was skipped because the text matched)
   fallidos     listed rulings whose PDF failed (table `failures`, with the reason)
   pendientes   listed but neither stored nor failed (e.g. the run stopped at --limit)
   no listados  sitio − listados (pagination gaps such as "only 80 of 84")
@@ -25,7 +27,7 @@ from datetime import date, timedelta
 from scripts.config import settings
 from scripts.scrapers.pjn_tribunales import CAMARA_FUERO
 
-COLUMNS = ["sitio", "listados", "guardados", "fallidos", "pendientes", "no_listados", "fecha_fuera", "por_fecha",
+COLUMNS = ["sitio", "listados", "guardados", "desactivados", "fallidos", "pendientes", "no_listados", "fecha_fuera", "por_fecha",
            "sin_listado"]
 
 
@@ -36,6 +38,7 @@ class Leaf:
     sitio: int = 0
     listados: int = 0
     guardados: int = 0
+    desactivados: int = 0
     fallidos: int = 0
     pendientes: int = 0
     fecha_fuera: int = 0
@@ -92,9 +95,10 @@ def accounts(db: sqlite3.Connection, camara: str, desde: date, hasta: date,
     docs = {}
     failed = set()
     if ids:
-        for sid, fecha, chars in db.execute("SELECT source_id, fecha, chars FROM documents WHERE source='pjn'"):
+        for sid, fecha, chars, active in db.execute(
+                "SELECT source_id, fecha, chars, active FROM documents WHERE source='pjn'"):
             if sid in ids:
-                docs[sid] = (fecha or "", chars or 0)
+                docs[sid] = (fecha or "", chars or 0, active)
         failed = {r[0] for r in db.execute("SELECT source_id FROM failures WHERE source='pjn'")} & ids
 
     per_day = Counter(dict(db.execute(
@@ -104,8 +108,10 @@ def accounts(db: sqlite3.Connection, camara: str, desde: date, hasta: date,
     for i, leaf in enumerate(leaves):
         for sid in listed.get(i, ()):
             leaf.listados += 1
-            fecha, chars = docs.get(sid, ("", 0))
-            if chars:
+            fecha, chars, active = docs.get(sid, ("", 0, 0))
+            if chars and not active:
+                leaf.desactivados += 1
+            elif chars:
                 leaf.guardados += 1
                 if not (leaf.start <= fecha <= leaf.end):
                     leaf.fecha_fuera += 1

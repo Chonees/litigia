@@ -86,3 +86,16 @@ def test_overlapping_searches_from_two_runs_are_not_counted_twice(cat):
     leaves, uncovered = accounts(cat.db, "C_10", date(2026, 8, 1), date(2026, 8, 7))
     assert sum(l.sitio for l in leaves) == 10
     assert uncovered == []
+
+
+def test_a_listed_ruling_stored_but_disabled_is_not_counted_as_stored(cat):
+    # an old copy with the same text, disabled and without its listing data, is invisible to search:
+    # the accounting must show it instead of counting it as stored (22 rulings hid this way, 2026-10-01)
+    key = "5-5|C_1|*|D|2026-04-10|2026-04-10"
+    search(cat, key, total=2)
+    cat.record_listing("pjn", key, ["a", "old"])
+    cat.upsert(doc("a", fecha="2026-04-10", tribunal=CIVIL))
+    cat.upsert(doc("old", fecha="2026-04-10", tribunal=CIVIL, texto=doc("x")["texto"] + " otro"))
+    cat.disable("source_id = ?", ("old",), reason="scraper_viejo")
+    (leaf,), _ = accounts(cat.db, "C_1", date(2026, 4, 10), date(2026, 4, 10))
+    assert (leaf.listados, leaf.guardados, leaf.desactivados) == (2, 1, 1)

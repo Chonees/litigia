@@ -213,3 +213,15 @@ def test_a_failure_counts_attempts_and_is_cleared_by_a_later_success(cat):
     assert (row["attempts"], row["reason"], row["key"], row["url"]) == (2, "EmptyFileError", "k", "https://x/1.pdf")
     cat.clear_failure("pjn", "x1")
     assert cat.db.execute("SELECT COUNT(*) FROM failures").fetchone()[0] == 0
+
+
+def test_reassess_skips_disabled_documents_unless_asked(cat, monkeypatch):
+    # 38K rulings of the old scraper are disabled: recomputing their fields is wasted time
+    cat.upsert(doc("a1"))
+    cat.upsert(doc("old1", texto=LONG + " otro fallo"))
+    cat.disable("source_id = ?", ("old1",), reason="scraper_viejo")
+    import scripts.quality as quality
+    monkeypatch.setattr(quality, "MIN_CHARS", 10_000_000)
+    assert cat.reassess() == {"rejected": 1}
+    assert cat.get("pjn", "old1")["reasons"] != ["texto_corto"]
+    assert cat.reassess(active_only=False) == {"rejected": 2}

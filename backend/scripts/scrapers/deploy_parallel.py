@@ -98,14 +98,17 @@ MERGE_COMMIT_EVERY = 500      # short transactions: a scraper may be writing the
 def merge_catalog(remote_db: Path, local: Catalog) -> dict:
     """Bring a remote catalog into the local one (idempotent; safe to repeat every few minutes).
 
-    Documents already stored with the same text are skipped, so repeated collects stay fast.
+    Documents already stored with the same text, active and with their listing data, are skipped, so repeated
+    collects stay fast. A local copy that is disabled or lacks that data (the old scraper stored PDFs without
+    it) is merged, which completes and reactivates it.
     Listings and failures come too, so scripts/reconcile.py can account for every ruling;
     a failure is dropped once the ruling is stored with text on either side.
     """
     src = sqlite3.connect(f"file:{remote_db}?mode=ro", uri=True)
     src.row_factory = sqlite3.Row
     stats = {"documents": 0, "new": 0, "searches": 0, "listings": 0, "failures": 0}
-    known = dict(local.db.execute("SELECT source || '|' || source_id, text_hash FROM documents"))
+    known = dict(local.db.execute("SELECT source || '|' || source_id, text_hash FROM documents "
+                                  "WHERE active=1 AND tribunal<>'' AND caratula<>''"))
     for k, row in enumerate(src.execute("SELECT * FROM documents"), 1):
         stats["documents"] += 1
         if known.get(f"{row['source']}|{row['source_id']}", None) == row["text_hash"] and row["text_hash"]:

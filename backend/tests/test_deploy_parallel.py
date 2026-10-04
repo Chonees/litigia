@@ -73,3 +73,18 @@ def test_merge_brings_listings_and_failures_and_drops_failures_that_later_succee
     local.close()
     assert (stats["listings"], stats["failures"]) == (2, 1)
     assert listed == 2 and failures == {"bad"}
+
+
+def test_merge_completes_and_reactivates_an_old_copy_with_the_same_text(tmp_path):
+    # the old scraper stored the PDF text without its listing data, and that copy was disabled; the VPS downloads
+    # the same PDF with its listing: same text, so it used to be skipped and the ruling stayed invisible
+    local = Catalog(tmp_path / "local.db")
+    local.upsert({"source": "pjn", "source_id": "u1", "texto": LONG + " uno", "fecha": "2026-04-10"})
+    local.disable("source_id = ?", ("u1",), reason="scraper_viejo")
+    remote = Catalog(tmp_path / "remote.db")
+    remote.upsert(doc("u1", texto=LONG + " uno"))
+    remote.close()
+    merge_catalog(tmp_path / "remote.db", local)
+    row = local.get("pjn", "u1")
+    assert row["active"] == 1 and row["caratula"] == doc("u1")["caratula"]
+    local.close()

@@ -377,3 +377,152 @@ def test_short_enforcement_rulings_decide_at_the_start():
     assert extract_resultado(t) == "hace lugar"
     assert extract_resultado(PAD + "Por ello, FALLO: I) Mandando a seguir adelante la ejecución de sentencia contra la "
                                    "demandada Estado Nacional hasta hacer íntegro el pago.") == "hace lugar"
+
+
+# -- Checked against notes written by people (Microjuris, Diario Judicial, CNACAF bulletins), 2026-10-01 ------
+
+def test_norms_cited_as_a_list_keep_every_article():
+    t = ("tras repasar doctrina, jurisprudencia y normas (art. 377 de la ley Nº 19.550 y arts. 1463 y 1467 del CCyCN) "
+         "sobre naturaleza; Fallos: 258:304; art. 386, última parte, del C.P.C.C.N.; (cfr. arts. 330 inc. 2 y 377 del "
+         "C.P.C.C.N.). Costas (cfr. arts. 68 y 71 del C.P.C.C.N.).")
+    normas = extract_normas(t)
+    assert {"CCyC art. 1463", "CCyC art. 1467", "CPCCN art. 386", "CPCCN art. 330", "CPCCN art. 377",
+            "CPCCN art. 68", "CPCCN art. 71", "ley 19.550"} <= set(normas)
+    assert "CCyC art. 377" not in normas            # that 377 is of the ley 19.550
+    assert "CPCCN art. 2" not in normas             # "inc. 2" is an inciso, not an article
+
+
+def test_norms_list_with_ranges_and_bis():
+    assert {"CCyC art. 1737", "CCyC art. 1740", "CCyC art. 1741"} <= set(
+        extract_normas("(arts. 1737 a 1740 y 1741 del Código Civil y Comercial de la Nación)"))
+    assert "LCT art. 245" in extract_normas("la indemnización de los arts. 232, 233 y 245 bis de la LCT")
+
+
+def test_a_partial_dissent_makes_the_ruling_by_majority():
+    signed = PAD + ("Por los fundamentos del acuerdo precedente, y con la disidencia parcial de la doctora María "
+                    "Guadalupe Vásquez, se RESUELVE: confirmar la sentencia apelada. Pablo D. Heredia (en disidencia "
+                    "parcial) Ernesto Lucchelli Eduardo R. Machín")
+    assert por_mayoria(signed)
+    third = PAD + "EL DR. MARIO S. FERA DIJO: En lo que es materia de disidencia, me adhiero al primer voto." + PAD + \
+        "Por ello, el Tribunal RESUELVE: 1) Confirmar la sentencia."
+    assert por_mayoria(third)
+    disagree = PAD + "EL DOCTOR VICTOR ARTURO PESINO DIJO: I.- Discrepo del voto que antecede en cuanto propone " \
+                     "confirmar la condena." + PAD + "el Tribunal RESUELVE: 1) Modificar la sentencia."
+    assert por_mayoria(disagree)
+    assert por_mayoria(RIVAS) is False             # "una mera disidencia de lo resuelto" is the appellant's, not a vote
+
+
+def test_deserting_the_appeal_is_desierto():
+    t = PAD + ("el Tribunal resuelve: 1) Decretar la deserción del recurso de apelación interpuesto; 2) Confirmar la "
+               "sentencia de grado en todo lo que ha sido motivo de agravio.")
+    assert extract_resultado(t) == "desierto"
+
+
+def test_admitting_the_appeal_in_part_grants_it():
+    t = PAD + ("Por ello, SE RESUELVE: a) admitir parcialmente el recurso intentado por la demandada en los términos "
+               "que surgen del presente; b) imponer las costas por su orden.")
+    assert extract_resultado(t) == "hace lugar"
+
+
+def test_decide_after_a_stray_colon_opens_the_resolutive_part():
+    t = PAD + ("Y VISTOS lo deliberado y conclusiones establecidas en el Acuerdo precedentemente transcripto el "
+               "tribunal : decide Revocar 1) la sentencia; y hacer lugar parcialmente a la demanda; 2) fijar la partida.")
+    assert extract_resultado(t) == "revoca"
+
+
+def test_the_pdf_that_moves_resuelve_after_the_first_item():
+    t = PAD + ("ya que la parte demandada resultó totalmente vencida, corresponde rechazar el agravio, con costas (conf. "
+               "art. 68, primer párrafo y 69 del CPCCN). "
+               "En virtud de todo lo expuesto, SE : Declarar desierto el recurso de apelación interpuesto RESUELVE "
+               "por la parte demandada (art. 266 del CPCCN); con costas (art. 68 del CPCCN). Regístrese.")
+    assert extract_resultado(t) == "desierto"
+
+
+def test_article_numbers_written_with_a_degree_sign():
+    assert extract_normas("es de destacar que el art. 7° del Código Civil y Comercial de la Nación dispone") == ["CCyC art. 7"]
+    assert extract_normas("(arts. 804 CCCN y 37 CPCCN)") == ["CCyC art. 804"]      # 37 sits after the code that closes it
+
+
+def test_granting_the_appeal_reads_as_its_consequence():
+    t = PAD + "SE RESUELVE: 1) Admitir el recurso de apelación y, en consecuencia, revocar la sentencia apelada; 2) Costas."
+    assert extract_resultado(t) == "revoca"
+    t = PAD + "el Tribunal RESUELVE: hacer lugar parcialmente al recurso y modificar la sentencia en cuanto a los intereses."
+    assert extract_resultado(t) == "modifica"
+
+
+def test_the_dissent_of_another_case_cited_in_a_footnote_is_not_this_ones():
+    t = PAD + ("el Tribunal RESUELVE: 1) Confirmar la sentencia. Regístrese. JUAN PEREZ PEDRO GOMEZ. 18 ver voto del "
+               "Dr. Galmarini en la disidencia efectuada en la c. 97.631-09 del 27-5-19")
+    assert por_mayoria(t) is False
+
+
+def test_the_consequence_of_granting_the_appeal_can_be_the_next_item():
+    t = PAD + ("Por ello, se RESUELVE: i) admitir el recurso interpuesto por la parte actora a fs. 376; ii) modificar la "
+               "sentencia dictada a fs. 371/374 con el único alcance de reconocer el daño punitivo; y iii) costas.")
+    assert extract_resultado(t) == "modifica"
+    t = PAD + ("SE RESUELVE: 1°) admitir parcialmente el recurso de apelación interpuesto por la demandada, en los "
+               "términos de los Considerandos VIII a X; y 2º) distribuir las costas en el orden causado.")
+    assert extract_resultado(t) == "hace lugar"
+
+
+def test_procedural_code_by_its_other_names():
+    assert extract_normas("en uso de las facultades conferidas por el art. 165 del Cód. Procesal") == ["CPCCN art. 165"]
+    assert extract_normas("el principio general que sienta el art. 386 del ordenamiento adjetivo") == ["CPCCN art. 386"]
+    assert extract_normas("conforme el art. 477 del código ritual") == ["CPCCN art. 477"]
+    assert extract_normas("Con costas de alzada a la apelante, vencida (art 68 del Código Procesal).") == ["CPCCN art. 68"]
+    assert extract_normas("art. 15 del Código Procesal Penal") == []
+
+
+# -- Checked against the second, unseen round of notes (2026-10-01) ------------------------------------------
+
+def test_more_ways_to_write_a_split_vote():
+    settle = PAD + ("El Dr. Leonardo Jesús Ambesi dijo: En lo que resulta materia de disidencia entre mis distinguidos "
+                    "colegas, adhiero al voto del Dr. Sudera." + PAD + "el Tribunal RESUELVE: 1) Confirmar la sentencia.")
+    assert por_mayoria(settle)
+    called = PAD + "He sido convocado a zanjar tal disidencia y así lo haré." + PAD + "el Tribunal RESUELVE: 1) Revocar."
+    assert por_mayoria(called)
+    reasons = PAD + ("Atento lo que resulta del acuerdo que antecede, y las razones que fundan el voto de la mayoría, "
+                     "SE RESUELVE: 1) Revocar la sentencia de grado.")
+    assert por_mayoria(reasons)
+    assert not por_mayoria(PAD + "adhiero a la tesis de la mayoría de las Salas de esta Cámara." + PAD +
+                           "el Tribunal RESUELVE: 1) Confirmar la sentencia.")
+
+
+def test_raising_an_amount_with_aumentar_modifies():
+    t = PAD + ("SE RESUELVE: I) aumentar a Pesos Cinco Millones ($5.000.000) la suma fijada en concepto de valor vida, "
+               "II) confirmar la sentencia en todo lo demás.")
+    assert extract_resultado(t) == "modifica"
+
+
+def test_a_verb_split_by_the_pdf():
+    t = PAD + "SE RESUELVE: r evocar la sentencia de grado en lo sustancial haciendo lugar al recurso del actor."
+    assert extract_resultado(t) == "revoca"
+    t = PAD + "SE RESUELVE: r echazar el recurso de la actora y confirmar la sentencia apelada en todos sus términos."
+    assert extract_resultado(t) == "confirma"
+
+
+def test_rejecting_the_appeal_then_confirming_in_the_next_item():
+    t = PAD + ("Por ello, se RESUELVE: (i) rechazar los recursos interpuestos por ambas partes y, en consecuencia; "
+               "(ii) confirmar la sentencia apelada; (iii) costas en el orden causado.")
+    assert extract_resultado(t) == "confirma"
+    t = PAD + "SE RESUELVE: 1) Rechazar la demanda contra Pérez; 2) Confirmar la sentencia en lo demás."
+    assert extract_resultado(t) == "rechaza"          # rejecting a claim is not rejecting an appeal
+
+
+def test_first_instance_whose_pdf_moved_fallo_after_the_gerund():
+    t = PAD + ("Por lo expuesto, disposiciones legales, doctrina y jurisprudencia citadas, Admitiendo :\n\nFALLO "
+               "parcialmente la demanda deducida. En consecuencia, se condena a Edesur.")
+    assert extract_resultado(t) == "hace lugar"
+
+
+def test_an_appeal_wrongly_granted_stays_rejected_even_if_fees_are_confirmed():
+    t = PAD + ("el Tribunal RESUELVE: I) Declarar mal concedido e recurso; II) Confirmar lo decidido en materia de costas "
+               "y honorarios; III) Imponer las costas de alzada a la demandada.")
+    assert extract_resultado(t) == "rechaza"
+
+
+def test_rejecting_one_appeal_and_granting_the_other_reads_as_what_changes():
+    t = PAD + ("Por ello, se RESUELVE: i) rechazar el recurso de la demandada de fs. 912; ii) admitir parcialmente el "
+               "recurso del actor de fs. 914 y, en consecuencia, elevar el monto reconocido en concepto de daño moral "
+               "a la suma de $ 3.000.000; iii) costas a la demandada.")
+    assert extract_resultado(t) == "modifica"

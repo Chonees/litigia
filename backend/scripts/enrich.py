@@ -5,11 +5,13 @@
 - normas:      cited laws and LCT articles, normalized ("ley 27.348", "LCT art. 80")
 - numero:      "SD 115.631" / "SI 12.345", the number lawyers cite
 - votos:       judges who voted, in order ("X dijo:")
-- por_mayoria: the resolutive part says the decision was by majority (there was a different vote)
+- por_mayoria: the decision was by majority (there was a different vote)
 
-Dissent is NOT detected from words like "disiento": in CNAT rulings they usually quote the
-first-instance judge or reject a party's "mera disidencia". "por mayoría" in the resolutive
-part is the reliable signal.
+Dissent is NOT detected from loose words like "disiento": in CNAT rulings they usually quote the
+first-instance judge or reject a party's "mera disidencia". The reliable signals are "por mayoría" or a
+judge's "disidencia" in the resolutive part and the signatures ("con la disidencia parcial de…",
+"(en disidencia parcial)"), and two phrases of the votes themselves: "Discrepo del voto que antecede" and
+"En lo que es materia de disidencia" (the third judge settling a split).
 """
 
 import re
@@ -26,10 +28,18 @@ LEAD_IN = r"(?:expuesto|citad[oa]s|en\s+definitiva|consideraciones)\s*[,;]"
 RESOLUTIVE = re.compile(
     r"(?<!que se )(?<!que )"
     r"(?:RESUELVE|RESOLVER\s*:|SE\s+RESUELVE|FALLA\b|RESUELVO|(?-i:F(?:ALLO|allo)\s*:)|\bdecide\s*:|\bdecido\s*:"
-    r"|\bacuerdan\s*:|" + LEAD_IN + r"\s*:|" + LEAD_IN + r"(?=\s*(?-i:(?:Haciendo|Admitiendo|Rechazando|Condenando|Desestimando))\b))",
+    r"|\bacuerdan\s*:|\btribunal\s*:\s*decide\b|" + LEAD_IN + r"\s*:|" + LEAD_IN + r"(?=\s*(?-i:(?:Haciendo|Admitiendo|Rechazando|Condenando|Desestimando))\b))",
     re.IGNORECASE,
 )
 MAYORIA_WINDOW = 150
+# a judge's dissent, where the resolutive part and the signatures name it; never the appellant's "mera disidencia"
+# (nor the dissent of another case cited in a footnote: "la disidencia efectuada en la c. 97.631-09")
+JUDGE_DISSENT = re.compile(r"(?<!mera )(?<!simple )\bdisidencia\b(?!\s+(?:de|con)\s+lo\s+(?:resuelto|decidido))"
+                           r"(?!\s+(?:efectuada|formulada|emitida|expuesta|en\s+(?:el\s+precedente|la\s+causa|los\s+autos|la\s+c\.)))",
+                           re.IGNORECASE)
+VOTE_DISSENT = re.compile(r"\bdiscrep(?:o|amos)\s+(?:parcialmente\s+)?(?:del|con\s+el)\s+voto\b"
+                          r"|\ben\s+lo\s+que\s+(?:es|resulta)\s+materia\s+de\s+disidencia\b"
+                          r"|\bzanjar\s+(?:tal|la|esta|dicha)\s+disidencia\b", re.IGNORECASE)
 
 # Matched on the resolutive part folded to lowercase ASCII ("Confírmase" → "confirmase"). Verb forms seen in
 # CNAT and CNCiv: infinitive, imperative + se, gerund (first instance) and subjunctive ("se la confirme").
@@ -43,7 +53,7 @@ RESULTADOS = [
     ("revoca", rf"\brevo(?:c(?:ar{ENCLITIC}|ase|a|ando)|que|quen|quese)\b|\bdejar\s+sin\s+efecto\b|\bdejase\s+sin\s+efecto\b"),
     # Cámara Civil also modifies by raising or lowering amounts: "Elevar la suma reconocida…", "Reducir la indemnización…"
     ("modifica", rf"\bmodifi(?:c(?:ar{ENCLITIC}|ase|a|ando)|que|quen|quese)\b"
-                 r"|\b(?:elev|increment|reduc|disminu)(?:ar|ir|ase|ese|ando|iendo|yendo)\b[^.;]{0,40}?"
+                 r"|\b(?:elev|increment|aument|reduc|disminu)(?:ar|ir|ase|ese|ando|iendo|yendo)\b(?:[^.;]|\.(?=\d)){0,60}?"
                  r"\b(?:suma|monto|importe|cantidad|indemnizacion|partida|resarcimiento|condena|capital)"),
     ("rechaza", rf"\bdesestim(?:ar|ase|a|ando|o){NOT_A_DEFENSE}\b|\brecha(?:z(?:ar|ase|a|ando|o)|ce|cen|cese)\b{NOT_A_DEFENSE}"
                 r"|\bmal\s+concedid[oa]\b|\bdeneg(?:ar|ase|a|o)\b|\bdeclarar\s+(?:formalmente\s+)?inadmisible\b"),
@@ -54,28 +64,30 @@ RESULTADOS = [
                    r"|\bhago\s+(?:parcialmente\s+)?lugar\b"
                    r"|\bcondenar\b|\bcondeno\b|\bcondenando\b"
                    r"|\badmit(?:ir|iendo|ase|o)\s+(?:parcialmente\s+)?la\s+demanda\b"
+                   r"|\badmit(?:ir|iendo|ase|o)\s+(?:parcialmente\s+)?(?:el|los)\s+recursos?\b"
                    # ejecuciones fiscales and comercial "ejecutivo": ordering the enforcement to proceed
                    r"|\bmand(?:ar|ando|o)\s+(?:a\s+)?(?:llevar|seguir)\s+adelante\s+la\s+ejecucion\b"),
     ("abstracto", r"\babstract[oa]\b|\binoficios[oa]\b"),        # "declarar inoficioso pronunciarse"
-    ("desierto", r"\bdesiert[oa]\b"),
+    ("desierto", r"\bdesiert[oa]\b|\bdesercion\b"),          # "Decretar la deserción del recurso"
     ("nulidad", r"\bnulidad\b"),
 ]
 
 LEY = re.compile(r"\bley(?:es)?\s*(?:n[°º.]*\s*)?(\d{1,2})\.?(\d{3})\b", re.IGNORECASE)
-LCT = re.compile(
-    r"\bart(?:[íi]culo|s?\.)\s*(\d+)[^.;\n]{0,20}?(?:LCT|L\.C\.T|Ley de Contrato de Trabajo)",
+# Articles of the LCT, the Civil and Commercial Code (2015) and the national procedural code. Cited one by one
+# ("art. 1746 del CCyCN") or as a list ("arts. 1463 y 1467 del CCyCN", "arts. 330 inc. 2 y 377 del C.P.C.C.N.",
+# "art. 386, última parte, del C.P.C.C.N."): every article of the list belongs to the code that closes it, unless
+# a law sits in between ("art. 377 de la ley 19.550 y arts. 1463…": that 377 is the law's).
+ARTICLES = re.compile(r"\bart(?:[íi]culos?|s?\.|s?(?=\s))\s*(?=\d)", re.IGNORECASE)     # also "art 68 del…"
+CODES = re.compile(
+    r"(?P<LCT>\bLCT\b|\bL\.C\.T\b|Ley\s+de\s+Contrato\s+de\s+Trabajo)"
+    r"|(?P<CCyC>C[óo]digo\s+Civil\s+y\s+Comercial|\bCCyCN?\b|\bCCCN\b|\bC\.C\.C\.N\b|C[óo]d\.\s*Civ\.\s*y\s*Com\.)"
+    r"|(?P<CPCCN>C[óo]d(?:igo|\.)\s+Procesal(?!\s+Penal)|\bCPCCN?\b|\bC\.P\.C\.C(?:\.N)?\b"
+    r"|(?:ordenamiento|c[óo]digo)\s+(?:adjetivo|ritual))",
     re.IGNORECASE,
 )
-# Civil and Commercial Code (2015) and the national procedural code, as the CNCiv cites them
-CCYC = re.compile(
-    r"\bart(?:[íi]culo|s?\.)\s*(\d+)[^.;\n]{0,25}?"
-    r"(?:C[óo]digo\s+Civil\s+y\s+Comercial|CCyCN?\b|CCCN\b|C[óo]d\.\s*Civ\.\s*y\s*Com\.)",
-    re.IGNORECASE,
-)
-CPCCN = re.compile(
-    r"\bart(?:[íi]culo|s?\.)\s*(\d+)[^.;\n]{0,25}?(?:C[óo]digo\s+Procesal(?!\s+Penal)|CPCCN?\b)",
-    re.IGNORECASE,
-)
+NOT_THE_CODE = re.compile(r"\b(?:ley|leyes|decreto|dto|resoluci[óo]n|res)\b", re.IGNORECASE)
+ARTICLE_LIST_SPAN = 160   # how far after "arts." the code may close the list
+CODE_AFTER_LAST = 30      # "…, última parte, del C.P.C.C.N.": at most this between the last article and the code
 # "SENTENCIA DEFINITIVA Nº 115.631" (Cámara) or "SENTENCIA NÚMERO: 18867" (first instance, a sentencia definitiva).
 # The number must not be followed by "/": "SENTENCIA CNAT NÚMERO: 31748/2021" is a case number.
 NUMERO = re.compile(
@@ -136,7 +148,9 @@ def _resolutive(texto: str) -> tuple[str, int]:
     # bring back the "1)" that sits just before the marker.
     if re.match(r"[\s:.\-–|]*[a-záéíóúñ]", section):
         first = None
-        for first in re.finditer(r"(?:^|\s)(?:1|I)\s*[.)\-–]+\s*(?=[A-ZÁÉÍÓÚ])", texto[max(0, last.start() - 250):last.start()]):
+        # also "SE : Declarar desierto el recurso RESUELVE por la parte demandada": the PDF moved the bold word
+        for first in re.finditer(r"(?:^|\s)(?:1|I)\s*[.)\-–]+\s*(?=[A-ZÁÉÍÓÚ])|\bSE\s*:\s*(?=[A-ZÁÉÍÓÚ])",
+                                 texto[max(0, last.start() - 250):last.start()]):
             pass
         if first:
             section = texto[max(0, last.start() - 250) + first.start():last.start()] + " " + section
@@ -153,6 +167,10 @@ DECISION_WINDOW = 700     # how far before "Así se resuelve" / the closing form
 
 def _first_result(section: str) -> str:
     section = _fold(section)
+    # PDF artifacts: a verb split after its first letter ("r evocar"), the bold "FALLO" moved into the sentence
+    # ("…citadas, Admitiendo : FALLO parcialmente la demanda")
+    section = re.sub(r"\br (?=(?:evoc|echaz)[a-z])", "r", section)
+    section = re.sub(r"\b([a-z]+ndo)\s*:\s*fallo\b", r"\1", section)
     found = []
     for name, pattern in RESULTADOS:
         m = re.search(pattern, section, re.IGNORECASE)
@@ -160,10 +178,29 @@ def _first_result(section: str) -> str:
             found.append((m.start(), name, m.end()))
     if not found:
         return ""
-    _, name, end = min(found)
-    # "Rechazar el recurso … y, en consecuencia, confirmar el pronunciamiento": what stands is a confirmation
-    if name == "rechaza" and re.search(r"\bconfirm", re.split(r";|\s2\s*[.)]", section[end:end + 300])[0]):
+    start, name, end = min(found)
+    # "Rechazar el recurso … y, en consecuencia, confirmar el pronunciamiento": what stands is a confirmation;
+    # "Admitir el recurso y, en consecuencia, revocar la sentencia": what stands is the revocation
+    # the consequence can also be the next item: "i) admitir el recurso de la actora; ii) modificar la sentencia",
+    # "(i) rechazar los recursos de ambas partes y, en consecuencia; (ii) confirmar la sentencia"
+    item = re.split(r";|\s2\s*[.)]", section[end:end + 300])[0]
+    following = [p for p in re.split(r";|\s\(?(?:2|3|ii|iii)\s*[.)°º]", section[end:end + 600]) if p.strip()][:2]
+    appeal = re.search(r"\b(?:recursos?|apelacion|quejas?|agravios?)\b", section[start:end + 60])
+    # (not "Declarar mal concedido el recurso; Confirmar lo decidido en materia de costas": that stays rejected)
+    confirms_ruling = (r"\bconfirm\w*\s+(?:(?:la|el|lo)\s+)?(?:sentencia|pronunciamiento|resolucion|decision|fallo|laudo"
+                       r"|decidido|integramente)\b(?!\s+(?:en\s+materia\s+de\s+)?(?:las\s+)?(?:costas|honorarios))")
+    if name == "rechaza" and re.search(r"\bconfirm", item):
         return "confirma"
+    if name == "rechaza" and appeal and "mal concedid" not in section[start:end]:
+        for consequence in ("revoca", "modifica"):
+            if any(re.search(dict(RESULTADOS)[consequence], part) for part in following):
+                return consequence
+        if any(re.search(confirms_ruling, part) for part in following):
+            return "confirma"
+    if name == "hace lugar" and re.search(r"\brecursos?\b", section[start:end + 40]):
+        for consequence in ("revoca", "modifica"):
+            if any(re.search(dict(RESULTADOS)[consequence], part) for part in following):
+                return consequence
     return name
 
 
@@ -187,15 +224,31 @@ def por_mayoria(texto: str) -> bool:
     if start < 0:
         return False
     window = texto[max(0, start - MAYORIA_WINDOW):start] + section
-    return bool(re.search(r"por\s+mayor[íi]a", window, re.IGNORECASE))
+    return bool(re.search(r"por\s+mayor[íi]a|voto\s+de\s+la\s+mayor[íi]a", window, re.IGNORECASE) or JUDGE_DISSENT.search(window)
+                or VOTE_DISSENT.search(texto))
+
+
+def _code_articles(texto: str) -> set[str]:
+    found = set()
+    starts = [m.end() for m in ARTICLES.finditer(texto)]
+    for i, start in enumerate(starts):
+        # the list runs until the next "art." or a semicolon, whichever comes first
+        end = min([start + ARTICLE_LIST_SPAN] + starts[i + 1:i + 2])
+        tail = texto[start:end].split(";")[0]
+        code = CODES.search(tail)
+        if not code or NOT_THE_CODE.search(tail[:code.start()]):
+            continue
+        listed = re.sub(r"\binc(?:iso)?s?\.?\s*[a-z\d]+\b", " ", tail[:code.start()], flags=re.IGNORECASE)
+        # "art. 68 2da parte": "2da" is not an article ("art. 7°" is); "fs. 57/68", "19.550" are not either
+        numbers = list(re.finditer(r"(?<![\d/.:])\d{1,4}[°º]?(?![\d/.:a-záéíóúA-Z])", listed))
+        if numbers and len(listed) - numbers[-1].end() <= CODE_AFTER_LAST:
+            found |= {f"{code.lastgroup} art. {n.group().rstrip('°º')}" for n in numbers}
+    return found
 
 
 def extract_normas(texto: str) -> list[str]:
     normas = {f"ley {a}.{b}" for a, b in LEY.findall(texto)}
-    normas |= {f"LCT art. {n}" for n in LCT.findall(texto)}
-    normas |= {f"CCyC art. {n}" for n in CCYC.findall(texto)}
-    normas |= {f"CPCCN art. {n}" for n in CPCCN.findall(texto)}
-    return sorted(normas)
+    return sorted(normas | _code_articles(texto))
 
 
 def extract_numero(texto: str) -> str:
